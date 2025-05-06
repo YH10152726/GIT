@@ -1,0 +1,58 @@
+Sub 統合マクロ_工程表まとめ()
+
+    Dim フォルダパス As String
+    Dim ファイル名 As String
+    Dim まとめ先行 As Long
+    Dim 元ブック As Workbook
+    Dim 元シート As Worksheet
+    Dim 最終行 As Long
+    Dim コピー範囲 As Range
+
+    ' フォルダ選択ダイアログ表示
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .Title = "Excelファイルがあるフォルダを選択してください"
+        If .Show <> -1 Then Exit Sub
+        フォルダパス = .SelectedItems(1) & "\"
+    End With
+
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+
+    ファイル名 = Dir(フォルダパス & "*.xls*")
+    まとめ先行 = 2 ' 1行目にタイトルがある想定で、2行目から貼り付け
+
+    Do While ファイル名 <> ""
+        Workbooks.Open Filename:=フォルダパス & ファイル名, ReadOnly:=True
+        Set 元ブック = ActiveWorkbook
+        Set 元シート = Nothing
+
+        On Error Resume Next
+        Set 元シート = 元ブック.Sheets("Sheet1")
+        On Error GoTo 0
+
+        If Not 元シート Is Nothing Then
+            ' AJ列の最終行を取得（空白でない最下行）
+            最終行 = 元シート.Cells(元シート.Rows.Count, "AJ").End(xlUp).Row
+
+            If 最終行 >= 3 Then
+                Set コピー範囲 = 元シート.Range("X3:AT" & 最終行)
+                コピー範囲.Copy
+
+                ' まとめ先に貼り付け（A列から）
+                ThisWorkbook.Sheets(1).Cells(まとめ先行, "A").PasteSpecial xlPasteValues
+                まとめ先行 = まとめ先行 + コピー範囲.Rows.Count
+            End If
+        End If
+
+        元ブック.Close SaveChanges:=False
+        ファイル名 = Dir()
+    Loop
+
+    Application.CutCopyMode = False
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+
+    MsgBox "すべてのデータを統合しました。", vbInformation
+
+End Sub
+
