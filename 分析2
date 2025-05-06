@@ -1,0 +1,70 @@
+Sub 品名検索_範囲抽出_毎回新シート_検索語シート名()
+
+    Dim 元Sht As Worksheet
+    Dim 出力Sht As Worksheet
+    Dim 最終行 As Long
+    Dim i As Long, j As Long
+    Dim 開始行 As Long
+    Dim 検索語 As String
+    Dim 出力行 As Long
+    Dim シート名 As String
+    Dim 番号 As Long
+
+    ' 入力
+    検索語 = InputBox("検索したい品名（部分一致）を入力してください：", "品名検索")
+    If Len(Trim(検索語)) = 0 Then Exit Sub
+
+    ' シート名に使えない記号を除去
+    シート名 = "抽出_" & Replace(検索語, "\", "")
+    シート名 = Replace(シート名, "/", "")
+    シート名 = Replace(シート名, "*", "")
+    シート名 = Replace(シート名, "[", "")
+    シート名 = Replace(シート名, "]", "")
+    シート名 = Replace(シート名, ":", "")
+    シート名 = Replace(シート名, "?", "")
+
+    ' 31文字以内に制限
+    If Len(シート名) > 31 Then
+        シート名 = Left(シート名, 31)
+    End If
+
+    ' 同名シートがある場合は連番を付ける
+    番号 = 1
+    Do
+        On Error Resume Next
+        Set 出力Sht = ThisWorkbook.Sheets(シート名)
+        On Error GoTo 0
+        If 出力Sht Is Nothing Then Exit Do
+        シート名 = "抽出_" & Left(検索語, 25) & "_" & 番号
+        番号 = 番号 + 1
+    Loop
+
+    Set 元Sht = ThisWorkbook.Sheets("Sheet1")
+    最終行 = 元Sht.Cells(元Sht.Rows.Count, "K").End(xlUp).Row
+
+    Set 出力Sht = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+    出力Sht.Name = シート名
+
+    出力行 = 1
+
+    For i = 3 To 最終行
+        If StrComp(Replace(元Sht.Cells(i, "K").Value, "　", ""), "", vbTextCompare) <> 0 Then
+            If InStr(1, Replace(元Sht.Cells(i, "K").Value, "　", ""), Replace(検索語, "　", ""), vbTextCompare) > 0 Then
+                開始行 = i
+                For j = 開始行 + 1 To 最終行 + 1
+                    If j > 最終行 Or Len(Trim(元Sht.Cells(j, "K").Value)) > 0 Then
+                        元Sht.Range("A" & 開始行 & ":V" & j - 1).Copy
+                        出力Sht.Range("A" & 出力行).PasteSpecial xlPasteValues
+                        出力行 = 出力行 + (j - 開始行)
+                        Exit For
+                    End If
+                Next j
+            End If
+        End If
+    Next i
+
+    Application.CutCopyMode = False
+    MsgBox "抽出が完了しました → " & 出力Sht.Name, vbInformation
+
+End Sub
+
