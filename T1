@@ -1,0 +1,797 @@
+VERSION 5.00
+Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} UserForm1 
+   Caption         =   "UserForm1"
+   ClientHeight    =   10080
+   ClientLeft      =   120
+   ClientTop       =   465
+   ClientWidth     =   15390
+   OleObjectBlob   =   "UserForm1.frx":0000
+   StartUpPosition =   1  'ƒI[ƒi[ ƒtƒH[ƒ€‚Ì’†‰›
+End
+Attribute VB_Name = "UserForm1"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Private Sub UserForm_Initialize()
+
+With ComboBoxH’ö‘I‘ð
+    .AddItem "’²® –ÊŽæ"
+    .AddItem "’²®iPj"
+    .AddItem "“d‹ÉÝŒv"
+    .AddItem "Šm”F‘ª’èM"
+    .AddItem "Šm”F‘ª’èP"
+    .AddItem "ŒŠ‚ ‚¯ƒ^ƒbƒv"
+    .AddItem "•í‚¢Œ¤í"
+    .AddItem "•½–ÊŒ¤í ”Ä—p"
+    .AddItem "•½–ÊŒ¤í ”Ä—piM’²®j"
+    .AddItem "”Mˆ—"
+    .AddItem "ŽÐ“àTRY"
+    .AddItem "ŽåÞw“ü"
+    .AddItem "M/C-1"
+    .AddItem "M/C-2"
+    .AddItem "M/Ci‘åj"
+    .AddItem "M/Ci“d‹Éj"
+    .AddItem "M/Ci¬j"
+    .AddItem "•½–ÊŒ¤í-1"
+    .AddItem "•½–ÊŒ¤í-2"
+    .AddItem "•½–ÊŒ¤í-3"
+    .AddItem "ŠO’"
+    .AddItem "ôò"
+    .AddItem "×ŒŠ•ú“d‰ÁH"
+    .AddItem "•›Þiw“ü•ij"
+    .AddItem "–‚«"
+    .AddItem "Œ^’¤•ú“d‰ÁH"
+    .AddItem "ƒƒCƒ„•ú“d‰ÁH"
+    .AddItem "ƒƒCƒ„‰ÁHi“d‹Éj"
+    .AddItem "—nÚ"
+    .AddItem "•½–ÊŒ¤í NC"
+    .AddItem "“d‹ÉƒŠƒXƒgì¬"
+End With
+
+
+'=== ƒQƒCƒrˆË—Šƒ`ƒFƒbƒNƒ{ƒbƒNƒXiCheckBoxGeibij ===
+CheckBoxGeibi.Caption = "ƒQƒCƒr|‹Æ‚ÉŠO’‚·‚é"
+CheckBoxGeibi.Value = False
+
+'=== ƒQƒCƒrˆË—Šƒpƒ^[ƒ“‘I‘ðiComboBoxGeibiTypej ===
+With ComboBoxGeibiType
+    .AddItem "Þ—¿`Ä‚«‚Ü‚Å"
+    .AddItem "r‰ÁH‚Ì‚Ý"
+    .AddItem "r`Ä‚«‚Ü‚Å"
+    .ListIndex = 0
+End With
+
+'ComboBox1.AddItem "AlCrN"
+'ComboBox1.AddItem "TiCN"
+'ComboBox1.ListIndex = -1        ' << Šù’è‚Íu–¢‘I‘ðv‚É
+
+    ComboBox2.AddItem "×ˆäHìŠ"
+    ComboBox2.AddItem "ÊßÝÁH‹Æ"
+    ComboBox2.AddItem "Žl•ÏÃ¯¸"
+    ComboBox2.AddItem "Ä°¶Û²"
+    ComboBox2.ListIndex = 0
+
+    ComboBox3.AddItem "•½–ÊŒ¤í ”Ä—p"
+    ComboBox3.AddItem "•½–ÊŒ¤í NC"
+    ComboBox3.AddItem "•í‚¢Œ¤í"
+    ComboBox3.AddItem "M/Ci¬j"
+    ComboBox3.AddItem "M/Ci‘åj"
+    ComboBox3.AddItem "Ü²Ô•ú“d‰ÁH"
+    ComboBox3.AddItem "Œ^’¤‚è•ú“d"
+    ComboBox3.ListIndex = 0
+
+    ComboBoxTsubaCount.AddItem "1"
+    ComboBoxTsubaCount.AddItem "2"
+    ComboBoxTsubaCount.AddItem "3"
+    ComboBoxTsubaCount.ListIndex = 0
+
+    ComboBoxTsubaRough.AddItem "MCi¬j"
+    ComboBoxTsubaRough.AddItem "Ü²Ô•ú“d‰ÁH"
+    ComboBoxTsubaRough.ListIndex = 0
+End Sub
+
+
+Private Sub CommandButton1_Click()
+
+    '===== ƒ[ƒNƒV[ƒg & sˆÊ’u =====
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("H’ö•\")
+
+Dim targetRow As Long
+    targetRow = ActiveCell.Row                     ' ƒAƒNƒeƒBƒuƒZƒ‹s
+
+    Dim lastRow As Long
+    lastRow = targetRow
+
+
+    '===== ƒAƒNƒeƒBƒuƒZƒ‹s‚Ì’l‚ð“Ç‚ÝŽæ‚é =====
+    Dim zVal As String, acVal As String
+    zVal = ws.Cells(targetRow, 26).Value  ' Z—ñFƒR[ƒeƒBƒ“ƒO or ƒTƒuƒ[ƒ
+    acVal = ws.Cells(targetRow, 29).Value ' AC—ñFÞŽ¿
+
+    ' ÞŽ¿Ý’è
+    Select Case acVal
+        Case "SKH51", "DC53", "SLD-MAGIC"
+            ÞŽ¿ = acVal
+        Case Else
+            MsgBox "ÞŽ¿‚ª•s–¾‚Å‚·BAC—ñ‚ðŠm”F‚µ‚Ä‚­‚¾‚³‚¢B"
+            Exit Sub
+    End Select
+
+'-------------------------------------------------
+' —ñ Z ‚Ì”»’èiAlCrN / TiCN / ƒTƒuƒ[ƒ ‚ð•À—ñƒ`ƒFƒbƒNj
+'-------------------------------------------------
+ŠO’—L–³ = False
+ƒR[ƒeƒBƒ“ƒO = ""
+–‚«—L–³ = False
+
+Dim zKey As String
+zKey = NormalizeZText(zVal)
+
+'--- ƒR[ƒeƒBƒ“ƒOiAlCrNj ---
+If InStr(zKey, "ALCRN") > 0 Then
+    ƒR[ƒeƒBƒ“ƒO = "AlCrN"
+    ŠO’—L–³ = True
+    –‚«—L–³ = True
+End If
+
+'--- ƒR[ƒeƒBƒ“ƒOiTiCNj ---
+If InStr(zKey, "TICN") > 0 Then
+    ƒR[ƒeƒBƒ“ƒO = "TiCN"
+    ŠO’—L–³ = True
+    –‚«—L–³ = True
+End If
+
+'--- ƒTƒuƒ[ƒ ---
+If InStr(zKey, "SUB0") > 0 Or InStr(zKey, "»ÌÞ0") > 0 Or InStr(zKey, "S0") > 0 Then
+    isSubzero = True
+End If
+
+
+
+
+
+    '===== ƒtƒH[ƒ€“ü—Í’l =====
+    Dim Œ`ó As String
+    Dim ƒƒCƒ„[‰ÁH As Boolean, ƒ³10ˆÈ‰º As Boolean, Œ`ó‰ÁH‚ ‚è As Boolean, Ø‚èn‚ ‚è As Boolean
+    Dim ŠOì As Boolean, ƒ~ƒXƒ~w“ü•i As Boolean, ’Ç‰ÁH‚ ‚è As Boolean
+    Dim ’Ç‰ÁHH’ö As String
+    Dim LayoutAfterCut As Boolean
+    Dim AdjustP As Boolean
+    Dim AfterMC As Boolean
+    Dim mcŽdã‚°–¼ As String
+   
+
+    '===== ƒcƒo‰ÁH—pi‚±‚±‚Å 1 ‰ñ‚¾‚¯éŒ¾j=====
+    Dim n As Integer
+    Dim tsubaNum As Integer
+    Dim tsubaMethod As String
+
+'===== ƒtƒH[ƒ€’l‚ðŽæ“¾ =====
+'-------------------------------------------------
+' ‡@ ÞŽ¿ c ƒIƒvƒVƒ‡ƒ“ƒ{ƒ^ƒ“‚ª 1 ‚Â‚Å‚à‘I‘ð‚³‚ê‚Ä‚¢‚ê‚Îã‘‚«
+'-------------------------------------------------
+'If OptionButton1.Value Or OptionButton2.Value Or OptionButton3.Value Then
+'    ÞŽ¿ = IIf(OptionButton1.Value, "SKH51", _
+'           IIf(OptionButton2.Value, "DC53", "SLD-MAGIC"))
+'End If
+
+'-------------------------------------------------
+
+
+'---- Žè“®–‚« ON/OFF ‹@”\‚à“P‹Ž‚·‚éê‡ ----
+'   ‰º‚Ì1s‚ðŠÛ‚²‚Æíœ
+'If CheckBox2.Value Then –‚«—L–³ = True
+
+'=== ƒQƒCƒrŠO’ŠÖ˜A ===
+Dim GeibiˆË—Š As Boolean
+Dim Geibiƒpƒ^[ƒ“ As String
+
+GeibiˆË—Š = CheckBoxGeibi.Value
+If GeibiˆË—Š Then
+    Geibiƒpƒ^[ƒ“ = ComboBoxGeibiType.Value ' Þ—¿`Ä‚«‚Ü‚ÅAr‰ÁH‚Ì‚ÝAr`Ä‚«‚Ü‚Å
+End If
+
+'-------------------------------------------------
+' ‡B ‚»‚Ì‘¼ƒtƒH[ƒ€’l
+'-------------------------------------------------
+Œ`ó = IIf(OptionButton4.Value, "ƒuƒƒbƒN", _
+       IIf(OptionButton5.Value, "ƒvƒŒ[ƒg", "ƒtƒ@ƒ~ƒŠ[‰ÁH"))
+
+ƒƒCƒ„[‰ÁH = CheckBox1.Value
+If Œ`ó = "ƒtƒ@ƒ~ƒŠ[‰ÁH" Then
+    ƒƒCƒ„[‰ÁH = True                ' ˜_—ƒtƒ‰ƒO‚ð‹­§ƒZƒbƒg
+End If
+ƒ³10ˆÈ‰º = CheckBox4.Value
+Œ`ó‰ÁH‚ ‚è = CheckBox5.Value
+Ø‚èn‚ ‚è = CheckBox6.Value
+ŠOì = CheckBox9.Value
+ƒ~ƒXƒ~w“ü•i = CheckBox7.Value
+’Ç‰ÁH‚ ‚è = CheckBox8.Value
+LayoutAfterCut = CheckBoxLayout.Value
+AfterMC = CheckBoxAfterMC.Value
+AdjustP = CheckBoxAdjustP.Value
+If ’Ç‰ÁH‚ ‚è Then ’Ç‰ÁHH’ö = ComboBox3.Value
+
+
+    '-------------------------------------------------
+    ' 1) ŠOìiÅIH’ö‚ªŠO’‚ÅI—¹j‚Ìê‡
+    '-------------------------------------------------
+    If ŠOì Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "ŠO’"
+        ws.Cells(lastRow, 38).Value = ComboBox2.Value
+        lastRow = lastRow + 1
+
+        If ŠO’—L–³ Then
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = "ŠO’"
+            ws.Cells(lastRow, 38).Value = IIf(ƒR[ƒeƒBƒ“ƒO = "AlCrN", "˜a‹»ŽY‹Æ", "–k”M")
+            lastRow = lastRow + 1
+        End If
+
+       Call AddAdjustP(ws, lastRow, AdjustP)
+       MsgBox "ŠOìH’ö‚ðo—Í‚µ‚Ü‚µ‚½B"
+       Unload Me
+
+        Exit Sub
+    End If
+
+    '-------------------------------------------------
+    ' 2) ƒ~ƒXƒ~w“ü•i‚Ì‚Ý‚Ìê‡
+    '-------------------------------------------------
+    If ƒ~ƒXƒ~w“ü•i Then
+        ws.Cells(lastRow, 36).Value = "•›Þ(w“ü•i)"
+        ws.Cells(lastRow, 38).Value = "Ð½Ð"
+        lastRow = lastRow + 1
+
+        If ’Ç‰ÁH‚ ‚è Then
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = ’Ç‰ÁHH’ö
+            Select Case ’Ç‰ÁHH’ö
+                Case "M/Ci¬j":   ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.25", "0.1", "0.1")
+                Case "M/Ci‘åj":   ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.4", "0.2", "0.2")
+                Case "Ü²Ô•ú“d‰ÁH": ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.75", "0.5", "0.5")
+                Case "•½–ÊŒ¤í ”Ä—p":  ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.4", " ", "0.1")
+                Case "•½–ÊŒ¤í NC":  ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.3", "0.2", "0.1")
+                Case "•í‚¢Œ¤í":     ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.35", "0.15", "0.1")
+                Case "Œ^’¤‚è•ú“d":   ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.9", "0.6", "0.2")
+            End Select
+            lastRow = lastRow + 1
+        End If
+
+       Call AddAdjustP(ws, lastRow, AdjustP)
+       MsgBox "H’ö‚ðo—Í‚µ‚Ü‚µ‚½B"
+       Unload Me
+
+        Exit Sub
+    End If
+
+    '-------------------------------------------------
+    ' 3) šƒŒƒCƒAƒEƒgØ‚è—£‚µŒã•”•iiŽåÞw“ü`SG ‚ðÈ—ªj
+    '-------------------------------------------------
+    If LayoutAfterCut Then
+
+        '--- ‚Ö‚»Žæ‚èi‹N“_j ---
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í ”Ä—p"
+        ws.Cells(lastRow, 40).Value = "0.1"
+        ws.Cells(lastRow, 42).Value = "0.2"
+        ws.Cells(lastRow, 45).Value = "Í¿Žæ‚è"
+        lastRow = lastRow + 1
+
+        '--- ƒcƒo‰ÁHi”CˆÓj ---
+        If CheckBoxTsuba.Value Then
+            tsubaNum = val(ComboBoxTsubaCount.Value)
+            tsubaMethod = ComboBoxTsubaRough.Value
+            For n = 1 To tsubaNum
+                ' r
+                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = tsubaMethod
+                ws.Cells(lastRow, 40).Value = "0.6"
+                ws.Cells(lastRow, 41).Value = "0.1"
+                ws.Cells(lastRow, 42).Value = "0.1"
+                ws.Cells(lastRow, 45).Value = "‚Â‚Îr " & n & "/" & tsubaNum
+                lastRow = lastRow + 1
+                ' Ždã‚°
+Dim needUe As Boolean
+needUe = (n = tsubaNum) And Not –‚«—L–³   ' ©š‚±‚±‚ª”»’èƒ|ƒCƒ“ƒg
+If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í NC"
+ws.Cells(lastRow, 40).Value = "0.3"
+ws.Cells(lastRow, 41).Value = "0.1"
+ws.Cells(lastRow, 42).Value = "0.1"
+ws.Cells(lastRow, 45).Value = _
+        "‚Â‚ÎŽdã‚° " & n & "/" & tsubaNum & IIf(needUe, "Eã–Ê", "")
+lastRow = lastRow + 1
+            Next n
+        End If
+
+'\\\ –‚«iƒŒƒCƒAƒEƒgŒãj\\\
+If –‚«—L–³ Then
+ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "–‚«"
+    ws.Cells(lastRow, 40).Value = "0.5"
+    lastRow = lastRow + 1
+
+    If Ø‚èn‚ ‚è Then                  '© ’Ç‰Á
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í ”Ä—p"
+        ws.Cells(lastRow, 40).Value = "0.25"
+        ws.Cells(lastRow, 42).Value = "0.1"
+        ws.Cells(lastRow, 45).Value = "ã–Ê"
+        lastRow = lastRow + 1
+    End If                               '© ’Ç‰Á
+End If
+
+        '--- ƒR[ƒeƒBƒ“ƒOŠO’i”CˆÓj ---
+        If ŠO’—L–³ Then
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = "ŠO’"
+            ws.Cells(lastRow, 38).Value = IIf(ƒR[ƒeƒBƒ“ƒO = "AlCrN", "˜a‹»ŽY‹Æ", "–k”M")
+            lastRow = lastRow + 1
+        End If
+
+Call AddAdjustP(ws, lastRow, AdjustP)
+MsgBox "H’ö‚ðo—Í‚µ‚Ü‚µ‚½B"
+Unload Me
+
+        Exit Sub
+    End If
+
+      '-------------------------------------------------
+    ' 3.5) ƒQƒCƒrŠO’ƒpƒ^[ƒ“
+    '-------------------------------------------------
+    If GeibiˆË—Š Then
+        Select Case Geibiƒpƒ^[ƒ“
+            Case "Þ—¿`Ä‚«‚Ü‚Å"
+                ' ŠO’iƒQƒCƒrj‚Ì‚Ý
+                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "ŠO’"
+                ws.Cells(lastRow, 38).Value = "¹Þ²ËÞ|‹Æ"
+                ws.Cells(lastRow, 45).Value = Geibiƒpƒ^[ƒ“
+                lastRow = lastRow + 1
+
+                GoTo GeibiAfterSG
+
+            Case "r‰ÁH‚Ì‚Ý"
+                ' ŽåÞw“ü
+                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "ŽåÞw“ü"
+                Select Case ÞŽ¿
+                    Case "SKH51": ws.Cells(lastRow, 38).Value = "ÒÀÙÜÝ"
+                    Case "DC53": ws.Cells(lastRow, 38).Value = "[]“ÁŽê|"
+                    Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ÒÀÙÃ¯¸"
+                End Select
+                lastRow = lastRow + 1
+
+                ' ŠO’iƒQƒCƒrj
+                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "ŠO’"
+                ws.Cells(lastRow, 38).Value = "¹Þ²ËÞ|‹Æ"
+                ws.Cells(lastRow, 45).Value = Geibiƒpƒ^[ƒ“
+                lastRow = lastRow + 1
+
+                ' ŒŠ‚ ‚¯ƒ^ƒbƒv
+                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "ŒŠ‚ ‚¯À¯Ìß"
+                ws.Cells(lastRow, 40).Value = "0.3"
+                If isSubzero Then ws.Cells(lastRow, 45).Value = "»ÌÞ¾ÞÛ’ˆÓ"
+                lastRow = lastRow + 1
+
+                GoTo GeibiAfterMC
+
+            Case "r`Ä‚«‚Ü‚Å"
+                ' ŽåÞw“ü
+                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "ŽåÞw“ü"
+                Select Case ÞŽ¿
+                    Case "SKH51": ws.Cells(lastRow, 38).Value = "ÒÀÙÜÝ"
+                    Case "DC53": ws.Cells(lastRow, 38).Value = "[]“ÁŽê|"
+                    Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ÒÀÙÃ¯¸"
+                End Select
+                lastRow = lastRow + 1
+
+                ' ŠO’iƒQƒCƒrj
+                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "ŠO’"
+                ws.Cells(lastRow, 38).Value = "¹Þ²ËÞ|‹Æ"
+                ws.Cells(lastRow, 45).Value = Geibiƒpƒ^[ƒ“
+                lastRow = lastRow + 1
+
+                GoTo GeibiAfterSG
+        End Select
+    End If
+
+
+
+
+
+    '-------------------------------------------------
+    ' 4) ’Êíƒ‹[ƒgiŽåÞw“ü`ÅŒã‚Ü‚Åj
+    '-------------------------------------------------
+
+    ' ‚±‚±‚©‚çæ‚Ìˆ—‚Íƒ~ƒXƒ~w“ü•iˆÈŠO‚É‘Î‚µ‚Äs‚¤
+    ' ŽåÞw“ü
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "ŽåÞw“ü"
+    Select Case ÞŽ¿
+        Case "SKH51": ws.Cells(lastRow, 38).Value = "ÒÀÙÜÝ"
+        Case "DC53": ws.Cells(lastRow, 38).Value = "[]“ÁŽê|"
+        Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ÒÀÙÃ¯¸"
+    End Select
+
+
+    Dim content As String
+    content = IIf(CheckBoxChamfer‚È‚µ.Value, "C‚È‚µ", "C‚ ‚è")
+    If CheckBoxTsurineji‚ ‚è.Value Then content = content & ",’Ý‚è"
+    ws.Cells(lastRow, 45).Value = content
+    lastRow = lastRow + 1
+
+    ' M/C‰ÁHiŒ`ó‚É‰ž‚¶‚Äj
+    Dim mcH’ö–¼ As String
+    mcH’ö–¼ = IIf(Œ`ó = "ƒvƒŒ[ƒg", "M/Ci‘åj", "M/Ci¬j")
+    Dim i As Integer
+    For i = 1 To 2
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = mcH’ö–¼
+        ws.Cells(lastRow, 40).Value = "0.25"
+        ws.Cells(lastRow, 41).Value = "0.1"
+        If i = 2 Then ws.Cells(lastRow, 42).Value = "0.1"
+        ws.Cells(lastRow, 45).Value = i & "/2"
+        lastRow = lastRow + 1
+    Next i
+
+GeibiAfterMC:
+
+    If Not GeibiˆË—Š Then
+        ' ŒŠ‚ ‚¯ƒ^ƒbƒv
+        
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "ŒŠ‚ ‚¯À¯Ìß"
+        ws.Cells(lastRow, 40).Value = "0.3"
+        If isSubzero Then ws.Cells(lastRow, 45).Value = "»ÌÞ¾ÞÛ’ˆÓ"
+        lastRow = lastRow + 1
+    End If
+
+    ' ”Mˆ—
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "”Mˆ—"
+    If isSubzero Then
+        ws.Cells(lastRow, 38).Value = "´¼Þ¿Ý”Mˆ—"
+    Else
+        Select Case ÞŽ¿
+            Case "SKH51": ws.Cells(lastRow, 38).Value = "ØËÄ¸Œõ"
+            Case "DC53":  ws.Cells(lastRow, 38).Value = "Œõ—zŽY‹Æ ‚‰·"
+            Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "´¼Þ¿Ý”Mˆ—"
+        End Select
+    End If
+    lastRow = lastRow + 1
+
+    GoTo GeibiAfterSG
+
+
+    ' ˆÈ‰º SG ‚©‚çÄŠJ
+    GoTo GeibiAfterSG
+
+
+
+    ' ”Mˆ—
+If Not GeibiˆË—Š Then
+    ' ŒŠ‚ ‚¯ƒ^ƒbƒv
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "ŒŠ‚ ‚¯À¯Ìß"
+    ws.Cells(lastRow, 40).Value = "0.3"
+    If isSubzero Then ws.Cells(lastRow, 45).Value = "»ÌÞ¾ÞÛ’ˆÓ"
+    lastRow = lastRow + 1
+End If
+
+' ”Mˆ—
+If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+ws.Cells(lastRow, 36).Value = "”Mˆ—"
+If isSubzero Then
+    ws.Cells(lastRow, 38).Value = "´¼Þ¿Ý”Mˆ—"
+Else
+    Select Case ÞŽ¿
+        Case "SKH51": ws.Cells(lastRow, 38).Value = "ØËÄ¸Œõ"
+        Case "DC53":  ws.Cells(lastRow, 38).Value = "Œõ—zŽY‹Æ ‚‰·"
+        Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "´¼Þ¿Ý”Mˆ—"
+    End Select
+End If
+lastRow = lastRow + 1
+
+
+GeibiAfterSG:
+
+    ' Ä‚«“ü‚êŒãSG
+    Dim sg‰ñ” As Integer
+    Select Case Œ`ó
+    Case "ƒuƒƒbƒN"
+        sg‰ñ” = 6
+
+        Case "ƒvƒŒ[ƒg"
+    'šÅ—DæFƒƒCƒ„[‰ÁH‚È‚µ { Ä‚«ŒãMC‚ ‚è ¨ 4H’ö
+    If Not ƒƒCƒ„[‰ÁH And AfterMC Then
+        sg‰ñ” = 4
+    
+    'šƒƒCƒ„[‰ÁH‚È‚µ { Ä‚«ŒãMC‚È‚µ ¨ 2H’ö
+    ElseIf Not ƒƒCƒ„[‰ÁH Then
+        sg‰ñ” = 2
+    
+    'šƒƒCƒ„[‰ÁH‚ ‚è { Ä‚«ŒãMC‚ ‚è ¨ 4H’ö
+    ElseIf AfterMC Then
+        sg‰ñ” = 4
+    
+    'šƒƒCƒ„[‰ÁH‚ ‚è { Ä‚«ŒãMC‚È‚µ ¨ 3H’ö
+    Else
+        sg‰ñ” = 3
+    End If
+
+
+
+    Case "ƒtƒ@ƒ~ƒŠ[‰ÁH"
+        sg‰ñ” = 2
+End Select
+For i = 1 To sg‰ñ”
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown  ' © ’Ç‰ÁI
+    ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í NC"
+    ws.Cells(lastRow, 40).Value = "0.3"
+    ws.Cells(lastRow, 41).Value = "0.3"
+    If i = sg‰ñ” Then ws.Cells(lastRow, 42).Value = "0.1"
+    ws.Cells(lastRow, 45).Value = i & "/" & sg‰ñ”
+    lastRow = lastRow + 1
+Next i
+
+'„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ
+'š Ä‚«ŒãMCŽdã‚°iƒ`ƒFƒbƒNŽž‚Ì‚Ýj
+'„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ
+If AfterMC Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    If Œ`ó = "ƒvƒŒ[ƒg" Then
+        mcŽdã‚°–¼ = "M/Ci‘åj"
+        ws.Cells(lastRow, 36).Value = mcŽdã‚°–¼
+        ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.4", "0.2", "0.2")
+    Else
+        mcŽdã‚°–¼ = "M/Ci¬j"
+        ws.Cells(lastRow, 36).Value = mcŽdã‚°–¼
+        ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.25", "0.1", "0.1")
+    End If
+    ws.Cells(lastRow, 45).Value = "MCŽdã‚°"
+    lastRow = lastRow + 1
+End If
+
+'„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ„Ÿ
+
+    ' ƒXƒ^[ƒgŒŠ1mmˆÈ‰º‚È‚ç×ŒŠ•ú“d
+    If ƒƒCƒ„[‰ÁH And CheckBoxStartHoleSmall.Value Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "×ŒŠ•ú“d‰ÁH"
+        ws.Cells(lastRow, 40).Value = "0.8"
+        ws.Cells(lastRow, 42).Value = "0.1"
+        lastRow = lastRow + 1
+    End If
+
+    ' ƒƒCƒ„[‰ÁH
+    If ƒƒCƒ„[‰ÁH Then
+        If ƒ³10ˆÈ‰º And Œ`ó‰ÁH‚ ‚è Then
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = "Ü²Ô•ú“d‰ÁH"
+            ws.Cells(lastRow, 40).Value = "0.75"
+            ws.Cells(lastRow, 41).Value = "3"
+            ws.Cells(lastRow, 45).Value = "r‰ÁH"
+            lastRow = lastRow + 1
+            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = "Ü²Ô•ú“d‰ÁH"
+            ws.Cells(lastRow, 40).Value = "0.75"
+            ws.Cells(lastRow, 41).Value = "6"
+            ws.Cells(lastRow, 42).Value = "0.5"
+            ws.Cells(lastRow, 45).Value = "¶½Žæ‚èEŽdã‚°"
+            lastRow = lastRow + 1
+        ElseIf ƒ³10ˆÈ‰º Or Not Œ`ó‰ÁH‚ ‚è Then
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = "Ü²Ô•ú“d‰ÁH"
+            ws.Cells(lastRow, 40).Value = "0.75"
+            ws.Cells(lastRow, 41).Value = "2"
+            ws.Cells(lastRow, 42).Value = "0.5"
+            lastRow = lastRow + 1
+        Else
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = "Ü²Ô•ú“d‰ÁH"
+            ws.Cells(lastRow, 40).Value = "0.75"
+            ws.Cells(lastRow, 41).Value = "3"
+            ws.Cells(lastRow, 45).Value = "r‰ÁH"
+            lastRow = lastRow + 1
+            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = "Ü²Ô•ú“d‰ÁH"
+            ws.Cells(lastRow, 40).Value = "0.75"
+            ws.Cells(lastRow, 41).Value = "6"
+            ws.Cells(lastRow, 42).Value = "0.5"
+            ws.Cells(lastRow, 45).Value = "¶½Žæ‚èEŽdã‚°"
+            lastRow = lastRow + 1
+        End If
+
+        ' ƒwƒ\ or ã–ÊSG
+        If Œ`ó = "ƒtƒ@ƒ~ƒŠ[‰ÁH" Then
+            If –‚«—L–³ Then
+            ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í ”Ä—p"
+                ws.Cells(lastRow, 40).Value = "0.2"
+                ws.Cells(lastRow, 42).Value = "0.1"
+                ws.Cells(lastRow, 45).Value = "Í¿Žæ‚è"
+                lastRow = lastRow + 1
+            Else
+            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í NC"
+                ws.Cells(lastRow, 40).Value = "0.2"
+                ws.Cells(lastRow, 41).Value = "0.3"
+                ws.Cells(lastRow, 42).Value = "0.1"
+               If Ø‚èn‚ ‚è And Not CheckBoxTsuba.Value Then
+            ws.Cells(lastRow, 45).Value = "Í¿Eã–Ê"
+        Else
+            ws.Cells(lastRow, 45).Value = "Í¿Žæ‚è"
+        End If
+                lastRow = lastRow + 1
+            End If
+ElseIf Œ`ó = "ƒuƒƒbƒN" Or Œ`ó = "ƒvƒŒ[ƒg" Then
+    If Ø‚èn‚ ‚è And Not –‚«—L–³ Then
+        Dim ã–Ê‹@ŠB As String
+        ã–Ê‹@ŠB = IIf(Œ`ó = "ƒvƒŒ[ƒg" Or Œ`ó = "ƒtƒ@ƒ~ƒŠ[‰ÁH", "•½–ÊŒ¤í NC", "•½–ÊŒ¤í ”Ä—p")
+        ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = ã–Ê‹@ŠB
+        ws.Cells(lastRow, 40).Value = "0.2"
+        If ã–Ê‹@ŠB = "•½–ÊŒ¤í NC" Then
+            ws.Cells(lastRow, 41).Value = "0.2"
+        End If
+        ws.Cells(lastRow, 42).Value = "0.1"
+        ws.Cells(lastRow, 45).Value = "ã–Ê"
+        lastRow = lastRow + 1
+    End If
+        End If
+    End If
+
+    ' ƒcƒo‰ÁH
+    If CheckBoxTsuba.Value Then
+       tsubaNum = val(ComboBoxTsubaCount.Value)
+       tsubaMethod = ComboBoxTsubaRough.Value
+        For n = 1 To tsubaNum
+        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+            ws.Cells(lastRow, 36).Value = tsubaMethod
+            ws.Cells(lastRow, 40).Value = "0.6"
+            ws.Cells(lastRow, 41).Value = "0.1"
+            ws.Cells(lastRow, 42).Value = "0.1"
+            ws.Cells(lastRow, 45).Value = "‚Â‚Îr " & n & "/" & tsubaNum
+            lastRow = lastRow + 1
+
+
+needUe = (n = tsubaNum) And Not –‚«—L–³   ' ©š‚±‚±‚ª”»’èƒ|ƒCƒ“ƒg
+If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í NC"
+ws.Cells(lastRow, 40).Value = "0.3"
+ws.Cells(lastRow, 41).Value = "0.1"
+ws.Cells(lastRow, 42).Value = "0.1"
+ws.Cells(lastRow, 45).Value = _
+        "‚Â‚ÎŽdã‚° " & n & "/" & tsubaNum & IIf(needUe, "Eã–Ê", "")
+lastRow = lastRow + 1
+        Next n
+    End If
+
+'\\\ –‚« \\\
+If –‚«—L–³ Then
+ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "–‚«"
+    ws.Cells(lastRow, 40).Value = "0.5"
+    lastRow = lastRow + 1
+
+    'š Ø‚èn‚ ‚è‚Ì‚Æ‚«‚¾‚¯ã–Ê SG ‚ðo—Í
+    If Ø‚èn‚ ‚è Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "•½–ÊŒ¤í ”Ä—p"
+        ws.Cells(lastRow, 40).Value = "0.3"
+        ws.Cells(lastRow, 42).Value = "0.1"
+        ws.Cells(lastRow, 45).Value = "ã–Ê"
+        lastRow = lastRow + 1
+    End If
+End If
+
+    ' ŠO’
+    If ŠO’—L–³ Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "ŠO’"
+        If ƒR[ƒeƒBƒ“ƒO = "AlCrN" Then
+            ws.Cells(lastRow, 38).Value = "˜a‹»ŽY‹Æ"
+        ElseIf ƒR[ƒeƒBƒ“ƒO = "TiCN" Then
+            ws.Cells(lastRow, 38).Value = "–k”M"
+        End If
+        lastRow = lastRow + 1
+    End If
+    
+    '==================================================================
+    '  šŒÄ‚Ño‚µ‘¤‚©‚çs”Ô†‚ðˆø‚«Œp‚°‚é‚æ‚¤AByRef ‚É‚È‚Á‚½ AddAdjustP ‚ðŒÄ‚Ô
+    '==================================================================
+    Call AddAdjustP(ws, lastRow, AdjustP)
+MsgBox "H’öì¬‚ªŠ®—¹‚µ‚Ü‚µ‚½B"
+Unload Me
+
+End Sub
+'======================================================================
+' šlastRow ‚ð ByRef ‚É•ÏX‚µ‚Äs”Ô†‚ð•Ô‚·
+Private Sub AddAdjustP(ws As Worksheet, ByRef lastRow As Long, AdjustP As Boolean)
+    If AdjustP Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+        ws.Cells(lastRow, 36).Value = "’²®P"
+        ws.Cells(lastRow, 40).Value = "0.1"  ' —LlŽžŠÔ
+        lastRow = lastRow + 1
+    End If
+End Sub
+'===========================================================
+' •¶Žš—ñ‚ð³‹K‰»‚µ‚ÄƒL[ƒ[ƒhŒŸõ‚µ‚â‚·‚­‚·‚éŠÖ”
+'-----------------------------------------------------------
+Private Function NormalizeZText(src As String) As String
+    Dim t As String
+    ' ‡@ ‘SŠp¨”¼Šp‚Éi‰p”ƒJƒij¦ŒÃ‚¢VBA‚È‚çíœ‚µ‚Ä‚à‰Â
+    t = StrConv(src, vbNarrow + vbKatakana)
+
+    ' ‡A ‘å•¶Žš‰»EƒXƒy[ƒXœ‹Ž
+    t = UCase(t)
+    t = Replace(t, " ", "")
+    t = Replace(t, "@", "")
+
+    ' ‡B uƒR[ƒeƒBƒ“ƒOvuCOATINGv‚È‚ÇŽ×–‚Œê‚ðí‚é
+    t = Replace(t, "COATING", "")
+    t = Replace(t, "º°Ã¨Ý¸Þ", "")
+    t = Replace(t, "ƒR[ƒeƒBƒ“ƒO", "")
+    
+    ' ƒ[ƒ^ZERO ¨ "0" ‚É“ˆê
+t = Replace(t, "¾ÞÛ", "0")
+t = Replace(t, "ƒ[ƒ", "0")
+t = Replace(t, "ZERO", "0")
+
+
+    NormalizeZText = t
+End Function
+
+Private Sub CommandButton’P•i‘}“ü_Click()
+    Dim H’ö–¼ As String
+    H’ö–¼ = ComboBoxH’ö‘I‘ð.Value
+    If H’ö–¼ = "" Then
+        MsgBox "H’ö‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢B"
+        Exit Sub
+    End If
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("H’ö•\")
+    Dim r As Long
+    r = ActiveCell.Row
+    ws.Rows(r).Insert Shift:=xlDown
+
+    ws.Cells(r, 36).Value = H’ö–¼
+    Select Case H’ö–¼
+        Case "’²® –ÊŽæ":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
+        Case "’²®iPj":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.1", "", "")
+        Case "“d‹ÉÝŒv":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
+        Case "Šm”F‘ª’èM", "Šm”F‘ª’èP": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
+        Case "ŒŠ‚ ‚¯ƒ^ƒbƒv":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
+        Case "•í‚¢Œ¤í":              ws.Cells(r, 40).Resize(1, 3).Value = Array("1.0", "", "0.2")
+        Case "•½–ÊŒ¤í ”Ä—p", "•½–ÊŒ¤í ”Ä—piM’²®j": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "", "0.1")
+        Case "”Mˆ—", "ŠO’", "ŽåÞw“ü", "•›Þiw“ü•ij": ws.Cells(r, 40).Resize(1, 3).Value = Array("", "", "")
+        Case "ŽÐ“àTRY":              ws.Cells(r, 40).Resize(1, 3).Value = Array("2.0", "", "")
+        Case "M/C-1", "M/C-2":       ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
+        Case "M/Ci‘åj":            ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "0.25", "0.1")
+        Case "M/Ci“d‹Éj":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.8", "0.1")
+        Case "M/Ci¬j":            ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
+        Case "•½–ÊŒ¤í-1", "•½–ÊŒ¤í-2", "•½–ÊŒ¤í-3": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
+        Case "ôò":                 ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
+        Case "×ŒŠ•ú“d‰ÁH":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "0.8", "0.2")
+        Case "–‚«":                 ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "", "")
+        Case "Œ^’¤•ú“d‰ÁH":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
+        Case "ƒƒCƒ„•ú“d‰ÁH":      ws.Cells(r, 40).Resize(1, 3).Value = Array("0.75", "3.0", "0.5")
+        Case "ƒƒCƒ„‰ÁHi“d‹Éj":  ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
+        Case "—nÚ":                 ws.Cells(r, 40).Resize(1, 3).Value = Array("1.0", "", "")
+        Case "•½–ÊŒ¤í NC":         ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
+        Case "“d‹ÉƒŠƒXƒgì¬":      ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
+    End Select
+
+    MsgBox "’P•iH’öu" & H’ö–¼ & "v‚ð‘}“ü‚µ‚Ü‚µ‚½B"
+End Sub
+
