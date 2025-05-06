@@ -1,0 +1,113 @@
+Sub 工程出現集計_END対応_主材購入対応()
+
+    Dim 元Sht As Worksheet
+    Dim 出力Sht As Worksheet
+    Dim 最終行 As Long
+    Dim i As Long, j As Long
+    Dim 工程名 As String
+    Dim 工程Dict As Object
+    Dim tmpDict As Object
+    Dim 工程Keys As Variant
+    Dim ブロック数 As Long
+
+    Set 元Sht = ActiveSheet
+    最終行 = 元Sht.Cells(Rows.Count, "K").End(xlUp).Row
+    Set 工程Dict = CreateObject("Scripting.Dictionary")
+
+    i = 3
+    Do While i <= 最終行
+        If Trim(元Sht.Cells(i, "K").Value) <> "" Then
+            If Trim(元Sht.Cells(i, "K").Value) = "END" Then Exit Do
+            ブロック数 = ブロック数 + 1
+            Set tmpDict = CreateObject("Scripting.Dictionary")
+
+            ' ブロック先頭行の工程（主材購入など）も確認
+            工程名 = NormalizeStr(元Sht.Cells(i, "M").Value)
+            If Len(工程名) > 0 Then tmpDict(工程名) = True
+
+            ' ブロック内（品名～次の品名直前 or ENDまで）を集計
+            For j = i + 1 To 最終行
+                If Trim(元Sht.Cells(j, "K").Value) <> "" Or Trim(元Sht.Cells(j, "K").Value) = "END" Then Exit For
+                工程名 = NormalizeStr(元Sht.Cells(j, "M").Value)
+                If Len(工程名) > 0 Then tmpDict(工程名) = True
+            Next j
+
+            Dim tmpKey As Variant
+            For Each tmpKey In tmpDict.Keys
+                If Not 工程Dict.exists(tmpKey) Then
+                    工程Dict.Add tmpKey, 1
+                Else
+                    工程Dict(tmpKey) = 工程Dict(tmpKey) + 1
+                End If
+            Next tmpKey
+
+            i = j
+        Else
+            i = i + 1
+        End If
+    Loop
+
+    ' 出力
+    Set 出力Sht = ThisWorkbook.Sheets.Add(After:=Sheets(Sheets.Count))
+    出力Sht.Name = "工程集計_" & Format(Now, "mmdd_HHMMSS")
+    出力Sht.Range("A1").Value = "工程名"
+    出力Sht.Range("B1").Value = "出現回数"
+    出力Sht.Range("C1").Value = "出現率（%）"
+
+    工程Keys = 工程Dict.Keys
+    For i = 0 To UBound(工程Keys)
+        出力Sht.Cells(i + 2, 1).Value = 工程Keys(i)
+        出力Sht.Cells(i + 2, 2).Value = 工程Dict(工程Keys(i))
+        出力Sht.Cells(i + 2, 3).Value = Round(工程Dict(工程Keys(i)) / ブロック数 * 100, 1)
+    Next i
+
+    出力Sht.Range("E1").Value = "ブロック数"
+    出力Sht.Range("F1").Value = ブロック数
+
+    MsgBox "工程出現率の集計が完了しました。", vbInformation
+
+End Sub
+
+Function NormalizeStr(s As String) As String
+    s = Trim(s)
+    
+    ' 全角→半角（アルファベット・数字・カナ）
+    Dim i As Long
+    Dim Zenkaku As String, Hankaku As String
+    Zenkaku = "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ" & _
+              "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ" & _
+              "０１２３４５６７８９（）／－　"
+    Hankaku = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" & _
+              "abcdefghijklmnopqrstuvwxyz" & _
+              "0123456789()/\- "
+
+    For i = 1 To Len(Zenkaku)
+        s = Replace(s, Mid(Zenkaku, i, 1), Mid(Hankaku, i, 1))
+    Next i
+
+    ' カナ（全角→半角：ワイヤ→ﾜｲﾔ）
+    s = Replace(s, "ワ", "ﾜ")
+    s = Replace(s, "イ", "ｲ")
+    s = Replace(s, "ヤ", "ﾔ")
+    s = Replace(s, "ー", "ｰ")
+    s = Replace(s, "ア", "ｱ")
+    s = Replace(s, "ケ", "ｹ")
+    s = Replace(s, "タ", "ﾀ")
+    s = Replace(s, "ツ", "ﾂ")
+    s = Replace(s, "プ", "ﾌﾟ")
+    s = Replace(s, "ッ", "ｯ")
+
+    ' 小文字→大文字
+    s = UCase(s)
+
+    ' スラッシュ削除
+    s = Replace(s, "/", "")
+    s = Replace(s, "\", "")
+
+    ' 全角スペース・空白削除
+    s = Replace(s, "　", "")
+    s = Replace(s, " ", "")
+
+    NormalizeStr = s
+End Function
+
