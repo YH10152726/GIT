@@ -1,0 +1,37 @@
+Sub 出現率で工程フィルタ出力_縦配置()
+
+    Dim 集計Sht As Worksheet
+    Dim 最終行 As Long
+    Dim i As Long
+    Dim 出現率 As Double
+    Dim 下限 As Double
+    Dim 上限 As Double
+    Dim 出力行 As Long
+
+    ' ▼出現率の範囲（例：70～100）
+    下限 = CDbl(InputBox("出現率の下限を入力してください（例：70）：", "下限", 70))
+    上限 = CDbl(InputBox("出現率の上限を入力してください（例：100）：", "上限", 100))
+
+    ' ▼対象シート（アクティブシート）
+    Set 集計Sht = ActiveSheet
+    最終行 = 集計Sht.Cells(Rows.Count, "A").End(xlUp).Row
+
+    ' ▼出力はH列1行目から下方向に
+    出力行 = 1
+    集計Sht.Range("H1:H100").ClearContents ' 古い出力をクリア
+
+    ' ▼条件に合う工程を出力
+    For i = 2 To 最終行
+        If IsNumeric(集計Sht.Cells(i, "C").Value) Then
+            出現率 = CDbl(集計Sht.Cells(i, "C").Value)
+            If 出現率 >= 下限 And 出現率 <= 上限 Then
+                集計Sht.Cells(出力行, "H").Value = 集計Sht.Cells(i, "A").Value
+                出力行 = 出力行 + 1
+            End If
+        End If
+    Next i
+
+    MsgBox "出現率 " & 下限 & " ～ " & 上限 & "% の工程をH列に縦出力しました。", vbInformation
+
+End Sub
+
