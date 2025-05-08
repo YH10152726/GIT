@@ -80,6 +80,11 @@ End With
     ' ユーザーフォームに "CheckBoxKatabori" という名前のチェックボックスを作成してください
     CheckBoxKatabori.Caption = "型彫放電加工を追加する"
     CheckBoxKatabori.Value = False
+
+    '=== 倣い研削追加チェックボックス（CheckBoxNaraiKensaku） ===
+    ' ユーザーフォームに "CheckBoxNaraiKensaku" という名前のチェックボックスを作成してください
+    CheckBoxNaraiKensaku.Caption = "倣い研削を追加する"
+    CheckBoxNaraiKensaku.Value = False
 ' ▲▲▲ 追加 ▲▲▲
 End Sub
 
@@ -115,9 +120,15 @@ Dim targetRow As Long
 '-------------------------------------------------
 ' 列 Z の判定（AlCrN / TiCN / サブゼロ を並列チェック）
 '-------------------------------------------------
+Dim 外注有無 As Boolean '▼▼▼変更▼▼▼ Boolean型として明示的に宣言
+Dim コーティング As String '▼▼▼変更▼▼▼ String型として明示的に宣言
+Dim 磨き有無 As Boolean '▼▼▼変更▼▼▼ Boolean型として明示的に宣言
+Dim isSubZero As Boolean '▼▼▼追加▼▼▼ Boolean型として明示的に宣言
+
 外注有無 = False
 コーティング = ""
 磨き有無 = False
+isSubZero = False '▼▼▼追加▼▼▼ 初期化
 
 Dim zKey As String
 zKey = NormalizeZText(zVal)
@@ -153,6 +164,7 @@ End If
     Dim mc仕上げ名 As String
 ' ▼▼▼ 追加 ▼▼▼
     Dim 型彫放電追加 As Boolean
+    Dim 倣い研削追加 As Boolean
 ' ▲▲▲ 追加 ▲▲▲
     
 
@@ -208,6 +220,7 @@ AdjustP = CheckBoxAdjustP.Value
 If 追加工あり Then 追加工工程 = ComboBox3.Value
 ' ▼▼▼ 追加 ▼▼▼
 型彫放電追加 = CheckBoxKatabori.Value
+倣い研削追加 = CheckBoxNaraiKensaku.Value
 ' ▲▲▲ 追加 ▲▲▲
 
 
@@ -305,6 +318,14 @@ lastRow = lastRow + 1
         End If
 
 ' ▼▼▼ 追加 ▼▼▼
+'――― 倣い研削（レイアウト後・チェック時のみ）―――
+If 倣い研削追加 Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "倣い研削"
+    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("1.0", "", "0.2") ' 値は単品挿入時のものを流用
+    lastRow = lastRow + 1
+End If
+
 '――― 型彫放電加工（レイアウト後・チェック時のみ）―――
 If 型彫放電追加 Then
     If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
@@ -696,6 +717,7 @@ ElseIf 形状 = "ブロック" Or 形状 = "プレート" Then
             lastRow = lastRow + 1
 
 
+Dim needUe As Boolean '▼▼▼変更▼▼▼ Boolean型として明示的に宣言
 needUe = (n = tsubaNum) And Not 磨き有無   ' ←★ここが判定ポイント
 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
 ws.Cells(lastRow, 36).Value = "平面研削 NC"
@@ -708,7 +730,15 @@ lastRow = lastRow + 1
         Next n
     End If
 
-' ▼▼▼ 追加 ▼▼▼
+' ▼▼▼ 変更 ▼▼▼
+'――― 倣い研削（チェック時のみ）―――
+If 倣い研削追加 Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "倣い研削"
+    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("1.0", "", "0.2") ' 値は単品挿入時のものを流用
+    lastRow = lastRow + 1
+End If
+
 '――― 型彫放電加工（チェック時のみ）―――
 If 型彫放電追加 Then
     If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
@@ -716,7 +746,7 @@ If 型彫放電追加 Then
     ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2") ' 値は単品挿入時のものを流用
     lastRow = lastRow + 1
 End If
-' ▲▲▲ 追加 ▲▲▲
+' ▲▲▲ 変更 ▲▲▲
 
 '――― 磨き ―――
 If 磨き有無 Then
@@ -935,5 +965,3 @@ Private Sub CommandButton2_Click()
     MsgBox "抽出完了 → " & 出力Sht.Name, vbInformation
 
 End Sub
-
-
