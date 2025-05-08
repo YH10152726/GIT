@@ -133,7 +133,7 @@ End If
 
 '--- サブゼロ ---
 If InStr(zKey, "SUB0") > 0 Or InStr(zKey, "ｻﾌﾞ0") > 0 Or InStr(zKey, "S0") > 0 Then
-    isSubzero = True
+    isSubZero = True
 End If
 
 
@@ -268,7 +268,7 @@ If 追加工あり Then 追加工工程 = ComboBox3.Value
 
         '--- ツバ加工（任意） ---
         If CheckBoxTsuba.Value Then
-            tsubaNum = val(ComboBoxTsubaCount.Value)
+            tsubaNum = Val(ComboBoxTsubaCount.Value)
             tsubaMethod = ComboBoxTsubaRough.Value
             For n = 1 To tsubaNum
                 ' 荒
@@ -344,10 +344,16 @@ Unload Me
                 ' 主材購入
                 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
                 ws.Cells(lastRow, 36).Value = "主材購入"
-                Select Case 材質
-                    Case "SKH51": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
-                    Case "DC53": ws.Cells(lastRow, 38).Value = "深江特殊鋼"
-                    Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
+Select Case 材質
+    Case "SKH51", "HAP40", "SKD51":
+        ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
+    Case "DC53", "SKD11", "SKS3", "SS400":
+        ws.Cells(lastRow, 38).Value = "深江特殊鋼"
+    Case "SLD-MAGIC":
+        ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
+    Case "FDAC", "S50C", "S50C相当":
+        ws.Cells(lastRow, 38).Value = "小山鋼材"
+
                 End Select
                 lastRow = lastRow + 1
 
@@ -362,7 +368,7 @@ Unload Me
                 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
                 ws.Cells(lastRow, 36).Value = "穴あけﾀｯﾌﾟ"
                 ws.Cells(lastRow, 40).Value = "0.3"
-                If isSubzero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
+                If isSubZero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
                 lastRow = lastRow + 1
 
                 GoTo GeibiAfterMC
@@ -371,10 +377,16 @@ Unload Me
                 ' 主材購入
                 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
                 ws.Cells(lastRow, 36).Value = "主材購入"
-                Select Case 材質
-                    Case "SKH51": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
-                    Case "DC53": ws.Cells(lastRow, 38).Value = "深江特殊鋼"
-                    Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
+Select Case 材質
+    Case "SKH51", "HAP40", "SKD51":
+        ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
+    Case "DC53", "SKD11", "SKS3", "SS400":
+        ws.Cells(lastRow, 38).Value = "深江特殊鋼"
+    Case "SLD-MAGIC":
+        ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
+    Case "FDAC", "S50C", "S50C相当":
+        ws.Cells(lastRow, 38).Value = "小山鋼材"
+
                 End Select
                 lastRow = lastRow + 1
 
@@ -401,10 +413,16 @@ Unload Me
     ' 主材購入
     If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
     ws.Cells(lastRow, 36).Value = "主材購入"
-    Select Case 材質
-        Case "SKH51": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
-        Case "DC53": ws.Cells(lastRow, 38).Value = "深江特殊鋼"
-        Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
+Select Case 材質
+    Case "SKH51", "HAP40", "SKD51":
+        ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
+    Case "DC53", "SKD11", "SKS3", "SS400":
+        ws.Cells(lastRow, 38).Value = "深江特殊鋼"
+    Case "SLD-MAGIC":
+        ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
+    Case "FDAC", "S50C", "S50C相当":
+        ws.Cells(lastRow, 38).Value = "小山鋼材"
+
     End Select
 
 
@@ -436,20 +454,24 @@ GeibiAfterMC:
         If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
         ws.Cells(lastRow, 36).Value = "穴あけﾀｯﾌﾟ"
         ws.Cells(lastRow, 40).Value = "0.3"
-        If isSubzero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
+        If isSubZero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
         lastRow = lastRow + 1
     End If
 
     ' 熱処理
     If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
     ws.Cells(lastRow, 36).Value = "熱処理"
-    If isSubzero Then
+    If isSubZero Then
         ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
     Else
-        Select Case 材質
-            Case "SKH51": ws.Cells(lastRow, 38).Value = "ﾘﾋﾄ精光"
-            Case "DC53":  ws.Cells(lastRow, 38).Value = "光陽産業 高温"
-            Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
+Select Case 材質
+    Case "SKH51", "HAP40", "SKD51":
+        ws.Cells(lastRow, 38).Value = "ﾘﾋﾄ精光"
+    Case "DC53", "SKD11", "SKS3":
+        ws.Cells(lastRow, 38).Value = "光陽産業 高温"
+    Case "SLD-MAGIC":
+        ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
+
         End Select
     End If
     lastRow = lastRow + 1
@@ -468,20 +490,24 @@ If Not Geibi依頼 Then
     If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
     ws.Cells(lastRow, 36).Value = "穴あけﾀｯﾌﾟ"
     ws.Cells(lastRow, 40).Value = "0.3"
-    If isSubzero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
+    If isSubZero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
     lastRow = lastRow + 1
 End If
 
 ' 熱処理
 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
 ws.Cells(lastRow, 36).Value = "熱処理"
-If isSubzero Then
+If isSubZero Then
     ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
 Else
-    Select Case 材質
-        Case "SKH51": ws.Cells(lastRow, 38).Value = "ﾘﾋﾄ精光"
-        Case "DC53":  ws.Cells(lastRow, 38).Value = "光陽産業 高温"
-        Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
+Select Case 材質
+    Case "SKH51", "HAP40", "SKD51":
+        ws.Cells(lastRow, 38).Value = "ﾘﾋﾄ精光"
+    Case "DC53", "SKD11", "SKS3":
+        ws.Cells(lastRow, 38).Value = "光陽産業 高温"
+    Case "SLD-MAGIC":
+        ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
+
     End Select
 End If
 lastRow = lastRow + 1
@@ -637,7 +663,7 @@ ElseIf 形状 = "ブロック" Or 形状 = "プレート" Then
 
     ' ツバ加工
     If CheckBoxTsuba.Value Then
-       tsubaNum = val(ComboBoxTsubaCount.Value)
+       tsubaNum = Val(ComboBoxTsubaCount.Value)
        tsubaMethod = ComboBoxTsubaRough.Value
         For n = 1 To tsubaNum
         If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
@@ -787,21 +813,24 @@ Private Sub CommandButton2_Click()
     Dim 最終行 As Long
     Dim i As Long, j As Long
     Dim 開始行 As Long
-    Dim 検索語 As String
+    Dim 品名 As String, 品番 As String, サイズ As String, 材質 As String
     Dim 出力行 As Long
     Dim シート名 As String
     Dim 番号 As Long
 
     Dim 外部ブック As Workbook
     Dim ファイルパス As String
-    ファイルパス = "C:\Users\ysmft\Desktop\AAAA\スト.xlsm" ' ★ここは後で差し替えてください
+    ファイルパス = "C:\Users\ysmft\Desktop\AAAA\スト.xlsm" ' ★後で変更してください
 
-    '=== 入力フォームで選択 ===
-    検索語 = InputBox("検索（品名を入力してください）：", "過去データ検索")
-    If Len(Trim(検索語)) = 0 Then
-        MsgBox "テンプレート番号が未入力です。", vbExclamation
+    '=== 入力フォーム ===
+    品名 = InputBox("検索する品名を入力してください（必須）：", "過去データ検索")
+    If Len(Trim(品名)) = 0 Then
+        MsgBox "品名が未入力です。", vbExclamation
         Exit Sub
     End If
+    品番 = InputBox("品番でさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
+    サイズ = InputBox("サイズでさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
+    材質 = InputBox("材質でさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
 
     '=== 外部ブックを開く ===
     On Error Resume Next
@@ -816,7 +845,7 @@ Private Sub CommandButton2_Click()
     最終行 = 元Sht.Cells(元Sht.Rows.Count, "K").End(xlUp).Row
 
     '=== シート名整形 ===
-    シート名 = "抽出_" & Replace(検索語, "\", "")
+    シート名 = "抽出_" & Replace(品名, "\", "")
     シート名 = Replace(シート名, "/", "")
     シート名 = Replace(シート名, "*", "")
     シート名 = Replace(シート名, "[", "")
@@ -834,20 +863,28 @@ Private Sub CommandButton2_Click()
         Set 出力Sht = ThisWorkbook.Sheets(シート名)
         On Error GoTo 0
         If 出力Sht Is Nothing Then Exit Do
-        シート名 = "抽出_" & Left(検索語, 25) & "_" & 番号
+        シート名 = "抽出_" & Left(品名, 25) & "_" & 番号
         番号 = 番号 + 1
     Loop
 
-    '=== 出力用新シート作成 ===
+    '=== 出力用シート作成 ===
     Set 出力Sht = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
     出力Sht.Name = シート名
-
     出力行 = 1
 
-    '=== K列の部分一致で抽出 ===
+    '=== 条件一致の行を抽出 ===
     For i = 3 To 最終行
-        If StrComp(Replace(元Sht.Cells(i, "K").Value, "　", ""), "", vbTextCompare) <> 0 Then
-            If InStr(1, Replace(元Sht.Cells(i, "K").Value, "　", ""), Replace(検索語, "　", ""), vbTextCompare) > 0 Then
+        Dim 品名値 As String, 品番値 As String, サイズ値 As String, 材質値 As String
+        品名値 = Replace(元Sht.Cells(i, "K").Value, "　", "")
+        品番値 = Replace(元Sht.Cells(i, "J").Value, "　", "")
+        サイズ値 = Replace(元Sht.Cells(i, "G").Value, "　", "")
+        材質値 = Replace(元Sht.Cells(i, "F").Value, "　", "")
+
+        If InStr(1, 品名値, 品名, vbTextCompare) > 0 Then
+            If (Len(Trim(品番)) = 0 Or InStr(1, 品番値, 品番, vbTextCompare) > 0) And _
+               (Len(Trim(サイズ)) = 0 Or InStr(1, サイズ値, サイズ, vbTextCompare) > 0) And _
+               (Len(Trim(材質)) = 0 Or InStr(1, 材質値, 材質, vbTextCompare) > 0) Then
+
                 開始行 = i
                 For j = 開始行 + 1 To 最終行 + 1
                     If j > 最終行 Or Len(Trim(元Sht.Cells(j, "K").Value)) > 0 Then
@@ -864,7 +901,8 @@ Private Sub CommandButton2_Click()
     Application.CutCopyMode = False
     外部ブック.Close SaveChanges:=False
 
-    MsgBox "過去工程データの抽出が完了しました → " & 出力Sht.Name, vbInformation
+    MsgBox "抽出完了 → " & 出力Sht.Name, vbInformation
 
 End Sub
+
 
