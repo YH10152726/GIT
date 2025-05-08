@@ -119,7 +119,7 @@ Dim targetRow As Long
     End Select
 
 '-------------------------------------------------
-' 列 Z の判定（AlCrN / TiCN / DNF / サブゼロ を並列チェック） '▼▼▼ 変更 ▼▼▼
+' 列 Z の判定（AlCrN / TiCN / DNF / サブゼロ を並列チェック）
 '-------------------------------------------------
 Dim 外注有無 As Boolean
 Dim コーティング As String
@@ -140,16 +140,16 @@ If InStr(zKey, "ALCRN") > 0 Then
     外注有無 = True
     磨き有無 = True
 '--- コーティング（TiCN） ---
-ElseIf InStr(zKey, "TICN") > 0 Then '▼▼▼ 変更 ▼▼▼ IfからElseIfに変更
+ElseIf InStr(zKey, "TICN") > 0 Then
     コーティング = "TiCN"
     外注有無 = True
     磨き有無 = True
-'--- コーティング（DNF） --- '▼▼▼ 追加 ▼▼▼
+'--- コーティング（DNF） ---
 ElseIf InStr(zKey, "DNF") > 0 Then
     コーティング = "DNF"
     外注有無 = True
-    磨き有無 = True ' DNFも磨きが必要と仮定。不要なら False に変更。
-End If '▲▲▲ 追加 ▲▲▲
+    磨き有無 = True
+End If
 
 '--- サブゼロ ---
 If InStr(zKey, "SUB0") > 0 Or InStr(zKey, "ｻﾌﾞ0") > 0 Or InStr(zKey, "S0") > 0 Then
@@ -236,17 +236,14 @@ If 追加工あり Then 追加工工程 = ComboBox3.Value
         If 外注有無 Then
             If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
             ws.Cells(lastRow, 36).Value = "外注"
-            '▼▼▼ 変更 ▼▼▼ コーティング外注先の指定をSelect Caseに変更
             Select Case コーティング
-                Case "AlCrN", "DNF" ' DNFを追加
+                Case "AlCrN", "DNF"
                     ws.Cells(lastRow, 38).Value = "和興産業"
                 Case "TiCN"
                     ws.Cells(lastRow, 38).Value = "北熱"
                 Case Else
-                    ' コーティング種類が不明な場合や、コーティングなしの場合は空白
                     ws.Cells(lastRow, 38).Value = ""
             End Select
-            '▲▲▲ 変更 ▲▲▲
             lastRow = lastRow + 1
         End If
 
@@ -315,7 +312,7 @@ If 追加工あり Then 追加工工程 = ComboBox3.Value
                 lastRow = lastRow + 1
                 ' 仕上げ
                 Dim needUe As Boolean
-                needUe = (n = tsubaNum) And Not 磨き有無   ' ←★ここが判定ポイント
+                needUe = (n = tsubaNum) And Not 磨き有無
                 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
                 ws.Cells(lastRow, 36).Value = "平面研削 NC"
                 ws.Cells(lastRow, 40).Value = "0.3"
@@ -324,7 +321,7 @@ If 追加工あり Then 追加工工程 = ComboBox3.Value
                 Dim tsubaShushiageText As String
                 tsubaShushiageText = "つば仕上げ " & n & "/" & tsubaNum
                 If needUe Then
-                    If Not 型彫放電追加 Then ' 型彫放電がない場合のみ「・上面」を付加
+                    If Not 型彫放電追加 Then
                         tsubaShushiageText = tsubaShushiageText & "・上面"
                     End If
                 End If
@@ -347,17 +344,15 @@ If 型彫放電追加 Then
     ws.Cells(lastRow, 36).Value = "型彫放電加工"
     ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
     lastRow = lastRow + 1
-    ' ▼▼▼ 型彫放電加工の後、条件に応じて上面SGを出力 ▼▼▼
     If 切り刃あり Then
         If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "平面研削 NC" ' 指示通り平面研削NCで出力
-        ws.Cells(lastRow, 40).Value = "0.2" ' 値は既存の上面SGを参考
-        ws.Cells(lastRow, 41).Value = "0.2" ' 値は既存の上面SGを参考
-        ws.Cells(lastRow, 42).Value = "0.1" ' 値は既存の上面SGを参考
+        ws.Cells(lastRow, 36).Value = "平面研削 NC"
+        ws.Cells(lastRow, 40).Value = "0.2"
+        ws.Cells(lastRow, 41).Value = "0.2"
+        ws.Cells(lastRow, 42).Value = "0.1"
         ws.Cells(lastRow, 45).Value = "上面"
         lastRow = lastRow + 1
     End If
-    ' ▲▲▲ 型彫放電加工の後、条件に応じて上面SGを出力 ▲▲▲
 End If
 
 
@@ -367,8 +362,6 @@ If 磨き有無 Then
     ws.Cells(lastRow, 36).Value = "磨き"
     ws.Cells(lastRow, 40).Value = "0.5"
     lastRow = lastRow + 1
-
-    ' ▼▼▼ 型彫放電加工がない場合のみ、ここで上面SGを出力 ▼▼▼
     If 切り刃あり And Not 型彫放電追加 Then
         If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
         ws.Cells(lastRow, 36).Value = "平面研削 汎用"
@@ -377,23 +370,20 @@ If 磨き有無 Then
         ws.Cells(lastRow, 45).Value = "上面"
         lastRow = lastRow + 1
     End If
-    ' ▲▲▲ 型彫放電加工がない場合のみ、ここで上面SGを出力 ▲▲▲
 End If
 
         '--- コーティング外注（任意） ---
         If 外注有無 Then
             If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
             ws.Cells(lastRow, 36).Value = "外注"
-            '▼▼▼ 変更 ▼▼▼ コーティング外注先の指定をSelect Caseに変更
             Select Case コーティング
-                Case "AlCrN", "DNF" ' DNFを追加
+                Case "AlCrN", "DNF"
                     ws.Cells(lastRow, 38).Value = "和興産業"
                 Case "TiCN"
                     ws.Cells(lastRow, 38).Value = "北熱"
                 Case Else
                     ws.Cells(lastRow, 38).Value = ""
             End Select
-            '▲▲▲ 変更 ▲▲▲
             lastRow = lastRow + 1
         End If
 
@@ -602,14 +592,14 @@ End If
         ' ▼▼▼ ヘソ or 上面SGの出力条件を修正 ▼▼▼
         If 形状 = "ファミリー加工" Then
             If 磨き有無 Then
-                 If Not 型彫放電追加 Then
-                    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                    ws.Cells(lastRow, 36).Value = "平面研削 汎用"
-                    ws.Cells(lastRow, 40).Value = "0.2"
-                    ws.Cells(lastRow, 42).Value = "0.1"
-                    ws.Cells(lastRow, 45).Value = "ﾍｿ取り"
-                    lastRow = lastRow + 1
-                 End If
+                 ' ▼▼▼ 修正: ファミリー加工＋磨きありの場合、型彫放電の有無に関わらずヘソ取りを追加 ▼▼▼
+                 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+                 ws.Cells(lastRow, 36).Value = "平面研削 汎用" ' ヘソ取りは汎用機想定
+                 ws.Cells(lastRow, 40).Value = "0.2"
+                 ws.Cells(lastRow, 42).Value = "0.1"
+                 ws.Cells(lastRow, 45).Value = "ﾍｿ取り"
+                 lastRow = lastRow + 1
+                 ' ▲▲▲ 修正 ▲▲▲
             Else '磨きなし
                 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
                 ws.Cells(lastRow, 36).Value = "平面研削 NC"
@@ -657,14 +647,14 @@ End If
             ws.Cells(lastRow, 45).Value = "つば荒 " & n & "/" & tsubaNum
             lastRow = lastRow + 1
 
-
+          
             needUe = (n = tsubaNum) And Not 磨き有無
             If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
             ws.Cells(lastRow, 36).Value = "平面研削 NC"
             ws.Cells(lastRow, 40).Value = "0.3"
             ws.Cells(lastRow, 41).Value = "0.1"
             ws.Cells(lastRow, 42).Value = "0.1"
-
+          
             tsubaShushiageText = "つば仕上げ " & n & "/" & tsubaNum
             If needUe Then
                 If Not 型彫放電追加 Then
@@ -690,7 +680,6 @@ If 型彫放電追加 Then
     ws.Cells(lastRow, 36).Value = "型彫放電加工"
     ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
     lastRow = lastRow + 1
-    ' ▼▼▼ 型彫放電加工の後、条件に応じて上面SGを出力 ▼▼▼
     If 切り刃あり Then
         If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
         ws.Cells(lastRow, 36).Value = "平面研削 NC"
@@ -700,7 +689,6 @@ If 型彫放電追加 Then
         ws.Cells(lastRow, 45).Value = "上面"
         lastRow = lastRow + 1
     End If
-    ' ▲▲▲ 型彫放電加工の後、条件に応じて上面SGを出力 ▲▲▲
 End If
 
 '――― 磨き ―――
@@ -709,8 +697,6 @@ If 磨き有無 Then
     ws.Cells(lastRow, 36).Value = "磨き"
     ws.Cells(lastRow, 40).Value = "0.5"
     lastRow = lastRow + 1
-
-    ' ▼▼▼ 型彫放電加工がない場合のみ、ここで上面SGを出力 ▼▼▼
     If 切り刃あり And Not 型彫放電追加 Then
         If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
         ws.Cells(lastRow, 36).Value = "平面研削 汎用"
@@ -719,22 +705,19 @@ If 磨き有無 Then
         ws.Cells(lastRow, 45).Value = "上面"
         lastRow = lastRow + 1
     End If
-    ' ▲▲▲ 型彫放電加工がない場合のみ、ここで上面SGを出力 ▲▲▲
 End If
 
     If 外注有無 Then
         If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
         ws.Cells(lastRow, 36).Value = "外注"
-        '▼▼▼ 変更 ▼▼▼ コーティング外注先の指定をSelect Caseに変更
         Select Case コーティング
-            Case "AlCrN", "DNF" ' DNFを追加
+            Case "AlCrN", "DNF"
                 ws.Cells(lastRow, 38).Value = "和興産業"
             Case "TiCN"
                 ws.Cells(lastRow, 38).Value = "北熱"
             Case Else
                 ws.Cells(lastRow, 38).Value = ""
         End Select
-        '▲▲▲ 変更 ▲▲▲
         lastRow = lastRow + 1
     End If
     
@@ -768,9 +751,6 @@ Private Function NormalizeZText(src As String) As String
     t = Replace(t, "ｾﾞﾛ", "0")
     t = Replace(t, "ゼロ", "0")
     t = Replace(t, "ZERO", "0")
-    ' ▼▼▼ 追加 ▼▼▼ DNFも正規化対象に（必要に応じて）
-    ' t = Replace(t, "ＤＮＦ", "DNF") ' 全角DNFを半角にする場合
-    ' ▲▲▲ 追加 ▲▲▲
     NormalizeZText = t
 End Function
 
@@ -916,5 +896,6 @@ Private Sub CommandButton2_Click()
     MsgBox "抽出完了 → " & 出力Sht.Name, vbInformation
 
 End Sub
+
 
 
