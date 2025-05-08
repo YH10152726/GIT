@@ -1,7 +1,5 @@
 Private Sub UserForm_Initialize()
 
-
-
 With ComboBox工程選択
     .AddItem "調整 面取"
     .AddItem "調整（P）"
@@ -51,7 +49,7 @@ End With
 
 'ComboBox1.AddItem "AlCrN"
 'ComboBox1.AddItem "TiCN"
-'ComboBox1.ListIndex = -1        ' << 既定は「未選択」に
+'ComboBox1.ListIndex = -1      ' << 既定は「未選択」に
 
     ComboBox2.AddItem "細井工作所"
     ComboBox2.AddItem "ﾊﾟﾝﾁ工業"
@@ -76,6 +74,13 @@ End With
     ComboBoxTsubaRough.AddItem "MC（小）"
     ComboBoxTsubaRough.AddItem "ﾜｲﾔ放電加工"
     ComboBoxTsubaRough.ListIndex = 0
+
+' ▼▼▼ 追加 ▼▼▼
+    '=== 型彫放電加工追加チェックボックス（CheckBoxKatabori） ===
+    ' ユーザーフォームに "CheckBoxKatabori" という名前のチェックボックスを作成してください
+    CheckBoxKatabori.Caption = "型彫放電加工を追加する"
+    CheckBoxKatabori.Value = False
+' ▲▲▲ 追加 ▲▲▲
 End Sub
 
 
@@ -87,7 +92,7 @@ Private Sub CommandButton1_Click()
     Set ws = ThisWorkbook.Sheets("工程表")
 
 Dim targetRow As Long
-    targetRow = ActiveCell.Row                     ' アクティブセル行
+    targetRow = ActiveCell.Row              ' アクティブセル行
 
     Dim lastRow As Long
     lastRow = targetRow
@@ -146,7 +151,10 @@ End If
     Dim AdjustP As Boolean
     Dim AfterMC As Boolean
     Dim mc仕上げ名 As String
-   
+' ▼▼▼ 追加 ▼▼▼
+    Dim 型彫放電追加 As Boolean
+' ▲▲▲ 追加 ▲▲▲
+    
 
     '===== ツバ加工用（ここで 1 回だけ宣言）=====
     Dim n As Integer
@@ -159,7 +167,7 @@ End If
 '-------------------------------------------------
 'If OptionButton1.Value Or OptionButton2.Value Or OptionButton3.Value Then
 '    材質 = IIf(OptionButton1.Value, "SKH51", _
-'           IIf(OptionButton2.Value, "DC53", "SLD-MAGIC"))
+'            IIf(OptionButton2.Value, "DC53", "SLD-MAGIC"))
 'End If
 
 '-------------------------------------------------
@@ -182,11 +190,11 @@ End If
 ' ③ その他フォーム値
 '-------------------------------------------------
 形状 = IIf(OptionButton4.Value, "ブロック", _
-       IIf(OptionButton5.Value, "プレート", "ファミリー加工"))
+        IIf(OptionButton5.Value, "プレート", "ファミリー加工"))
 
 ワイヤー加工 = CheckBox1.Value
 If 形状 = "ファミリー加工" Then
-    ワイヤー加工 = True                ' 論理フラグを強制セット
+    ワイヤー加工 = True              ' 論理フラグを強制セット
 End If
 Φ10以下 = CheckBox4.Value
 形状加工あり = CheckBox5.Value
@@ -198,6 +206,9 @@ LayoutAfterCut = CheckBoxLayout.Value
 AfterMC = CheckBoxAfterMC.Value
 AdjustP = CheckBoxAdjustP.Value
 If 追加工あり Then 追加工工程 = ComboBox3.Value
+' ▼▼▼ 追加 ▼▼▼
+型彫放電追加 = CheckBoxKatabori.Value
+' ▲▲▲ 追加 ▲▲▲
 
 
     '-------------------------------------------------
@@ -217,8 +228,8 @@ If 追加工あり Then 追加工工程 = ComboBox3.Value
         End If
 
        Call AddAdjustP(ws, lastRow, AdjustP)
-       MsgBox "外作工程を出力しました。"
-       Unload Me
+        MsgBox "外作工程を出力しました。"
+        Unload Me
 
         Exit Sub
     End If
@@ -247,8 +258,8 @@ If 追加工あり Then 追加工工程 = ComboBox3.Value
         End If
 
        Call AddAdjustP(ws, lastRow, AdjustP)
-       MsgBox "工程を出力しました。"
-       Unload Me
+        MsgBox "工程を出力しました。"
+        Unload Me
 
         Exit Sub
     End If
@@ -293,6 +304,16 @@ lastRow = lastRow + 1
             Next n
         End If
 
+' ▼▼▼ 追加 ▼▼▼
+'――― 型彫放電加工（レイアウト後・チェック時のみ）―――
+If 型彫放電追加 Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "型彫放電加工"
+    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2") ' 値は単品挿入時のものを流用
+    lastRow = lastRow + 1
+End If
+' ▲▲▲ 追加 ▲▲▲
+
 '――― 磨き（レイアウト後）―――
 If 磨き有無 Then
 ws.Rows(lastRow).Insert Shift:=xlDown
@@ -300,14 +321,14 @@ ws.Rows(lastRow).Insert Shift:=xlDown
     ws.Cells(lastRow, 40).Value = "0.5"
     lastRow = lastRow + 1
 
-    If 切り刃あり Then                  '← 追加
+    If 切り刃あり Then               '← 追加
     If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
         ws.Cells(lastRow, 36).Value = "平面研削 汎用"
         ws.Cells(lastRow, 40).Value = "0.25"
         ws.Cells(lastRow, 42).Value = "0.1"
         ws.Cells(lastRow, 45).Value = "上面"
         lastRow = lastRow + 1
-    End If                               '← 追加
+    End If                          '← 追加
 End If
 
         '--- コーティング外注（任意） ---
@@ -325,7 +346,7 @@ Unload Me
         Exit Sub
     End If
 
-      '-------------------------------------------------
+        '-------------------------------------------------
     ' 3.5) ゲイビ外注パターン
     '-------------------------------------------------
     If Geibi依頼 Then
@@ -687,6 +708,16 @@ lastRow = lastRow + 1
         Next n
     End If
 
+' ▼▼▼ 追加 ▼▼▼
+'――― 型彫放電加工（チェック時のみ）―――
+If 型彫放電追加 Then
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    ws.Cells(lastRow, 36).Value = "型彫放電加工"
+    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2") ' 値は単品挿入時のものを流用
+    lastRow = lastRow + 1
+End If
+' ▲▲▲ 追加 ▲▲▲
+
 '――― 磨き ―――
 If 磨き有無 Then
 ws.Rows(lastRow).Insert Shift:=xlDown
@@ -729,7 +760,7 @@ End Sub
 ' ★lastRow を ByRef に変更して行番号を返す
 Private Sub AddAdjustP(ws As Worksheet, ByRef lastRow As Long, AdjustP As Boolean)
     If AdjustP Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
+    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown 'targetRowを参照している箇所がCommandButton1_Click内にしかないので、エラーになる可能性。ただし元のコードから変更なし
         ws.Cells(lastRow, 36).Value = "調整P"
         ws.Cells(lastRow, 40).Value = "0.1"  ' 有人時間
         lastRow = lastRow + 1
@@ -782,25 +813,25 @@ Private Sub CommandButton単品挿入_Click()
         Case "調整（P）":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.1", "", "")
         Case "電極設計":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
         Case "確認測定M", "確認測定P": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
-        Case "穴あけタップ":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
+        Case "穴あけタップ":            ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
         Case "倣い研削":              ws.Cells(r, 40).Resize(1, 3).Value = Array("1.0", "", "0.2")
         Case "平面研削 汎用", "平面研削 汎用（M調整）": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "", "0.1")
         Case "熱処理", "外注", "主材購入", "副材（購入品）": ws.Cells(r, 40).Resize(1, 3).Value = Array("", "", "")
         Case "社内TRY":              ws.Cells(r, 40).Resize(1, 3).Value = Array("2.0", "", "")
         Case "M/C-1", "M/C-2":       ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
-        Case "M/C（大）":            ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "0.25", "0.1")
-        Case "M/C（電極）":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.8", "0.1")
-        Case "M/C（小）":            ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
+        Case "M/C（大）":             ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "0.25", "0.1")
+        Case "M/C（電極）":           ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.8", "0.1")
+        Case "M/C（小）":             ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
         Case "平面研削-1", "平面研削-2", "平面研削-3": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
-        Case "洗浄":                 ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
-        Case "細穴放電加工":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "0.8", "0.2")
-        Case "磨き":                 ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "", "")
-        Case "型彫放電加工":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
-        Case "ワイヤ放電加工":      ws.Cells(r, 40).Resize(1, 3).Value = Array("0.75", "3.0", "0.5")
-        Case "ワイヤ加工（電極）":  ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
-        Case "溶接":                 ws.Cells(r, 40).Resize(1, 3).Value = Array("1.0", "", "")
-        Case "平面研削 NC":         ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
-        Case "電極リスト作成":      ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
+        Case "洗浄":                  ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
+        Case "細穴放電加工":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "0.8", "0.2")
+        Case "磨き":                  ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "", "")
+        Case "型彫放電加工":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
+        Case "ワイヤ放電加工":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.75", "3.0", "0.5")
+        Case "ワイヤ加工（電極）":    ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
+        Case "溶接":                  ws.Cells(r, 40).Resize(1, 3).Value = Array("1.0", "", "")
+        Case "平面研削 NC":           ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
+        Case "電極リスト作成":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
     End Select
 
     MsgBox "単品工程「" & 工程名 & "」を挿入しました。"
