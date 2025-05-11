@@ -1,744 +1,990 @@
+Option Explicit
+
+' === モジュールレベル定数 ===
+Private Const SHEET_KOUTEIHYO As String = "工程表"
+
+' 入力列 (工程表シート)
+Private Const COL_Z_INPUT As Long = 26      ' Z列：コーティング or サブゼロ
+Private Const COL_AC_INPUT As Long = 29     ' AC列：材質
+Private Const COL_AD_SIZE_INPUT As Long = 30  ' AD列：サイズ (例: 10*20*30)
+Private Const COL_AH_ITEMNAME_INPUT As Long = 34 ' AH列：品名
+Private Const COL_Y_REMARKS_INPUT As Long = 25    ' Y列：備考
+
+' 出力列 (工程表シート)
+Private Const COL_KOUTEI As Long = 36       ' 工程名
+Private Const COL_GYOUSHA As Long = 38      ' 業者
+Private Const COL_JINKAN_YUJIN As Long = 40   ' 工数: 有人
+Private Const COL_JINKAN_MACHINE As Long = 41 ' 工数: 機械
+Private Const COL_JINKAN_SETUP As Long = 42   ' 工数: 段取
+Private Const COL_BIKOU As Long = 45        ' 備考
+
+' === 新規追加: サイズ文字列に基づいて部品を分類する関数 ===
+Private Function ClassifyPartBasedOnSizeString(ByVal sizeString As String) As String
+    Dim dimsStr() As String
+    Dim original_dim1 As Double, original_dim2 As Double, original_dim3 As Double
+    Dim d_small As Double, d_mid As Double, d_large As Double
+    Dim Volume As Double, Ratio1 As Double, Ratio2 As Double
+    Dim Cond1_Result As Boolean, Cond2_Result As Boolean
+    Dim Cond3_Result As Boolean, Cond4_Result As Boolean
+
+    ' デフォルトは "-" (分類不能または条件に合致しない場合)
+    ClassifyPartBasedOnSizeString = "-"
+
+    ' サイズ文字列の基本的な検証と解析
+    If Trim(sizeString) = "" Then Exit Function ' 空文字列の場合は処理終了
+
+    dimsStr = Split(Trim(sizeString), "*")
+    If UBound(dimsStr) <> 2 Then Exit Function ' 寸法が3つでない場合は処理終了
+
+    On Error Resume Next ' 文字列から数値への変換エラーをハンドルするため
+    original_dim1 = CDbl(dimsStr(0))
+    original_dim2 = CDbl(dimsStr(1))
+    original_dim3 = CDbl(dimsStr(2))
+    If Err.Number <> 0 Then
+        On Error GoTo 0 ' エラーハンドリングを標準に戻す
+        Exit Function   ' 数値変換に失敗した場合は処理終了
+    End If
+    On Error GoTo 0 ' エラーハンドリングを標準に戻す
+
+    ' ステップ2: 寸法の並べ替え (vba_classification_logic_90pct ドキュメント参照)
+    Dim dims(0 To 2) As Double
+    dims(0) = original_dim1
+    dims(1) = original_dim2
+    dims(2) = original_dim3
+    Dim i As Integer, j As Integer, temp As Double
+    For i = 0 To UBound(dims) - 1
+        For j = i + 1 To UBound(dims)
+            If dims(i) > dims(j) Then
+                temp = dims(i)
+                dims(i) = dims(j)
+                dims(j) = temp
+            End If
+        Next j
+    Next i
+    d_small = dims(0)
+    d_mid = dims(1)
+    d_large = dims(2)
+
+    ' ステップ3: 派生値の計算 (vba_classification_logic_90pct ドキュメント参照)
+    Volume = d_small * d_mid * d_large
+
+    If d_mid = 0 Then ' ゼロ除算を回避
+        Ratio1 = 1E+99 ' 条件判定に影響しにくい非常に大きな値
+    Else
+        Ratio1 = d_small / d_mid
+    End If
+
+    If d_large = 0 Then ' ゼロ除算を回避
+        Ratio2 = 1E+99 ' 条件判定に影響しにくい非常に大きな値
+    Else
+        Ratio2 = d_small / d_large
+    End If
+
+    ' ステップ4: 分類条件の判定 (vba_classification_logic_90pct ドキュメント参照)
+    ' 条件1: 最小寸法（厚さ）の上限
+    Cond1_Result = (d_small <= 56)
+
+    ' 条件2: プレート形状らしさ（平坦度または絶対的な薄さ）
+    Cond2_Result = ((Ratio1 < 0.6 And Ratio2 < 0.55) Or (d_small <= 30))
+
+    ' 条件3: 中間および最大寸法の最小サイズ
+    Cond3_Result = (d_mid >= 58 And d_large >= 80)
+
+    ' 条件4: 体積の最小サイズ（MC大の目安）
+    Cond4_Result = (Volume >= 70000)
+
+    ' ステップ5: 最終判定
+    If Cond1_Result And Cond2_Result And Cond3_Result And Cond4_Result Then
+        ClassifyPartBasedOnSizeString = "+"
+    Else
+        ClassifyPartBasedOnSizeString = "-"
+    End If
+End Function
+
+
+' === ユーザーフォーム初期化 ===
 Private Sub UserForm_Initialize()
+    ' ComboBox工程選択 の初期化
+    With Me.ComboBox工程選択
+        .AddItem "調整 面取"
+        .AddItem "調整（P）"
+        .AddItem "電極設計"
+        .AddItem "確認測定M"
+        .AddItem "確認測定P"
+        .AddItem "穴あけタップ"
+        .AddItem "倣い研削"
+        .AddItem "平面研削 汎用"
+        .AddItem "平面研削 汎用（M調整）"
+        .AddItem "熱処理"
+        .AddItem "社内TRY"
+        .AddItem "主材購入"
+        .AddItem "M/C-1"
+        .AddItem "M/C-2"
+        .AddItem "M/C（大）"
+        .AddItem "M/C（電極）"
+        .AddItem "M/C（小）"
+        .AddItem "平面研削-1"
+        .AddItem "平面研削-2"
+        .AddItem "平面研削-3"
+        .AddItem "外注"
+        .AddItem "洗浄"
+        .AddItem "細穴放電加工"
+        .AddItem "副材（購入品）"
+        .AddItem "磨き"
+        .AddItem "型彫放電加工"
+        .AddItem "ワイヤ放電加工"
+        .AddItem "ワイヤ加工（電極）"
+        .AddItem "溶接"
+        .AddItem "平面研削 NC"
+        .AddItem "電極リスト作成"
+    End With
 
-With ComboBox工程選択
-    .AddItem "調整 面取"
-    .AddItem "調整（P）"
-    .AddItem "電極設計"
-    .AddItem "確認測定M"
-    .AddItem "確認測定P"
-    .AddItem "穴あけタップ"
-    .AddItem "倣い研削"
-    .AddItem "平面研削 汎用"
-    .AddItem "平面研削 汎用（M調整）"
-    .AddItem "熱処理"
-    .AddItem "社内TRY"
-    .AddItem "主材購入"
-    .AddItem "M/C-1"
-    .AddItem "M/C-2"
-    .AddItem "M/C（大）"
-    .AddItem "M/C（電極）"
-    .AddItem "M/C（小）"
-    .AddItem "平面研削-1"
-    .AddItem "平面研削-2"
-    .AddItem "平面研削-3"
-    .AddItem "外注"
-    .AddItem "洗浄"
-    .AddItem "細穴放電加工"
-    .AddItem "副材（購入品）"
-    .AddItem "磨き"
-    .AddItem "型彫放電加工"
-    .AddItem "ワイヤ放電加工"
-    .AddItem "ワイヤ加工（電極）"
-    .AddItem "溶接"
-    .AddItem "平面研削 NC"
-    .AddItem "電極リスト作成"
-End With
+    '=== ゲイビ依頼チェックボックス（CheckBoxGeibi） ===
+    Me.CheckBoxGeibi.Caption = "ゲイビ鋼業に外注する"
+    Me.CheckBoxGeibi.Value = False
+
+    '=== ゲイビ依頼パターン選択（ComboBoxGeibiType） ===
+    With Me.ComboBoxGeibiType
+        .AddItem "材料～焼きまで"
+        .AddItem "荒加工のみ"
+        .AddItem "荒～焼きまで"
+        .ListIndex = 0 ' デフォルト選択
+    End With
+
+    ' ComboBox2 (外注先 - 外作の場合)
+    With Me.ComboBox2
+        .AddItem "細井工作所"
+        .AddItem "ﾊﾟﾝﾁ工業"
+        .AddItem "四変ﾃｯｸ"
+        .AddItem "ﾄｰｶﾛｲ"
+        .ListIndex = 0 ' デフォルト選択
+    End With
+
+    ' ComboBox3 (追加工工程 - ミスミ購入品の場合)
+    With Me.ComboBox3
+        .AddItem "平面研削 汎用"
+        .AddItem "平面研削 NC"
+        .AddItem "倣い研削"
+        .AddItem "M/C（小）"
+        .AddItem "M/C（大）"
+        .AddItem "ﾜｲﾔ放電加工"
+        .AddItem "型彫り放電"
+        .ListIndex = 0 ' デフォルト選択
+    End With
+
+    ' ComboBoxTsubaCount (ツバ加工回数)
+    With Me.ComboBoxTsubaCount
+        .AddItem "1"
+        .AddItem "2"
+        .AddItem "3"
+        .ListIndex = 0 ' デフォルト選択
+    End With
+
+    ' ComboBoxTsubaRough (ツバ荒加工方法)
+    With Me.ComboBoxTsubaRough
+        .AddItem "MC（小）"
+        .AddItem "ﾜｲﾔ放電加工"
+        .ListIndex = 0 ' デフォルト選択
+    End With
+
+    ' === 型彫放電加工追加チェックボックス（CheckBoxKatabori） ===
+    If TypeName(Me.Controls("CheckBoxKatabori")) = "CheckBox" Then
+        Me.CheckBoxKatabori.Caption = "型彫放電加工を追加する"
+        Me.CheckBoxKatabori.Value = False
+    End If
+
+    ' === 倣い研削追加チェックボックス（CheckBoxNaraiKensaku） ===
+    If TypeName(Me.Controls("CheckBoxNaraiKensaku")) = "CheckBox" Then
+        Me.CheckBoxNaraiKensaku.Caption = "倣い研削を追加する"
+        Me.CheckBoxNaraiKensaku.Value = False
+    End If
+
+    ' === 焼き入れ前MC工程数選択チェックボックス (1工程) ===
+    If TypeName(Me.Controls("CheckBoxSingleMCPreHeat")) = "CheckBox" Then
+        Me.CheckBoxSingleMCPreHeat.Caption = "焼き入れ前MCを1工程にする"
+        Me.CheckBoxSingleMCPreHeat.Value = False
+    End If
+    
+    ' === ▼▼▼ 新規追加: 焼き入れ前MC工程数選択チェックボックス (3工程) ▼▼▼ ===
+    If TypeName(Me.Controls("CheckBoxTripleMCPreHeat")) = "CheckBox" Then
+        Me.CheckBoxTripleMCPreHeat.Caption = "焼き入れ前MCを3工程にする"
+        Me.CheckBoxTripleMCPreHeat.Value = False
+    Else
+        ' Debug.Print "CheckBoxTripleMCPreHeat is not found on the UserForm."
+    End If
+    ' === ▲▲▲ 新規追加ここまで ▲▲▲ ===
 
 
-'=== ゲイビ依頼チェックボックス（CheckBoxGeibi） ===
-CheckBoxGeibi.Caption = "ゲイビ鋼業に外注する"
-CheckBoxGeibi.Value = False
+    ' === ▼▼▼ 自動選択機能 ▼▼▼ ===
+    On Error Resume Next
 
-'=== ゲイビ依頼パターン選択（ComboBoxGeibiType） ===
-With ComboBoxGeibiType
-    .AddItem "材料～焼きまで"
-    .AddItem "荒加工のみ"
-    .AddItem "荒～焼きまで"
-    .ListIndex = 0
-End With
+    Dim wsInitialize As Worksheet
+    Dim targetRowInitialize As Long
+    Dim sizeStrInitialize As String
+    Dim itemNameInitialize As String
+    Dim remarksStrInitialize As String
+    Dim isPlateBySizeInitialize As Boolean
+    Dim containsPInitialize As Boolean
+    Dim containsLayoutInRemarks As Boolean
+    Dim containsDoujiInRemarks As Boolean
+    Dim containsMisumiInRemarks As Boolean
 
-'ComboBox1.AddItem "AlCrN"
-'ComboBox1.AddItem "TiCN"
-'ComboBox1.ListIndex = -1      ' << 既定は「未選択」に
 
-    ComboBox2.AddItem "細井工作所"
-    ComboBox2.AddItem "ﾊﾟﾝﾁ工業"
-    ComboBox2.AddItem "四変ﾃｯｸ"
-    ComboBox2.AddItem "ﾄｰｶﾛｲ"
-    ComboBox2.ListIndex = 0
+    Set wsInitialize = Nothing
+    Set wsInitialize = ThisWorkbook.Sheets(SHEET_KOUTEIHYO)
 
-    ComboBox3.AddItem "平面研削 汎用"
-    ComboBox3.AddItem "平面研削 NC"
-    ComboBox3.AddItem "倣い研削"
-    ComboBox3.AddItem "M/C（小）"
-    ComboBox3.AddItem "M/C（大）"
-    ComboBox3.AddItem "ﾜｲﾔ放電加工"
-    ComboBox3.AddItem "型彫り放電"
-    ComboBox3.ListIndex = 0
+    If Not wsInitialize Is Nothing Then
+        If TypeName(ActiveSheet) = "Worksheet" Then
+            If ActiveSheet.name = wsInitialize.name Then
+                If TypeName(Selection) = "Range" Then
+                    If Selection.Cells.CountLarge = 1 Then
+                        targetRowInitialize = ActiveCell.Row
+                        If targetRowInitialize > 0 Then
+                            
+                            sizeStrInitialize = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_AD_SIZE_INPUT).Value))
+                            itemNameInitialize = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_AH_ITEMNAME_INPUT).Value))
+                            remarksStrInitialize = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_Y_REMARKS_INPUT).Value))
 
-    ComboBoxTsubaCount.AddItem "1"
-    ComboBoxTsubaCount.AddItem "2"
-    ComboBoxTsubaCount.AddItem "3"
-    ComboBoxTsubaCount.ListIndex = 0
+                            isPlateBySizeInitialize = False
+                            If Len(sizeStrInitialize) > 0 Then
+                                If ClassifyPartBasedOnSizeString(sizeStrInitialize) = "+" Then
+                                    isPlateBySizeInitialize = True
+                                End If
+                            End If
+                            containsPInitialize = (InStr(1, UCase(itemNameInitialize), "P", vbTextCompare) > 0)
+                            If isPlateBySizeInitialize And containsPInitialize Then
+                                If TypeName(Me.Controls("OptionButton5")) = "OptionButton" Then
+                                    Me.OptionButton5.Value = True
+                                End If
+                            End If
 
-    ComboBoxTsubaRough.AddItem "MC（小）"
-    ComboBoxTsubaRough.AddItem "ﾜｲﾔ放電加工"
-    ComboBoxTsubaRough.ListIndex = 0
+                            containsLayoutInRemarks = (InStr(1, remarksStrInitialize, "ﾚｲｱｳﾄ", vbTextCompare) > 0)
+                            If containsLayoutInRemarks Then
+                                If TypeName(Me.Controls("OptionButton6")) = "OptionButton" Then
+                                    Me.OptionButton6.Value = True
+                                End If
+                            End If
 
-' ▼▼▼ 追加 ▼▼▼
-    '=== 型彫放電加工追加チェックボックス（CheckBoxKatabori） ===
-    ' ユーザーフォームに "CheckBoxKatabori" という名前のチェックボックスを作成してください
-    CheckBoxKatabori.Caption = "型彫放電加工を追加する"
-    CheckBoxKatabori.Value = False
+                            containsDoujiInRemarks = (InStr(1, remarksStrInitialize, "同時", vbTextCompare) > 0)
+                            If containsDoujiInRemarks Then
+                                If TypeName(Me.Controls("CheckBoxLayout")) = "CheckBox" Then
+                                    Me.CheckBoxLayout.Value = True
+                                End If
+                            End If
+                            
+                            containsMisumiInRemarks = (InStr(1, remarksStrInitialize, "ミスミ", vbTextCompare) > 0)
+                            If containsMisumiInRemarks Then
+                                If TypeName(Me.Controls("CheckBox7")) = "CheckBox" Then
+                                    Me.CheckBox7.Value = True
+                                End If
+                            End If
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    End If
+    On Error GoTo 0
+    ' === ▲▲▲ 自動選択機能ここまで ▲▲▲ ===
 
-    '=== 倣い研削追加チェックボックス（CheckBoxNaraiKensaku） ===
-    ' ユーザーフォームに "CheckBoxNaraiKensaku" という名前のチェックボックスを作成してください
-    CheckBoxNaraiKensaku.Caption = "倣い研削を追加する"
-    CheckBoxNaraiKensaku.Value = False
-' ▲▲▲ 追加 ▲▲▲
+    ' === ▼▼▼ デフォルト形状のUI反映 ▼▼▼
+    If TypeName(Me.Controls("OptionButton4")) = "OptionButton" And _
+        TypeName(Me.Controls("OptionButton5")) = "OptionButton" And _
+        TypeName(Me.Controls("OptionButton6")) = "OptionButton" Then
+        If Not Me.OptionButton4.Value And Not Me.OptionButton5.Value And Not Me.OptionButton6.Value Then
+            Me.OptionButton4.Value = True
+        End If
+    End If
+    ' === ▲▲▲ デフォルト形状のUI反映ここまで ▲▲▲ ===
+
+End Sub
+
+' === メイン処理: 工程作成ボタンクリック ===
+Private Sub CommandButton1_Click()
+    Dim ws As Worksheet
+    Dim targetRow As Long
+    Dim currentRow As Long
+
+    Dim materialCode As String
+    Dim zValue As String
+
+    Dim materialName As String
+    Dim coatingType As String
+    Dim hasSubZero As Boolean
+    Dim needsOutsourcingForCoating As Boolean
+    Dim needsPolishing As Boolean
+
+    Dim shape As String
+    Dim useWireEDM As Boolean
+    Dim isDia10OrLess As Boolean
+    Dim hasShapeProcessing As Boolean
+    Dim hasCuttingEdge As Boolean
+    Dim isOutsourcedProduct As Boolean
+    Dim isMisumiPurchase As Boolean
+    Dim hasAdditionalProcessing As Boolean
+    Dim additionalProcessName As String
+    Dim isLayoutAfterCut As Boolean
+    Dim needsAdjustP As Boolean
+    Dim useAfterMC As Boolean
+
+    Dim isGeibiOutsource As Boolean
+    Dim geibiPattern As String
+
+    Dim hasTsubaProcessing As Boolean
+    Dim tsubaCount As Integer
+    Dim tsubaRoughMethod As String
+
+    Dim noChamfer As Boolean
+    Dim hasLiftingScrew As Boolean
+    Dim useSmallStartHole As Boolean
+    Dim kataboriChoosenByUser As Boolean
+    Dim naraiKensakuChoosenByUser As Boolean
+    Dim isSingleMCPreHeat As Boolean
+    Dim isTripleMCPreHeat As Boolean ' ▼▼▼ 新規追加: MC3工程フラグ ▼▼▼
+
+    Application.ScreenUpdating = False
+    On Error GoTo ErrorHandler
+
+    Set ws = ThisWorkbook.Sheets(SHEET_KOUTEIHYO)
+    If Not ValidateActiveCell(ws, targetRow) Then GoTo Finally
+    currentRow = targetRow
+
+    zValue = Trim(CStr(ws.Cells(targetRow, COL_Z_INPUT).Value))
+    materialCode = Trim(CStr(ws.Cells(targetRow, COL_AC_INPUT).Value))
+    materialName = GetMaterialName(materialCode)
+    If materialName = "" Then
+        MsgBox "材質が不明です。" & Cells(1, COL_AC_INPUT).Address(False, False) & "列を確認してください。", vbExclamation
+        GoTo Finally
+    End If
+    Call ParseZColumnInfo(zValue, coatingType, hasSubZero, needsOutsourcingForCoating, needsPolishing)
+
+    isGeibiOutsource = Me.CheckBoxGeibi.Value
+    If isGeibiOutsource Then geibiPattern = Me.ComboBoxGeibiType.Value
+    shape = GetShapeFromOptionButtons()
+    useWireEDM = Me.CheckBox1.Value
+    If shape = "ファミリー加工" Then useWireEDM = True
+    isDia10OrLess = Me.CheckBox4.Value
+    hasShapeProcessing = Me.CheckBox5.Value
+    hasCuttingEdge = Me.CheckBox6.Value
+    isOutsourcedProduct = Me.CheckBox9.Value
+    isMisumiPurchase = Me.CheckBox7.Value
+    hasAdditionalProcessing = Me.CheckBox8.Value
+    If hasAdditionalProcessing Then additionalProcessName = Me.ComboBox3.Value
+    isLayoutAfterCut = Me.CheckBoxLayout.Value
+    useAfterMC = Me.CheckBoxAfterMC.Value
+    needsAdjustP = Me.CheckBoxAdjustP.Value
+    hasTsubaProcessing = Me.CheckBoxTsuba.Value
+    If hasTsubaProcessing Then
+        tsubaCount = Val(Me.ComboBoxTsubaCount.Value)
+        tsubaRoughMethod = Me.ComboBoxTsubaRough.Value
+    End If
+    noChamfer = Me.CheckBoxChamferなし.Value
+    hasLiftingScrew = Me.CheckBoxTsurinejiあり.Value
+    useSmallStartHole = Me.CheckBoxStartHoleSmall.Value
+    
+    If TypeName(Me.Controls("CheckBoxKatabori")) = "CheckBox" Then
+        kataboriChoosenByUser = Me.CheckBoxKatabori.Value
+    Else
+        kataboriChoosenByUser = False
+    End If
+    If TypeName(Me.Controls("CheckBoxNaraiKensaku")) = "CheckBox" Then
+        naraiKensakuChoosenByUser = Me.CheckBoxNaraiKensaku.Value
+    Else
+        naraiKensakuChoosenByUser = False
+    End If
+    If TypeName(Me.Controls("CheckBoxSingleMCPreHeat")) = "CheckBox" Then
+        isSingleMCPreHeat = Me.CheckBoxSingleMCPreHeat.Value
+    Else
+        isSingleMCPreHeat = False
+    End If
+    ' ▼▼▼ 新規追加: MC3工程チェックボックスの値を取得 ▼▼▼
+    If TypeName(Me.Controls("CheckBoxTripleMCPreHeat")) = "CheckBox" Then
+        isTripleMCPreHeat = Me.CheckBoxTripleMCPreHeat.Value
+    Else
+        isTripleMCPreHeat = False
+    End If
+    ' ▲▲▲ 新規追加ここまで ▲▲▲
+
+    If isOutsourcedProduct Then
+        Call ProcessOutsourcedProduct(ws, currentRow, targetRow, coatingType, needsOutsourcingForCoating, needsAdjustP, Me.ComboBox2.Value)
+    ElseIf isMisumiPurchase Then
+        Call ProcessMisumiPurchase(ws, currentRow, targetRow, hasAdditionalProcessing, additionalProcessName, needsAdjustP)
+    ElseIf isLayoutAfterCut Then
+        Call ProcessLayoutAfterCut(ws, currentRow, targetRow, needsPolishing, hasCuttingEdge, needsOutsourcingForCoating, coatingType, needsAdjustP, _
+                                    hasTsubaProcessing, tsubaCount, tsubaRoughMethod, _
+                                    kataboriChoosenByUser, naraiKensakuChoosenByUser, _
+                                    useAfterMC, shape)
+    ElseIf isGeibiOutsource Then
+        Call ProcessGeibiOutsource(ws, currentRow, targetRow, materialName, geibiPattern, hasSubZero, _
+                                    shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, _
+                                    hasTsubaProcessing, tsubaCount, tsubaRoughMethod, _
+                                    needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, _
+                                    noChamfer, hasLiftingScrew, kataboriChoosenByUser, naraiKensakuChoosenByUser, _
+                                    isSingleMCPreHeat, isTripleMCPreHeat) ' ▼▼▼ 修正: isTripleMCPreHeat を渡す ▼▼▼
+    Else ' 通常ルート
+        Call ProcessNormalRoute(ws, currentRow, targetRow, materialName, hasSubZero, _
+                                    shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, _
+                                    hasTsubaProcessing, tsubaCount, tsubaRoughMethod, _
+                                    needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, _
+                                    noChamfer, hasLiftingScrew, kataboriChoosenByUser, naraiKensakuChoosenByUser, _
+                                    isSingleMCPreHeat, isTripleMCPreHeat) ' ▼▼▼ 修正: isTripleMCPreHeat を渡す ▼▼▼
+    End If
+
+    MsgBox "工程作成が完了しました。", vbInformation
+
+Finally:
+    Application.ScreenUpdating = True
+    Unload Me
+    Exit Sub
+ErrorHandler:
+    MsgBox "エラーが発生しました。" & vbCrLf & _
+            "エラー番号: " & Err.Number & vbCrLf & _
+            "エラー内容: " & Err.Description, vbCritical
+    Resume Finally
+End Sub
+
+' --- アクティブセル検証 ---
+Private Function ValidateActiveCell(ByVal targetSheet As Worksheet, ByRef outTargetRow As Long) As Boolean
+    ValidateActiveCell = False
+    If TypeName(ActiveSheet) <> "Worksheet" Or ActiveSheet.name <> targetSheet.name Then
+        MsgBox "「" & targetSheet.name & "」シートをアクティブにして、開始セルを選択してください。", vbExclamation
+        Exit Function
+    End If
+    If TypeName(Selection) <> "Range" Then
+        MsgBox "開始セルを選択してください。", vbExclamation
+        Exit Function
+    End If
+    outTargetRow = ActiveCell.Row
+    ValidateActiveCell = True
+End Function
+
+' --- 材質名取得 ---
+Private Function GetMaterialName(ByVal materialCode As String) As String
+    Select Case UCase(Trim(materialCode))
+        Case "SKH51", "DC53", "SLD-MAGIC", "S20C", "S45C", "S50C", "S50C相当", "SS400", "SS41", "SK3", "SK4", "SK4相当", "SKD11", "SKD11相当", "SKD51", "SKD61", "SKD-MAGIC", "SKD相当", "SKH51相当", "SKH52", "SKS3", "SKS3相当", "HAP10", "HAP40", "HAP40相当", "FDAC", "DEX40", "DH2F相当", "ASP23", "粉末ハイス", "粉末ハイス鋼", "粉末ハイス相当", "遊休材DC53", "SUS", "SUS304", "SUS304相当", "ステンシム", "ステンシム（SUS304）", "ステンシムSUS304", "A7075P", "BC6", "QCM8", "GTI20", "V30", "VC-50", "VM-30（超硬）", "VM40", "VM-40", "VM50", "VM-50", "VW-50", "YXR3", "YXR33", "YXR 7", "超硬", "超硬VM40", "HPM38", "NAK80"
+            GetMaterialName = materialCode
+        Case Else
+            GetMaterialName = ""
+    End Select
+End Function
+
+' --- Z列情報解析 ---
+Private Sub ParseZColumnInfo(ByVal zValue As String, ByRef outCoatingType As String, ByRef outHasSubZero As Boolean, ByRef outNeedsOutsourcing As Boolean, ByRef outNeedsPolishing As Boolean)
+    Dim normalizedZ As String
+    normalizedZ = NormalizeZText(zValue)
+    outCoatingType = ""
+    outHasSubZero = False
+    outNeedsOutsourcing = False
+    outNeedsPolishing = False
+    If InStr(normalizedZ, "ALCRN") > 0 Then
+        outCoatingType = "AlCrN"
+        outNeedsOutsourcing = True
+        outNeedsPolishing = True
+    End If
+    If InStr(normalizedZ, "TICN") > 0 Then
+        outCoatingType = "TiCN"
+        outNeedsOutsourcing = True
+        outNeedsPolishing = True
+    End If
+    If InStr(normalizedZ, "DNF") > 0 Then
+        outCoatingType = "DNF"
+        outNeedsOutsourcing = True
+        outNeedsPolishing = True
+    End If
+    If InStr(normalizedZ, "SUB0") > 0 Or InStr(normalizedZ, "ｻﾌﾞ0") > 0 Or InStr(normalizedZ, "S0") > 0 Then
+        outHasSubZero = True
+    End If
+End Sub
+
+' --- 形状取得 (OptionButtonから) ---
+Private Function GetShapeFromOptionButtons() As String
+    If Me.OptionButton5.Value Then
+        GetShapeFromOptionButtons = "プレート"
+    ElseIf Me.OptionButton6.Value Then
+        GetShapeFromOptionButtons = "ファミリー加工"
+    Else
+        GetShapeFromOptionButtons = "ブロック"
+    End If
+End Function
+
+' --- 工程行追加の共通サブルーチン ---
+Private Sub AddProcessToSheet(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                processName As String, Optional supplier As String = "", _
+                                Optional yujinTime As Variant = "", Optional machineTime As Variant = "", Optional setupTime As Variant = "", _
+                                Optional memo As String = "")
+    If currentRow > initialTargetRow Then
+        ws.Rows(currentRow).Insert Shift:=xlDown
+    ElseIf ws.Cells(currentRow, COL_KOUTEI).Value <> "" Or ws.Cells(currentRow, COL_JINKAN_YUJIN).Value <> "" Then
+        ws.Rows(currentRow).Insert Shift:=xlDown
+    End If
+    If processName <> "" Then ws.Cells(currentRow, COL_KOUTEI).Value = processName
+    If supplier <> "" Then ws.Cells(currentRow, COL_GYOUSHA).Value = supplier
+    If Not IsEmpty(yujinTime) And yujinTime <> "" Then ws.Cells(currentRow, COL_JINKAN_YUJIN).Value = yujinTime
+    If Not IsEmpty(machineTime) And machineTime <> "" Then ws.Cells(currentRow, COL_JINKAN_MACHINE).Value = machineTime
+    If Not IsEmpty(setupTime) And setupTime <> "" Then ws.Cells(currentRow, COL_JINKAN_SETUP).Value = setupTime
+    If memo <> "" Then ws.Cells(currentRow, COL_BIKOU).Value = memo
+    currentRow = currentRow + 1
+End Sub
+
+' --- 調整P工程追加 ---
+Private Sub AddAdjustPProcess(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, needsAdjustP As Boolean)
+    If needsAdjustP Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "調整P", , "0.1")
+    End If
+End Sub
+
+' --- 4-1. 外作の場合 ---
+Private Sub ProcessOutsourcedProduct(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                        coatingType As String, needsOutsourcingForCoating As Boolean, needsAdjustP As Boolean, _
+                                        outsourcedSupplier As String)
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", outsourcedSupplier)
+    If needsOutsourcingForCoating Then
+        Dim coatingSupplierText As String
+        coatingSupplierText = IIf(coatingType = "AlCrN", "和興産業", IIf(coatingType = "TiCN", "北熱", IIf(coatingType = "DNF", "和興産業", "")))
+        If coatingSupplierText <> "" Then
+             Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", coatingSupplierText)
+        End If
+    End If
+    Call AddAdjustPProcess(ws, currentRow, initialTargetRow, needsAdjustP)
+End Sub
+
+' --- 4-2. ミスミ購入品のみの場合 ---
+Private Sub ProcessMisumiPurchase(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                hasAdditionalProcessing As Boolean, additionalProcessName As String, needsAdjustP As Boolean)
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "副材(購入品)", "ﾐｽﾐ")
+    If hasAdditionalProcessing Then
+        Dim yujin As String, machine As String, setup As String
+        Select Case additionalProcessName
+            Case "M/C（小）":   yujin = "0.25": machine = "0.1": setup = "0.1"
+            Case "M/C（大）":   yujin = "0.4": machine = "0.2": setup = "0.2"
+            Case "ﾜｲﾔ放電加工": yujin = "0.75": machine = "0.5": setup = "0.5"
+            Case "平面研削 汎用":  yujin = "0.4": machine = "": setup = "0.1"
+            Case "平面研削 NC":  yujin = "0.3": machine = "0.2": setup = "0.1"
+            Case "倣い研削":     yujin = "0.35": machine = "0.15": setup = "0.1"
+            Case "型彫り放電":   yujin = "0.9": machine = "0.6": setup = "0.2"
+            Case Else: yujin = "": machine = "": setup = ""
+        End Select
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, additionalProcessName, , yujin, machine, setup)
+    End If
+    Call AddAdjustPProcess(ws, currentRow, initialTargetRow, needsAdjustP)
+End Sub
+
+' --- 4-3. レイアウト切り離し後部品の場合 ---
+Private Sub ProcessLayoutAfterCut(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                needsPolishing As Boolean, hasCuttingEdge As Boolean, _
+                                needsOutsourcingForCoating As Boolean, coatingType As String, needsAdjustP As Boolean, _
+                                hasTsubaProcessing As Boolean, tsubaCount As Integer, tsubaRoughMethod As String, _
+                                kataboriChoosenByUserAsLayout As Boolean, naraiKensakuChoosenByUserAsLayout As Boolean, _
+                                useAfterMCAsLayout As Boolean, shapeForMC As String)
+
+    Dim hesoMemo As String
+    If hasCuttingEdge Then
+        If hasTsubaProcessing Or kataboriChoosenByUserAsLayout Or needsPolishing Then
+            hesoMemo = "ﾍｿ取り"
+        Else
+            hesoMemo = "ﾍｿ取り・上面"
+        End If
+    Else
+        hesoMemo = "ﾍｿ取り"
+    End If
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 汎用", , "0.1", , "0.2", hesoMemo)
+
+    If useAfterMCAsLayout Then
+        Dim mcProcessNameLayout As String
+        Dim yujinMCLayout As String, machineMCLayout As String, setupMCLayout As String
+        
+        If shapeForMC = "プレート" Then
+            mcProcessNameLayout = "M/C（大）"
+            yujinMCLayout = "0.4"
+            machineMCLayout = "0.2"
+            setupMCLayout = "0.2"
+        Else
+            mcProcessNameLayout = "M/C（小）"
+            yujinMCLayout = "0.25"
+            machineMCLayout = "0.1"
+            setupMCLayout = "0.1"
+        End If
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, mcProcessNameLayout, , yujinMCLayout, machineMCLayout, setupMCLayout, "")
+    End If
+
+    If hasTsubaProcessing Then
+        Call AddTsubaProcessing(ws, currentRow, initialTargetRow, tsubaCount, tsubaRoughMethod, needsPolishing, kataboriChoosenByUserAsLayout)
+    End If
+
+    If naraiKensakuChoosenByUserAsLayout Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "倣い研削", , "1.0", "", "0.2")
+    End If
+
+    If kataboriChoosenByUserAsLayout Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "型彫放電加工", , "0.5", "1.5", "0.2")
+        If hasCuttingEdge And Not needsPolishing Then
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 NC", , "0.2", "0.2", "0.1", "上面")
+        End If
+    End If
+
+    If needsPolishing Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "磨き", , "0.5")
+        If hasCuttingEdge Then
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 NC", , "0.2", "0.2", "0.1", "上面")
+        End If
+    End If
+
+    If needsOutsourcingForCoating Then
+        Dim coatingSupplierText As String
+        coatingSupplierText = IIf(coatingType = "AlCrN", "和興産業", IIf(coatingType = "TiCN", "北熱", IIf(coatingType = "DNF", "和興産業", "")))
+        If coatingSupplierText <> "" Then
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", coatingSupplierText)
+        End If
+    End If
+
+    Call AddAdjustPProcess(ws, currentRow, initialTargetRow, needsAdjustP)
 End Sub
 
 
-Private Sub CommandButton1_Click()
-
-
-    '===== ワークシート & 行位置 =====
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("工程表")
-
-Dim targetRow As Long
-    targetRow = ActiveCell.Row              ' アクティブセル行
-
-    Dim lastRow As Long
-    lastRow = targetRow
-
-
-    '===== アクティブセル行の値を読み取る =====
-    Dim zVal As String, acVal As String
-    Dim 材質 As String ' 材質を保持する変数を宣言
-    zVal = ws.Cells(targetRow, 26).Value  ' Z列：コーティング or サブゼロ
-    acVal = ws.Cells(targetRow, 29).Value ' AC列：材質
-
-    ' 材質設定
-    Select Case acVal
-        Case "SKH51", "DC53", "SLD-MAGIC", "S20C", "S45C", "S50C", "S50C相当", "SS400", "SS41", "SK3", "SK4", "SK4相当", "SKD11", "SKD11相当", "SKD51", "SKD61", "SKD-MAGIC", "SKD相当", "SKH51", "SKH51相当", "SKH52", "SKS3", "SKS3相当", "SLD-MAGIC", "HAP10", "HAP40", "HAP40相当", "FDAC", "DEX40", "DH2F相当", "ASP23", "粉末ハイス", "粉末ハイス鋼", "粉末ハイス相当", "遊休材DC53", "SUS", "SUS304", "SUS304相当", "ステンシム", "ステンシム（SUS304）", "ステンシムSUS304", "A7075P", "BC6", "QCM8", "GTi20", "V30", "VC-50", "VM-30（超硬）", "VM40", "VM-40", "VM50", "VM-50", "VW-50", "YXR3", "YXR33", "YXR 7", "超硬", "超硬VM40", "HPM38", "NAK80"
-            材質 = acVal
-        Case Else
-            MsgBox "材質が不明です。AC列を確認してください。"
-            Exit Sub
+' --- 材料購入処理 ---
+Private Sub AddMaterialPurchase(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                materialName As String, noChamfer As Boolean, hasLiftingScrew As Boolean)
+    Dim supplier As String
+    Select Case materialName
+        Case "SKH51", "HAP40", "SKD51":         supplier = "ﾒﾀﾙﾜﾝ"
+        Case "DC53", "SKD11", "SKS3", "SS400":  supplier = "深江特殊鋼"
+        Case "SLD-MAGIC":                       supplier = "ﾒﾀﾙﾃｯｸ"
+        Case "FDAC", "S50C", "S50C相当", "HPM38", "NAK80": supplier = "小山鋼材"
+        Case Else: supplier = ""
     End Select
+    Dim memo As String
+    memo = IIf(noChamfer, "Cなし", "Cあり")
+    If hasLiftingScrew Then memo = memo & ",吊り"
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "主材購入", supplier, , , , memo)
+End Sub
 
-'-------------------------------------------------
-' 列 Z の判定（AlCrN / TiCN / DNF / サブゼロ を並列チェック）
-'-------------------------------------------------
-Dim 外注有無 As Boolean
-Dim コーティング As String
-Dim 磨き有無 As Boolean
-Dim isSubZero As Boolean
-
-外注有無 = False
-コーティング = ""
-磨き有無 = False
-isSubZero = False
-
-Dim zKey As String
-zKey = NormalizeZText(zVal)
-
-'--- コーティング（AlCrN） ---
-If InStr(zKey, "ALCRN") > 0 Then
-    コーティング = "AlCrN"
-    外注有無 = True
-    磨き有無 = True
-'--- コーティング（TiCN） ---
-ElseIf InStr(zKey, "TICN") > 0 Then
-    コーティング = "TiCN"
-    外注有無 = True
-    磨き有無 = True
-'--- コーティング（DNF） ---
-ElseIf InStr(zKey, "DNF") > 0 Then
-    コーティング = "DNF"
-    外注有無 = True
-    磨き有無 = True
-End If
-
-'--- サブゼロ ---
-If InStr(zKey, "SUB0") > 0 Or InStr(zKey, "ｻﾌﾞ0") > 0 Or InStr(zKey, "S0") > 0 Then
-    isSubZero = True
-End If
-
-
-    '===== フォーム入力値 =====
-    Dim 形状 As String
-    Dim ワイヤー加工 As Boolean, Φ10以下 As Boolean, 形状加工あり As Boolean, 切り刃あり As Boolean
-    Dim 外作 As Boolean, ミスミ購入品 As Boolean, 追加工あり As Boolean
-    Dim 追加工工程 As String
-    Dim LayoutAfterCut As Boolean
-    Dim AdjustP As Boolean
-    Dim AfterMC As Boolean
-    Dim mc仕上げ名 As String
-    Dim 型彫放電追加 As Boolean
-    Dim 倣い研削追加 As Boolean
-    
-
-    '===== ツバ加工用（ここで 1 回だけ宣言）=====
-    Dim n As Integer
-    Dim tsubaNum As Integer
-    Dim tsubaMethod As String
-
-'===== フォーム値を取得 =====
-'-------------------------------------------------
-' ① 材質 … オプションボタンが 1 つでも選択されていれば上書き
-'-------------------------------------------------
-'If OptionButton1.Value Or OptionButton2.Value Or OptionButton3.Value Then
-'    材質 = IIf(OptionButton1.Value, "SKH51", _
-'            IIf(OptionButton2.Value, "DC53", "SLD-MAGIC"))
-'End If
-
-'-------------------------------------------------
-
-
-'---- 手動磨き ON/OFF 機能も撤去する場合 ----
-'   下の1行を丸ごと削除
-'If CheckBox2.Value Then 磨き有無 = True
-
-'=== ゲイビ外注関連 ===
-Dim Geibi依頼 As Boolean
-Dim Geibiパターン As String
-
-Geibi依頼 = CheckBoxGeibi.Value
-If Geibi依頼 Then
-    Geibiパターン = ComboBoxGeibiType.Value ' 材料～焼きまで、荒加工のみ、荒～焼きまで
-End If
-
-'-------------------------------------------------
-' ③ その他フォーム値
-'-------------------------------------------------
-形状 = IIf(OptionButton4.Value, "ブロック", _
-        IIf(OptionButton5.Value, "プレート", "ファミリー加工"))
-
-ワイヤー加工 = CheckBox1.Value
-If 形状 = "ファミリー加工" Then
-    ワイヤー加工 = True              ' 論理フラグを強制セット
-End If
-Φ10以下 = CheckBox4.Value
-形状加工あり = CheckBox5.Value
-切り刃あり = CheckBox6.Value
-外作 = CheckBox9.Value
-ミスミ購入品 = CheckBox7.Value
-追加工あり = CheckBox8.Value
-LayoutAfterCut = CheckBoxLayout.Value
-AfterMC = CheckBoxAfterMC.Value
-AdjustP = CheckBoxAdjustP.Value
-If 追加工あり Then 追加工工程 = ComboBox3.Value
-型彫放電追加 = CheckBoxKatabori.Value
-倣い研削追加 = CheckBoxNaraiKensaku.Value
-
-
-    '-------------------------------------------------
-    ' 1) 外作（最終工程が外注で終了）の場合
-    '-------------------------------------------------
-    If 外作 Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "外注"
-        ws.Cells(lastRow, 38).Value = ComboBox2.Value
-        lastRow = lastRow + 1
-
-        If 外注有無 Then
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "外注"
-            Select Case コーティング
-                Case "AlCrN", "DNF"
-                    ws.Cells(lastRow, 38).Value = "和興産業"
-                Case "TiCN"
-                    ws.Cells(lastRow, 38).Value = "北熱"
-                Case Else
-                    ws.Cells(lastRow, 38).Value = ""
-            End Select
-            lastRow = lastRow + 1
-        End If
-
-       Call AddAdjustP(ws, lastRow, AdjustP)
-        MsgBox "外作工程を出力しました。"
-        Unload Me
-
-        Exit Sub
-    End If
-
-    '-------------------------------------------------
-    ' 2) ミスミ購入品のみの場合
-    '-------------------------------------------------
-    If ミスミ購入品 Then
-        ws.Cells(lastRow, 36).Value = "副材(購入品)"
-        ws.Cells(lastRow, 38).Value = "ﾐｽﾐ"
-        lastRow = lastRow + 1
-
-        If 追加工あり Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = 追加工工程
-            Select Case 追加工工程
-                Case "M/C（小）":   ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.25", "0.1", "0.1")
-                Case "M/C（大）":   ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.4", "0.2", "0.2")
-                Case "ﾜｲﾔ放電加工": ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.75", "0.5", "0.5")
-                Case "平面研削 汎用":  ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.4", " ", "0.1")
-                Case "平面研削 NC":  ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.3", "0.2", "0.1")
-                Case "倣い研削":     ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.35", "0.15", "0.1")
-                Case "型彫り放電":   ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.9", "0.6", "0.2")
-            End Select
-            lastRow = lastRow + 1
-        End If
-
-       Call AddAdjustP(ws, lastRow, AdjustP)
-        MsgBox "工程を出力しました。"
-        Unload Me
-
-        Exit Sub
-    End If
-
-    '-------------------------------------------------
-    ' 3) ★レイアウト切り離し後部品（主材購入～SG を省略）
-    '-------------------------------------------------
-    If LayoutAfterCut Then
-
-        '--- へそ取り（起点） ---
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "平面研削 汎用"
-        ws.Cells(lastRow, 40).Value = "0.1"
-        ws.Cells(lastRow, 42).Value = "0.2"
-        ws.Cells(lastRow, 45).Value = "ﾍｿ取り"
-        lastRow = lastRow + 1
-
-        '--- ツバ加工（任意） ---
-        If CheckBoxTsuba.Value Then
-            tsubaNum = Val(ComboBoxTsubaCount.Value)
-            tsubaMethod = ComboBoxTsubaRough.Value
-            For n = 1 To tsubaNum
-                ' 荒
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = tsubaMethod
-                ws.Cells(lastRow, 40).Value = "0.6"
-                ws.Cells(lastRow, 41).Value = "0.1"
-                ws.Cells(lastRow, 42).Value = "0.1"
-                ws.Cells(lastRow, 45).Value = "つば荒 " & n & "/" & tsubaNum
-                lastRow = lastRow + 1
-                ' 仕上げ
-                Dim needUe As Boolean
-                needUe = (n = tsubaNum) And Not 磨き有無
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "平面研削 NC"
-                ws.Cells(lastRow, 40).Value = "0.3"
-                ws.Cells(lastRow, 41).Value = "0.1"
-                ws.Cells(lastRow, 42).Value = "0.1"
-                Dim tsubaShushiageText As String
-                tsubaShushiageText = "つば仕上げ " & n & "/" & tsubaNum
-                If needUe Then
-                    If Not 型彫放電追加 Then
-                        tsubaShushiageText = tsubaShushiageText & "・上面"
-                    End If
-                End If
-                ws.Cells(lastRow, 45).Value = tsubaShushiageText
-                lastRow = lastRow + 1
-            Next n
-        End If
-
-'――― 倣い研削（レイアウト後・チェック時のみ）―――
-If 倣い研削追加 Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "倣い研削"
-    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("1.0", "", "0.2")
-    lastRow = lastRow + 1
-End If
-
-'――― 型彫放電加工（レイアウト後・チェック時のみ）―――
-If 型彫放電追加 Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "型彫放電加工"
-    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
-    lastRow = lastRow + 1
-    If 切り刃あり Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "平面研削 NC"
-        ws.Cells(lastRow, 40).Value = "0.2"
-        ws.Cells(lastRow, 41).Value = "0.2"
-        ws.Cells(lastRow, 42).Value = "0.1"
-        ws.Cells(lastRow, 45).Value = "上面"
-        lastRow = lastRow + 1
-    End If
-End If
-
-
-'――― 磨き（レイアウト後）―――
-If 磨き有無 Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "磨き"
-    ws.Cells(lastRow, 40).Value = "0.5"
-    lastRow = lastRow + 1
-    If 切り刃あり And Not 型彫放電追加 Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "平面研削 汎用"
-        ws.Cells(lastRow, 40).Value = "0.25"
-        ws.Cells(lastRow, 42).Value = "0.1"
-        ws.Cells(lastRow, 45).Value = "上面"
-        lastRow = lastRow + 1
-    End If
-End If
-
-        '--- コーティング外注（任意） ---
-        If 外注有無 Then
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "外注"
-            Select Case コーティング
-                Case "AlCrN", "DNF"
-                    ws.Cells(lastRow, 38).Value = "和興産業"
-                Case "TiCN"
-                    ws.Cells(lastRow, 38).Value = "北熱"
-                Case Else
-                    ws.Cells(lastRow, 38).Value = ""
-            End Select
-            lastRow = lastRow + 1
-        End If
-
-Call AddAdjustP(ws, lastRow, AdjustP)
-MsgBox "工程を出力しました。"
-Unload Me
-
-        Exit Sub
-    End If
-
-        '-------------------------------------------------
-    ' 3.5) ゲイビ外注パターン
-    '-------------------------------------------------
-    If Geibi依頼 Then
-        Select Case Geibiパターン
-            Case "材料～焼きまで"
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "外注"
-                ws.Cells(lastRow, 38).Value = "ｹﾞｲﾋﾞ鋼業"
-                ws.Cells(lastRow, 45).Value = Geibiパターン
-                lastRow = lastRow + 1
-                GoTo GeibiAfterSG
-            Case "荒加工のみ"
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "主材購入"
-                Select Case 材質
-                    Case "SKH51", "HAP40", "SKD51": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
-                    Case "DC53", "SKD11", "SKS3", "SS400": ws.Cells(lastRow, 38).Value = "深江特殊鋼"
-                    Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
-                    Case "FDAC", "S50C", "S50C相当", "HPM38", "NAK80": ws.Cells(lastRow, 38).Value = "小山鋼材"
-                End Select
-                lastRow = lastRow + 1
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "外注"
-                ws.Cells(lastRow, 38).Value = "ｹﾞｲﾋﾞ鋼業"
-                ws.Cells(lastRow, 45).Value = Geibiパターン
-                lastRow = lastRow + 1
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "穴あけﾀｯﾌﾟ"
-                ws.Cells(lastRow, 40).Value = "0.3"
-                If isSubZero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
-                lastRow = lastRow + 1
-                GoTo GeibiAfterMC
-            Case "荒～焼きまで"
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "主材購入"
-                Select Case 材質
-                    Case "SKH51", "HAP40", "SKD51": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
-                    Case "DC53", "SKD11", "SKS3", "SS400": ws.Cells(lastRow, 38).Value = "深江特殊鋼"
-                    Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
-                    Case "FDAC", "S50C", "S50C相当", "HPM38", "NAK80": ws.Cells(lastRow, 38).Value = "小山鋼材"
-                End Select
-                lastRow = lastRow + 1
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "外注"
-                ws.Cells(lastRow, 38).Value = "ｹﾞｲﾋﾞ鋼業"
-                ws.Cells(lastRow, 45).Value = Geibiパターン
-                lastRow = lastRow + 1
-                GoTo GeibiAfterSG
-        End Select
-    End If
-
-    '-------------------------------------------------
-    ' 4) 通常ルート（主材購入～最後まで）
-    '-------------------------------------------------
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "主材購入"
-    Select Case 材質
-        Case "SKH51", "HAP40", "SKD51": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾜﾝ"
-        Case "DC53", "SKD11", "SKS3", "SS400": ws.Cells(lastRow, 38).Value = "深江特殊鋼"
-        Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ﾒﾀﾙﾃｯｸ"
-        Case "FDAC", "S50C", "S50C相当", "HPM38", "NAK80": ws.Cells(lastRow, 38).Value = "小山鋼材"
-    End Select
-
-    Dim content As String
-    content = IIf(CheckBoxChamferなし.Value, "Cなし", "Cあり")
-    If CheckBoxTsurinejiあり.Value Then content = content & ",吊り"
-    ws.Cells(lastRow, 45).Value = content
-    lastRow = lastRow + 1
-
-    Dim mc工程名 As String
-    mc工程名 = IIf(形状 = "プレート", "M/C（大）", "M/C（小）")
+' --- 熱処理前M/C加工 ---
+' ▼▼▼ 修正: AddMCBeforeHeatTreatment のシグネチャとロジックを変更 (MC3工程対応) ▼▼▼
+Private Sub AddMCBeforeHeatTreatment(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, shape As String, reduceToOneStep As Boolean, increaseToThreeSteps As Boolean)
+    Dim mcProcessName As String
+    mcProcessName = IIf(shape = "プレート", "M/C（大）", "M/C（小）")
     Dim i As Integer
-    For i = 1 To 2
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = mc工程名
-        ws.Cells(lastRow, 40).Value = "0.25"
-        ws.Cells(lastRow, 41).Value = "0.1"
-        If i = 2 Then ws.Cells(lastRow, 42).Value = "0.1"
-        ws.Cells(lastRow, 45).Value = i & "/2"
-        lastRow = lastRow + 1
-    Next i
 
-GeibiAfterMC:
-    If Not Geibi依頼 Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "穴あけﾀｯﾌﾟ"
-        ws.Cells(lastRow, 40).Value = "0.3"
-        If isSubZero Then ws.Cells(lastRow, 45).Value = "ｻﾌﾞｾﾞﾛ注意"
-        lastRow = lastRow + 1
+    If increaseToThreeSteps Then ' 3工程が最優先
+        For i = 1 To 3
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, mcProcessName, , "0.25", "0.1", IIf(i = 3, "0.1", ""), i & "/3")
+        Next i
+    ElseIf reduceToOneStep Then ' 次に1工程
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, mcProcessName, , "0.25", "0.1", "0.1", "")
+    Else ' デフォルトは2工程
+        For i = 1 To 2
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, mcProcessName, , "0.25", "0.1", IIf(i = 2, "0.1", ""), i & "/2")
+        Next i
     End If
+End Sub
+' ▲▲▲ 修正ここまで ▲▲▲
 
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "熱処理"
-    If isSubZero Then
-        ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
+
+' --- 穴あけタップ処理 ---
+Private Sub AddTapHole(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, hasSubZero As Boolean)
+    Dim memo As String
+    If hasSubZero Then memo = "ｻﾌﾞｾﾞﾛ注意" Else memo = ""
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "穴あけﾀｯﾌﾟ", , "0.3", , , memo)
+End Sub
+
+' --- 熱処理 ---
+Private Sub AddHeatTreatment(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, materialName As String, hasSubZero As Boolean)
+    Dim supplier As String
+    If hasSubZero Then
+        supplier = "ｴｼﾞｿﾝ熱処理"
     Else
-        Select Case 材質
-            Case "SKH51", "HAP40", "SKD51": ws.Cells(lastRow, 38).Value = "ﾘﾋﾄ精光"
-            Case "DC53", "SKD11", "SKS3": ws.Cells(lastRow, 38).Value = "光陽産業 高温"
-            Case "HPM38": ws.Cells(lastRow, 38).Value = "光陽産業"
-            Case "SLD-MAGIC": ws.Cells(lastRow, 38).Value = "ｴｼﾞｿﾝ熱処理"
+        Select Case materialName
+            Case "SKH51", "HAP40", "SKD51": supplier = "ﾘﾋﾄ精光"
+            Case "DC53", "SKD11", "SKS3":   supplier = "光陽産業 高温"
+            Case "HPM38": supplier = "光陽産業"
+            Case "SLD-MAGIC":               supplier = "ｴｼﾞｿﾝ熱処理"
+            Case Else: supplier = ""
         End Select
     End If
-    lastRow = lastRow + 1
+    If supplier <> "" Or hasSubZero Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "熱処理", supplier)
+    End If
+End Sub
 
-GeibiAfterSG:
-    Dim sg回数 As Integer
-    Select Case 形状
+' --- 焼き入れ後SG (平面研削 NC) ---
+Private Sub AddPostHeatTreatmentSG(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                    shape As String, useWireEDM As Boolean, useAfterMC As Boolean)
+    Dim sgCount As Integer
+    Select Case shape
         Case "ブロック"
-            sg回数 = 6
+            sgCount = 6
         Case "プレート"
-            If Not ワイヤー加工 And AfterMC Then
-                sg回数 = 4
-            ElseIf Not ワイヤー加工 Then
-                sg回数 = 2
-            ElseIf AfterMC Then
-                sg回数 = 4
+            If Not useWireEDM And useAfterMC Then
+                sgCount = 4
+            ElseIf Not useWireEDM Then
+                sgCount = 2
+            ElseIf useAfterMC Then
+                sgCount = 4
             Else
-                sg回数 = 3
+                sgCount = 3
             End If
         Case "ファミリー加工"
-            sg回数 = 2
+            sgCount = 2
     End Select
-    For i = 1 To sg回数
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "平面研削 NC"
-        ws.Cells(lastRow, 40).Value = "0.3"
-        ws.Cells(lastRow, 41).Value = "0.3"
-        If i = sg回数 Then ws.Cells(lastRow, 42).Value = "0.1"
-        ws.Cells(lastRow, 45).Value = i & "/" & sg回数
-        lastRow = lastRow + 1
+    Dim i As Integer
+    For i = 1 To sgCount
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 NC", , "0.3", "0.3", IIf(i = sgCount, "0.1", ""), i & "/" & sgCount)
     Next i
+End Sub
 
-If AfterMC Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    If 形状 = "プレート" Then
-        mc仕上げ名 = "M/C（大）"
-        ws.Cells(lastRow, 36).Value = mc仕上げ名
-        ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.4", "0.2", "0.2")
+' --- 焼き後MC仕上げ ---
+Private Sub AddAfterMCFinish(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, shape As String)
+    Dim mcFinishName As String, yujin As String, machine As String, setup As String
+    If shape = "プレート" Then
+        mcFinishName = "M/C（大）": yujin = "0.4": machine = "0.2": setup = "0.2"
     Else
-        mc仕上げ名 = "M/C（小）"
-        ws.Cells(lastRow, 36).Value = mc仕上げ名
-        ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.25", "0.1", "0.1")
+        mcFinishName = "M/C（小）": yujin = "0.25": machine = "0.1": setup = "0.1"
     End If
-    ws.Cells(lastRow, 45).Value = "MC仕上げ"
-    lastRow = lastRow + 1
-End If
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, mcFinishName, , yujin, machine, setup, "MC仕上げ")
+End Sub
 
-    If ワイヤー加工 And CheckBoxStartHoleSmall.Value Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "細穴放電加工"
-        ws.Cells(lastRow, 40).Value = "0.8"
-        ws.Cells(lastRow, 42).Value = "0.1"
-        lastRow = lastRow + 1
+' --- スタート穴 (細穴放電) ---
+Private Sub AddSmallStartHole(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long)
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "細穴放電加工", , "0.8", , "0.1")
+End Sub
+
+' --- ワイヤー加工 ---
+Private Sub AddWireEDMProcessing(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                isDia10OrLess As Boolean, hasShapeProcessing As Boolean)
+    If isDia10OrLess And hasShapeProcessing Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "ﾜｲﾔ放電加工", , "0.75", "3", "", "荒加工")
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "ﾜｲﾔ放電加工", , "0.75", "6", "0.5", "ｶｽ取り・仕上げ")
+    ElseIf isDia10OrLess Or Not hasShapeProcessing Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "ﾜｲﾔ放電加工", , "0.75", "2", "0.5")
+    Else
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "ﾜｲﾔ放電加工", , "0.75", "3", "", "荒加工")
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "ﾜｲﾔ放電加工", , "0.75", "6", "0.5", "ｶｽ取り・仕上げ")
     End If
+End Sub
 
-    If ワイヤー加工 Then
-        If Φ10以下 And 形状加工あり Then
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "ﾜｲﾔ放電加工"
-            ws.Cells(lastRow, 40).Value = "0.75"
-            ws.Cells(lastRow, 41).Value = "3"
-            ws.Cells(lastRow, 45).Value = "荒加工"
-            lastRow = lastRow + 1
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "ﾜｲﾔ放電加工"
-            ws.Cells(lastRow, 40).Value = "0.75"
-            ws.Cells(lastRow, 41).Value = "6"
-            ws.Cells(lastRow, 42).Value = "0.5"
-            ws.Cells(lastRow, 45).Value = "ｶｽ取り・仕上げ"
-            lastRow = lastRow + 1
-        ElseIf Φ10以下 Or Not 形状加工あり Then
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "ﾜｲﾔ放電加工"
-            ws.Cells(lastRow, 40).Value = "0.75"
-            ws.Cells(lastRow, 41).Value = "2"
-            ws.Cells(lastRow, 42).Value = "0.5"
-            lastRow = lastRow + 1
+' --- ヘソ取り or 上面SG (ワイヤー加工後) ---
+Private Sub AddPostWireEDMGrinding(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                    shape As String, needsPolishing As Boolean, hasCuttingEdge As Boolean, hasTsubaProcessing As Boolean, _
+                                    kataboriChoosenByUserAsLaterStep As Boolean)
+    Dim memo As String
+    If shape = "ファミリー加工" Then
+        If needsPolishing Then
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 汎用", , "0.2", , "0.1", "ﾍｿ取り")
         Else
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "ﾜｲﾔ放電加工"
-            ws.Cells(lastRow, 40).Value = "0.75"
-            ws.Cells(lastRow, 41).Value = "3"
-            ws.Cells(lastRow, 45).Value = "荒加工"
-            lastRow = lastRow + 1
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "ﾜｲﾔ放電加工"
-            ws.Cells(lastRow, 40).Value = "0.75"
-            ws.Cells(lastRow, 41).Value = "6"
-            ws.Cells(lastRow, 42).Value = "0.5"
-            ws.Cells(lastRow, 45).Value = "ｶｽ取り・仕上げ"
-            lastRow = lastRow + 1
-        End If
-
-        ' ▼▼▼ ヘソ or 上面SGの出力条件を修正 ▼▼▼
-        If 形状 = "ファミリー加工" Then
-            If 磨き有無 Then
-                 ' ▼▼▼ 修正: ファミリー加工＋磨きありの場合、型彫放電の有無に関わらずヘソ取りを追加 ▼▼▼
-                 If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                 ws.Cells(lastRow, 36).Value = "平面研削 汎用" ' ヘソ取りは汎用機想定
-                 ws.Cells(lastRow, 40).Value = "0.2"
-                 ws.Cells(lastRow, 42).Value = "0.1"
-                 ws.Cells(lastRow, 45).Value = "ﾍｿ取り"
-                 lastRow = lastRow + 1
-                 ' ▲▲▲ 修正 ▲▲▲
-            Else '磨きなし
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = "平面研削 NC"
-                ws.Cells(lastRow, 40).Value = "0.2"
-                ws.Cells(lastRow, 41).Value = "0.3"
-                ws.Cells(lastRow, 42).Value = "0.1"
-                If 切り刃あり And Not CheckBoxTsuba.Value Then
-                    If Not 型彫放電追加 Then
-                        ws.Cells(lastRow, 45).Value = "ﾍｿ・上面"
-                    Else
-                        ws.Cells(lastRow, 45).Value = "ﾍｿ取り"
-                    End If
-                Else
-                    ws.Cells(lastRow, 45).Value = "ﾍｿ取り"
-                End If
-                lastRow = lastRow + 1
+            memo = "ﾍｿ取り"
+            If hasCuttingEdge And Not hasTsubaProcessing And Not kataboriChoosenByUserAsLaterStep Then
+                memo = "ﾍｿ・上面"
             End If
-        ElseIf 形状 = "ブロック" Or 形状 = "プレート" Then
-            If 切り刃あり And Not 磨き有無 And Not 型彫放電追加 Then
-                Dim 上面機械 As String
-                上面機械 = IIf(形状 = "プレート", "平面研削 NC", "平面研削 汎用")
-                If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-                ws.Cells(lastRow, 36).Value = 上面機械
-                ws.Cells(lastRow, 40).Value = "0.2"
-                If 上面機械 = "平面研削 NC" Then
-                    ws.Cells(lastRow, 41).Value = "0.2"
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 NC", , "0.2", "0.3", "0.1", memo)
+        End If
+    ElseIf shape = "ブロック" Or shape = "プレート" Then
+        If hasCuttingEdge And Not needsPolishing Then
+            Dim addThisSG As Boolean
+            addThisSG = True
+
+            If kataboriChoosenByUserAsLaterStep Then
+                addThisSG = False
+            End If
+
+            If addThisSG And hasTsubaProcessing Then
+                If Not needsPolishing And Not kataboriChoosenByUserAsLaterStep Then
+                    addThisSG = False
                 End If
-                ws.Cells(lastRow, 42).Value = "0.1"
-                ws.Cells(lastRow, 45).Value = "上面"
-                lastRow = lastRow + 1
+            End If
+            
+            If addThisSG Then
+                Dim grindingMachine As String
+                grindingMachine = IIf(shape = "プレート", "平面研削 NC", "平面研削 汎用")
+                Dim machineTime As String
+                If grindingMachine = "平面研削 NC" Then machineTime = "0.2" Else machineTime = ""
+                Call AddProcessToSheet(ws, currentRow, initialTargetRow, grindingMachine, , "0.2", machineTime, "0.1", "上面")
             End If
         End If
-        ' ▲▲▲ ヘソ or 上面SGの出力条件を修正 ▲▲▲
+    End If
+End Sub
+
+' --- ツバ加工追加 (共通部品) ---
+Private Sub AddTsubaProcessing(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                tsubaCount As Integer, tsubaRoughMethod As String, needsPolishingForTsubaUe As Boolean, _
+                                kataboriChoosenByUser As Boolean)
+    Dim n As Integer
+    Dim isLastTsuba As Boolean
+    Dim memoSuffix As String
+
+    For n = 1 To tsubaCount
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, tsubaRoughMethod, , "0.6", "0.1", "0.1", "つば荒 " & n & "/" & tsubaCount)
+        isLastTsuba = (n = tsubaCount)
+        memoSuffix = ""
+        If isLastTsuba And Not needsPolishingForTsubaUe And Not kataboriChoosenByUser Then
+            memoSuffix = "・上面"
+        End If
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 NC", , "0.3", "0.1", "0.1", "つば仕上げ " & n & "/" & tsubaCount & memoSuffix)
+    Next n
+End Sub
+
+' --- 磨きとコーティング処理 ---
+Private Sub AddPolishingAndCoating(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                needsPolishing As Boolean, hasCuttingEdge As Boolean, _
+                                needsOutsourcingForCoating As Boolean, coatingType As String)
+    If needsPolishing Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "磨き", , "0.5")
+        If hasCuttingEdge Then
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 NC", , "0.2", "0.2", "0.1", "上面")
+        End If
+    End If
+    If needsOutsourcingForCoating Then
+        Dim coatingSupplierText As String
+        coatingSupplierText = IIf(coatingType = "AlCrN", "和興産業", IIf(coatingType = "TiCN", "北熱", IIf(coatingType = "DNF", "和興産業", "")))
+         If coatingSupplierText <> "" Then
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", coatingSupplierText)
+        End If
+    End If
+End Sub
+
+' --- 熱処理後から最終調整までの共通工程群 ---
+' ▼▼▼ 修正: AddPostHeatTreatmentProcesses のシグネチャに materialName を追加し、それに基づいて skipPostHeatProcesses を判定 ▼▼▼
+' ▼▼▼ さらに修正: 熱処理スキップ材質でもSG工程などが実行されるように修正 ▼▼▼
+Private Sub AddPostHeatTreatmentProcesses(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                        materialName As String, shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean, hasCuttingEdge As Boolean, _
+                                        useAfterMC As Boolean, useSmallStartHole As Boolean, _
+                                        hasTsubaProcessing As Boolean, tsubaCount As Integer, tsubaRoughMethod As String, _
+                                        needsPolishing As Boolean, needsOutsourcingForCoating As Boolean, coatingType As String, needsAdjustP As Boolean, _
+                                        kataboriChoosenByUser As Boolean, naraiKensakuChoosenByUser As Boolean)
+    Dim skipPostHeatProcesses As Boolean ' このフラグは、熱処理が不要な特定材質かどうかを示す
+    skipPostHeatProcesses = False
+    
+    If materialName = "NAK80" Or materialName = "FDAC" Or materialName = "SS400" Then
+        skipPostHeatProcesses = True ' 熱処理が不要な材質
     End If
 
-    If CheckBoxTsuba.Value Then
-       tsubaNum = Val(ComboBoxTsubaCount.Value)
-       tsubaMethod = ComboBoxTsubaRough.Value
-        For n = 1 To tsubaNum
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = tsubaMethod
-            ws.Cells(lastRow, 40).Value = "0.6"
-            ws.Cells(lastRow, 41).Value = "0.1"
-            ws.Cells(lastRow, 42).Value = "0.1"
-            ws.Cells(lastRow, 45).Value = "つば荒 " & n & "/" & tsubaNum
-            lastRow = lastRow + 1
-
-          
-            needUe = (n = tsubaNum) And Not 磨き有無
-            If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-            ws.Cells(lastRow, 36).Value = "平面研削 NC"
-            ws.Cells(lastRow, 40).Value = "0.3"
-            ws.Cells(lastRow, 41).Value = "0.1"
-            ws.Cells(lastRow, 42).Value = "0.1"
-          
-            tsubaShushiageText = "つば仕上げ " & n & "/" & tsubaNum
-            If needUe Then
-                If Not 型彫放電追加 Then
-                    tsubaShushiageText = tsubaShushiageText & "・上面"
-                End If
-            End If
-            ws.Cells(lastRow, 45).Value = tsubaShushiageText
-            lastRow = lastRow + 1
-        Next n
-    End If
-
-'――― 倣い研削（チェック時のみ）―――
-If 倣い研削追加 Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "倣い研削"
-    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("1.0", "", "0.2")
-    lastRow = lastRow + 1
-End If
-
-'――― 型彫放電加工（チェック時のみ）―――
-If 型彫放電追加 Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "型彫放電加工"
-    ws.Cells(lastRow, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
-    lastRow = lastRow + 1
-    If 切り刃あり Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "平面研削 NC"
-        ws.Cells(lastRow, 40).Value = "0.2"
-        ws.Cells(lastRow, 41).Value = "0.2"
-        ws.Cells(lastRow, 42).Value = "0.1"
-        ws.Cells(lastRow, 45).Value = "上面"
-        lastRow = lastRow + 1
-    End If
-End If
-
-'――― 磨き ―――
-If 磨き有無 Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-    ws.Cells(lastRow, 36).Value = "磨き"
-    ws.Cells(lastRow, 40).Value = "0.5"
-    lastRow = lastRow + 1
-    If 切り刃あり And Not 型彫放電追加 Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "平面研削 汎用"
-        ws.Cells(lastRow, 40).Value = "0.3"
-        ws.Cells(lastRow, 42).Value = "0.1"
-        ws.Cells(lastRow, 45).Value = "上面"
-        lastRow = lastRow + 1
-    End If
-End If
-
-    If 外注有無 Then
-        If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "外注"
-        Select Case コーティング
-            Case "AlCrN", "DNF"
-                ws.Cells(lastRow, 38).Value = "和興産業"
-            Case "TiCN"
-                ws.Cells(lastRow, 38).Value = "北熱"
-            Case Else
-                ws.Cells(lastRow, 38).Value = ""
-        End Select
-        lastRow = lastRow + 1
+    ' SG工程は熱処理が不要な材質の場合でも実行する
+    Call AddPostHeatTreatmentSG(ws, currentRow, initialTargetRow, shape, useWireEDM, useAfterMC)
+    
+    If useAfterMC Then Call AddAfterMCFinish(ws, currentRow, initialTargetRow, shape)
+    
+    If useWireEDM And useSmallStartHole Then Call AddSmallStartHole(ws, currentRow, initialTargetRow)
+    
+    If useWireEDM Then
+        Dim effectiveHasShapeProcessing As Boolean
+        effectiveHasShapeProcessing = hasShapeProcessing
+        If shape = "ファミリー加工" Then
+            effectiveHasShapeProcessing = True
+        End If
+        Call AddWireEDMProcessing(ws, currentRow, initialTargetRow, isDia10OrLess, effectiveHasShapeProcessing)
+        ' ワイヤー加工後の研削も熱処理が不要な材質の場合でも実行する
+        Call AddPostWireEDMGrinding(ws, currentRow, initialTargetRow, shape, needsPolishing, hasCuttingEdge, hasTsubaProcessing, kataboriChoosenByUser)
     End If
     
-    Call AddAdjustP(ws, lastRow, AdjustP)
-MsgBox "工程作成が完了しました。"
-Unload Me
-
-End Sub
-'======================================================================
-' ★lastRow を ByRef に変更して行番号を返す
-Private Sub AddAdjustP(ws As Worksheet, ByRef lastRow As Long, AdjustP As Boolean)
-    If AdjustP Then
-    If lastRow > targetRow Then ws.Rows(lastRow).Insert Shift:=xlDown
-        ws.Cells(lastRow, 36).Value = "調整P"
-        ws.Cells(lastRow, 40).Value = "0.1"  ' 有人時間
-        lastRow = lastRow + 1
+    If hasTsubaProcessing Then
+        Call AddTsubaProcessing(ws, currentRow, initialTargetRow, tsubaCount, tsubaRoughMethod, needsPolishing, kataboriChoosenByUser)
     End If
+    
+    If naraiKensakuChoosenByUser Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "倣い研削", , "1.0", "", "0.2")
+    End If
+    If kataboriChoosenByUser Then
+        Call AddProcessToSheet(ws, currentRow, initialTargetRow, "型彫放電加工", , "0.5", "1.5", "0.2")
+        ' 型彫り後のSG工程も、熱処理が不要な材質の場合でも、他の条件(hasCuttingEdge, needsPolishing)に基づいて実行する
+        If hasCuttingEdge And Not needsPolishing Then
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "平面研削 NC", , "0.2", "0.2", "0.1", "上面")
+        End If
+    End If
+
+    Call AddPolishingAndCoating(ws, currentRow, initialTargetRow, needsPolishing, hasCuttingEdge, needsOutsourcingForCoating, coatingType)
+    Call AddAdjustPProcess(ws, currentRow, initialTargetRow, needsAdjustP)
 End Sub
-'===========================================================
-' 文字列を正規化してキーワード検索しやすくする関数
-'-----------------------------------------------------------
+' ▲▲▲ 修正ここまで ▲▲▲
+
+' --- 4-4. ゲイビ外注パターンの場合 ---
+' ▼▼▼ 修正: ProcessGeibiOutsource のシグネチャに isTripleMCPreHeat を追加 ▼▼▼
+Private Sub ProcessGeibiOutsource(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                materialName As String, geibiPattern As String, hasSubZero As Boolean, _
+                                shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean, hasCuttingEdge As Boolean, _
+                                useAfterMC As Boolean, useSmallStartHole As Boolean, _
+                                hasTsubaProcessing As Boolean, tsubaCount As Integer, tsubaRoughMethod As String, _
+                                needsPolishing As Boolean, needsOutsourcingForCoating As Boolean, coatingType As String, needsAdjustP As Boolean, _
+                                noChamfer As Boolean, hasLiftingScrew As Boolean, _
+                                kataboriChoosenByUser As Boolean, naraiKensakuChoosenByUser As Boolean, _
+                                isSingleMCPreHeat As Boolean, isTripleMCPreHeat As Boolean)  ' 引数 isTripleMCPreHeat 追加
+' ▲▲▲ 修正ここまで ▲▲▲
+
+    Select Case geibiPattern
+        Case "材料～焼きまで"
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", "ｹﾞｲﾋﾞ鋼業", , , , geibiPattern)
+            ' ▼▼▼ 修正: AddPostHeatTreatmentProcesses に materialName を渡す ▼▼▼
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, _
+                                                shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, _
+                                                useAfterMC, useSmallStartHole, _
+                                                hasTsubaProcessing, tsubaCount, tsubaRoughMethod, _
+                                                needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, _
+                                                kataboriChoosenByUser, naraiKensakuChoosenByUser)
+            ' ▲▲▲ 修正ここまで ▲▲▲
+        Case "荒加工のみ"
+            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialName, noChamfer, hasLiftingScrew)
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", "ｹﾞｲﾋﾞ鋼業", , , , geibiPattern)
+            ' ▼▼▼ 修正: 熱処理のみ材質条件でスキップ ▼▼▼
+            Call AddTapHole(ws, currentRow, initialTargetRow, hasSubZero) ' 穴あけタップは実行
+            If Not (materialName = "NAK80" Or materialName = "FDAC" Or materialName = "SS400") Then
+                Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialName, hasSubZero) ' 熱処理は条件付き
+            End If
+            ' ▲▲▲ 修正ここまで ▲▲▲
+            ' ▼▼▼ 修正: AddPostHeatTreatmentProcesses に materialName を渡す ▼▼▼
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, _
+                                                shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, _
+                                                useAfterMC, useSmallStartHole, _
+                                                hasTsubaProcessing, tsubaCount, tsubaRoughMethod, _
+                                                needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, _
+                                                kataboriChoosenByUser, naraiKensakuChoosenByUser)
+            ' ▲▲▲ 修正ここまで ▲▲▲
+        Case "荒～焼きまで"
+            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialName, noChamfer, hasLiftingScrew)
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", "ｹﾞｲﾋﾞ鋼業", , , , geibiPattern)
+            ' ▼▼▼ 修正: AddPostHeatTreatmentProcesses に materialName を渡す ▼▼▼
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, _
+                                                shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, _
+                                                useAfterMC, useSmallStartHole, _
+                                                hasTsubaProcessing, tsubaCount, tsubaRoughMethod, _
+                                                needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, _
+                                                kataboriChoosenByUser, naraiKensakuChoosenByUser)
+            ' ▲▲▲ 修正ここまで ▲▲▲
+    End Select
+End Sub
+
+' --- 4-5. 通常ルート（主材購入～最後まで）の場合 ---
+' ▼▼▼ 修正: ProcessNormalRoute のシグネチャに isTripleMCPreHeat を追加 ▼▼▼
+Private Sub ProcessNormalRoute(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
+                                materialName As String, hasSubZero As Boolean, _
+                                shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean, hasCuttingEdge As Boolean, _
+                                useAfterMC As Boolean, useSmallStartHole As Boolean, _
+                                hasTsubaProcessing As Boolean, tsubaCount As Integer, tsubaRoughMethod As String, _
+                                needsPolishing As Boolean, needsOutsourcingForCoating As Boolean, coatingType As String, needsAdjustP As Boolean, _
+                                noChamfer As Boolean, hasLiftingScrew As Boolean, _
+                                kataboriChoosenByUser As Boolean, naraiKensakuChoosenByUser As Boolean, _
+                                isSingleMCPreHeat As Boolean, isTripleMCPreHeat As Boolean) ' 引数 isTripleMCPreHeat 追加
+' ▲▲▲ 修正ここまで ▲▲▲
+    Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialName, noChamfer, hasLiftingScrew)
+
+    ' ▼▼▼ 修正: AddMCBeforeHeatTreatment に isTripleMCPreHeat を渡す ▼▼▼
+    Call AddMCBeforeHeatTreatment(ws, currentRow, initialTargetRow, shape, isSingleMCPreHeat, isTripleMCPreHeat)
+    ' ▲▲▲ 修正ここまで ▲▲▲
+    Call AddTapHole(ws, currentRow, initialTargetRow, hasSubZero)
+    ' ▼▼▼ 修正: 熱処理のみ材質条件でスキップ ▼▼▼
+    If Not (materialName = "NAK80" Or materialName = "FDAC" Or materialName = "SS400") Then
+        Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialName, hasSubZero)
+    End If
+    ' ▲▲▲ 修正ここまで ▲▲▲
+    
+    ' ▼▼▼ 修正: AddPostHeatTreatmentProcesses に materialName を渡す ▼▼▼
+    Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, _
+                                        shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, _
+                                        useAfterMC, useSmallStartHole, _
+                                        hasTsubaProcessing, tsubaCount, tsubaRoughMethod, _
+                                        needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, _
+                                        kataboriChoosenByUser, naraiKensakuChoosenByUser)
+    ' ▲▲▲ 修正ここまで ▲▲▲
+End Sub
+
+' === NormalizeZText 関数 ===
 Private Function NormalizeZText(src As String) As String
     Dim t As String
     t = StrConv(src, vbNarrow + vbKatakana)
@@ -754,148 +1000,154 @@ Private Function NormalizeZText(src As String) As String
     NormalizeZText = t
 End Function
 
+' === 単品工程挿入ボタン (CommandButton単品挿入_Click) ===
 Private Sub CommandButton単品挿入_Click()
     Dim 工程名 As String
-    工程名 = ComboBox工程選択.Value
+    工程名 = Me.ComboBox工程選択.Value
     If 工程名 = "" Then
-        MsgBox "工程を選択してください。"
+        MsgBox "工程を選択してください。", vbExclamation
         Exit Sub
     End If
-
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("工程表")
+    Set ws = ThisWorkbook.Sheets(SHEET_KOUTEIHYO)
     Dim r As Long
-    r = ActiveCell.Row
+    If Not ValidateActiveCell(ws, r) Then Exit Sub
+    Application.ScreenUpdating = False
+    On Error GoTo SingleInsertErrorHandler
     ws.Rows(r).Insert Shift:=xlDown
-
-    ws.Cells(r, 36).Value = 工程名
+    ws.Cells(r, COL_KOUTEI).Value = 工程名
     Select Case 工程名
-        Case "調整 面取":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
-        Case "調整（P）":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.1", "", "")
-        Case "電極設計":              ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
-        Case "確認測定M", "確認測定P": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
-        Case "穴あけタップ":            ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
-        Case "倣い研削":              ws.Cells(r, 40).Resize(1, 3).Value = Array("1.0", "", "0.2")
-        Case "平面研削 汎用", "平面研削 汎用（M調整）": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "", "0.1")
-        Case "熱処理", "外注", "主材購入", "副材（購入品）": ws.Cells(r, 40).Resize(1, 3).Value = Array("", "", "")
-        Case "社内TRY":              ws.Cells(r, 40).Resize(1, 3).Value = Array("2.0", "", "")
-        Case "M/C-1", "M/C-2":       ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
-        Case "M/C（大）":             ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "0.25", "0.1")
-        Case "M/C（電極）":           ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.8", "0.1")
-        Case "M/C（小）":             ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
-        Case "平面研削-1", "平面研削-2", "平面研削-3": ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
-        Case "洗浄":                  ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "", "")
-        Case "細穴放電加工":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "0.8", "0.2")
-        Case "磨き":                  ws.Cells(r, 40).Resize(1, 3).Value = Array("0.4", "", "")
-        Case "型彫放電加工":          ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
-        Case "ワイヤ放電加工":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.75", "3.0", "0.5")
-        Case "ワイヤ加工（電極）":    ws.Cells(r, 40).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
-        Case "溶接":                  ws.Cells(r, 40).Resize(1, 3).Value = Array("1.0", "", "")
-        Case "平面研削 NC":           ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
-        Case "電極リスト作成":        ws.Cells(r, 40).Resize(1, 3).Value = Array("0.3", "", "")
+        Case "調整 面取":           ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "", "")
+        Case "調整（P）":           ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.1", "", "")
+        Case "電極設計":            ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.5", "", "")
+        Case "確認測定M", "確認測定P": ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.5", "", "")
+        Case "穴あけタップ":          ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "", "")
+        Case "倣い研削":            ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("1.0", "", "0.2")
+        Case "平面研削 汎用", "平面研削 汎用（M調整）": ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.4", "", "0.1")
+        Case "熱処理", "外注", "主材購入", "副材（購入品）": ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("", "", "")
+        Case "社内TRY":             ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("2.0", "", "")
+        Case "M/C-1", "M/C-2":      ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
+        Case "M/C（大）":           ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.4", "0.25", "0.1")
+        Case "M/C（電極）":         ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "0.8", "0.1")
+        Case "M/C（小）":           ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "0.25", "0.1")
+        Case "平面研削-1", "平面研削-2", "平面研削-3": ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
+        Case "洗浄":                ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.5", "", "")
+        Case "細穴放電加工":        ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.5", "0.8", "0.2")
+        Case "磨き":                ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.4", "", "")
+        Case "型彫放電加工":        ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
+        Case "ワイヤ放電加工":      ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.75", "3.0", "0.5")
+        Case "ワイヤ加工（電極）":  ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.5", "1.5", "0.2")
+        Case "溶接":                ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("1.0", "", "")
+        Case "平面研削 NC":         ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "0.3", "0.1")
+        Case "電極リスト作成":      ws.Cells(r, COL_JINKAN_YUJIN).Resize(1, 3).Value = Array("0.3", "", "")
     End Select
-
-    MsgBox "単品工程「" & 工程名 & "」を挿入しました。"
+    MsgBox "単品工程「" & 工程名 & "」を挿入しました。", vbInformation
+SingleInsertFinally:
+    Application.ScreenUpdating = True
+    Exit Sub
+SingleInsertErrorHandler:
+    MsgBox "単品工程挿入中にエラーが発生しました。" & vbCrLf & Err.Number & ": " & Err.Description, vbCritical
+    Resume SingleInsertFinally
 End Sub
 
+' === 過去データ検索ボタン (CommandButton2_Click) ===
 Private Sub CommandButton2_Click()
-
-    Dim 元Sht As Worksheet
-    Dim 出力Sht As Worksheet
-    Dim 最終行 As Long
-    Dim i As Long, j As Long
-    Dim 開始行 As Long
-    Dim 品名 As String, 品番 As String, サイズ As String, 材質 As String
-    Dim 出力行 As Long
-    Dim シート名 As String
-    Dim 番号 As Long
-
-    Dim 外部ブック As Workbook
-    Dim ファイルパス As String
-    ファイルパス = "C:\Users\ysmft\Desktop\AAAA\スト.xlsm" ' ★後で変更してください
-
-    品名 = InputBox("検索する品名を入力してください（必須）：", "過去データ検索")
-    If Len(Trim(品名)) = 0 Then
-        MsgBox "品名が未入力です。", vbExclamation
-        Exit Sub
-    End If
-    品番 = InputBox("品番でさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
-    サイズ = InputBox("サイズでさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
-    材質 = InputBox("材質でさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
-
+    Dim searchItemName As String, searchItemNumber As String, searchItemSize As String, searchItemMaterial As String
+    Dim sourceWorkbook As Workbook, sourceSheet As Worksheet, outputSheet As Worksheet
+    Dim lastRowSource As Long, i As Long, j As Long, blockStartRow As Long, outputRow As Long
+    Dim outputSheetNameBase As String, outputSheetName As String, outputSheetCounter As Long
+    Dim sourceFilePath As String
+    sourceFilePath = "C:\Users\ysmft\Desktop\AAAA\スト.xlsm" ' 実際のパスに置き換えてください
+    Application.ScreenUpdating = False
+    On Error GoTo SearchErrorHandler
+    searchItemName = InputBox("検索する品名を入力してください（必須）：", "過去データ検索")
+    If Len(Trim(searchItemName)) = 0 Then MsgBox "品名が未入力です。", vbExclamation: GoTo SearchFinally
+    searchItemNumber = InputBox("品番でさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
+    searchItemSize = InputBox("サイズでさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
+    searchItemMaterial = InputBox("材質でさらに絞り込む場合は入力してください（任意）：", "追加検索条件")
     On Error Resume Next
-    Set 外部ブック = Workbooks.Open(Filename:=ファイルパス, ReadOnly:=True)
-    If 外部ブック Is Nothing Then
-        MsgBox "指定のファイルを開けませんでした：" & vbCrLf & ファイルパス, vbCritical
-        Exit Sub
-    End If
-    On Error GoTo 0
-
-    Set 元Sht = 外部ブック.Sheets("Sheet1")
-    最終行 = 元Sht.Cells(元Sht.Rows.Count, "K").End(xlUp).Row
-
-    シート名 = "抽出_" & Replace(品名, "\", "")
-    シート名 = Replace(シート名, "/", "")
-    シート名 = Replace(シート名, "*", "")
-    シート名 = Replace(シート名, "[", "")
-    シート名 = Replace(シート名, "]", "")
-    シート名 = Replace(シート名, ":", "")
-    シート名 = Replace(シート名, "?", "")
-    If Len(シート名) > 31 Then
-        シート名 = Left(シート名, 31)
-    End If
-
-    番号 = 1
-    Dim tempシート名 As String
-    tempシート名 = シート名
+    Set sourceWorkbook = Workbooks.Open(Filename:=sourceFilePath, ReadOnly:=True, UpdateLinks:=0)
+    On Error GoTo SearchErrorHandler
+    If sourceWorkbook Is Nothing Then MsgBox "指定のファイルを開けませんでした：" & vbCrLf & sourceFilePath, vbCritical: GoTo SearchFinally
+    Set sourceSheet = sourceWorkbook.Sheets("Sheet1") ' シート名を確認してください
+    lastRowSource = sourceSheet.Cells(sourceSheet.Rows.Count, "K").End(xlUp).Row ' 品名列を確認してください
+    outputSheetNameBase = "抽出_" & ReplaceCharsForSheetName(searchItemName)
+    If Len(outputSheetNameBase) > 25 Then outputSheetNameBase = Left(outputSheetNameBase, 25)
+    outputSheetCounter = 0
     Do
+        outputSheetName = outputSheetNameBase
+        If outputSheetCounter > 0 Then outputSheetName = outputSheetNameBase & "_" & outputSheetCounter
         On Error Resume Next
-        Set 出力Sht = Nothing ' 初期化
-        Set 出力Sht = ThisWorkbook.Sheets(tempシート名)
-        On Error GoTo 0
-        If 出力Sht Is Nothing Then
-            シート名 = tempシート名
-            Exit Do
-        End If
-        tempシート名 = Left(シート名, Application.Min(Len(シート名), 25)) & "_" & 番号 ' シート名の長さを考慮
-        番号 = 番号 + 1
+        Set outputSheet = Nothing
+        Set outputSheet = ThisWorkbook.Sheets(outputSheetName)
+        On Error GoTo SearchErrorHandler
+        If outputSheet Is Nothing Then Exit Do
+        outputSheetCounter = outputSheetCounter + 1
     Loop
+    Set outputSheet = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+    outputSheet.name = outputSheetName
+    outputRow = 1
+    For i = 3 To lastRowSource ' データ開始行を確認してください
+        Dim currentItemName As String, currentItemNumber As String, currentItemSize As String, currentItemMaterialVal As String
+        currentItemName = Trim(CStr(sourceSheet.Cells(i, "K").Value)) ' 品名列
+        currentItemNumber = Trim(CStr(sourceSheet.Cells(i, "J").Value)) ' 品番列
+        currentItemSize = Trim(CStr(sourceSheet.Cells(i, "G").Value))   ' サイズ列
+        currentItemMaterialVal = Trim(CStr(sourceSheet.Cells(i, "F").Value)) ' 材質列
 
-    Set 出力Sht = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
-    出力Sht.Name = シート名
-    出力行 = 1
-
-    For i = 3 To 最終行
-        Dim 品名値 As String, 品番値 As String, サイズ値 As String, 材質値 As String
-        品名値 = Replace(元Sht.Cells(i, "K").Value, "　", "")
-        品番値 = Replace(元Sht.Cells(i, "J").Value, "　", "")
-        サイズ値 = Replace(元Sht.Cells(i, "G").Value, "　", "")
-        材質値 = Replace(元Sht.Cells(i, "F").Value, "　", "")
-
-        If InStr(1, 品名値, 品名, vbTextCompare) > 0 Then
-            If (Len(Trim(品番)) = 0 Or InStr(1, 品番値, 品番, vbTextCompare) > 0) And _
-               (Len(Trim(サイズ)) = 0 Or InStr(1, サイズ値, サイズ, vbTextCompare) > 0) And _
-               (Len(Trim(材質)) = 0 Or InStr(1, 材質値, 材質, vbTextCompare) > 0) Then
-
-                開始行 = i
-                For j = 開始行 + 1 To 最終行 + 1
-                    If j > 最終行 Or Len(Trim(元Sht.Cells(j, "K").Value)) > 0 Then
-                        元Sht.Range("A" & 開始行 & ":V" & j - 1).Copy
-                        出力Sht.Range("A" & 出力行).PasteSpecial xlPasteValues
-                        出力行 = 出力行 + (j - 開始行)
+        If InStr(1, currentItemName, searchItemName, vbTextCompare) > 0 Then
+            If (Len(Trim(searchItemNumber)) = 0 Or InStr(1, currentItemNumber, searchItemNumber, vbTextCompare) > 0) And _
+                (Len(Trim(searchItemSize)) = 0 Or InStr(1, currentItemSize, searchItemSize, vbTextCompare) > 0) And _
+                (Len(Trim(searchItemMaterial)) = 0 Or InStr(1, currentItemMaterialVal, searchItemMaterial, vbTextCompare) > 0) Then
+                
+                blockStartRow = i
+                For j = blockStartRow + 1 To lastRowSource + 1
+                    Dim nextItemNameInBlock As String
+                    If j <= lastRowSource Then nextItemNameInBlock = Trim(CStr(sourceSheet.Cells(j, "K").Value)) Else nextItemNameInBlock = "EndOfDataDummy"
+                    
+                    If Len(nextItemNameInBlock) > 0 Or j > lastRowSource Then ' 次の品名が見つかるか、最終行を超えたらブロック終了
+                        sourceSheet.Range("A" & blockStartRow & ":V" & j - 1).Copy ' コピー範囲を確認してください
+                        outputSheet.Range("A" & outputRow).PasteSpecial xlPasteValues
+                        outputRow = outputRow + (j - blockStartRow)
+                        i = j - 1 ' 外側のループのインデックスを更新
                         Exit For
                     End If
                 Next j
             End If
         End If
     Next i
-
     Application.CutCopyMode = False
-    外部ブック.Close SaveChanges:=False
-
-    MsgBox "抽出完了 → " & 出力Sht.Name, vbInformation
-
+    sourceWorkbook.Close SaveChanges:=False
+    If outputRow = 1 Then
+        MsgBox "条件に一致するデータは見つかりませんでした。" & vbCrLf & "作成したシート「" & outputSheet.name & "」は空です。", vbInformation
+    Else
+        MsgBox "抽出完了 → " & outputSheet.name, vbInformation
+    End If
+SearchFinally:
+    If Not sourceWorkbook Is Nothing Then
+        Dim wb As Workbook
+        For Each wb In Workbooks
+            If wb.name = sourceWorkbook.name Then
+                sourceWorkbook.Close SaveChanges:=False
+                Exit For
+            End If
+        Next wb
+    End If
+    Application.ScreenUpdating = True
+    Exit Sub
+SearchErrorHandler:
+    MsgBox "過去データ検索中にエラーが発生しました。" & vbCrLf & "エラー番号: " & Err.Number & vbCrLf & "エラー内容: " & Err.Description, vbCritical
+    Resume SearchFinally
 End Sub
 
+' --- シート名に使用できない文字を置換/削除するヘルパー関数 ---
+Private Function ReplaceCharsForSheetName(ByVal name As String) As String
+    Dim invalidChars As Variant, charIdx As Long ' i を charIdx に変更
+    invalidChars = Array("\", "/", "*", "[", "]", ":", "?") ' VBAのArray関数
+    ReplaceCharsForSheetName = name
+    For charIdx = LBound(invalidChars) To UBound(invalidChars)
+        ReplaceCharsForSheetName = Replace(ReplaceCharsForSheetName, invalidChars(charIdx), "_")
+    Next charIdx
+    If Len(ReplaceCharsForSheetName) > 31 Then ReplaceCharsForSheetName = Left(ReplaceCharsForSheetName, 31)
+End Function
 
 
