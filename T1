@@ -1,166 +1,35 @@
-Dim errorDict As Object
-Dim errorCount As Long
+はい、承知いたしました。評価基準（星の部分）を、さらに「ものすごく簡潔に」 ключевые слова で表現します。
+今年度の重点取り組み目標（評価基準 超簡潔版）
+【大方針】 今年度は、**「TS効率化」「品質向上」「技能伝承と多能工化」**を3つの柱とし、デジタル技術の活用と現場力の強化を通じて、生産性と競争力の大幅な向上を目指します。
+カテゴリー1： TS効率化 -デジタルツールによる工程設計・作業時間の最適化-
+目標: 年間作業時間80時間削減、設定TS精度**Y%**向上。
+主な取り組み: 
+工程作成支援ツールの開発・導入。
+仕上げ時間設定ツールの開発・導入。
+その他随時開発、導入。
+評価基準： 
+★★★★: 作業時間100H超削減、TS精度大幅向上。ツール全社定着、波及効果大。
+★★★: 作業時間80H削減、TS精度**Y%**向上。主要ツール活用開始。（目標達成）
+★★: 作業時間50H削減またはTS精度目標7割。ツール一部活用。
+★: 作業時間50H未満。ツール開発・導入遅延。
+カテゴリー2： 品質向上 -先進技術検証による不具合未然防止体制の高度化-
+目標: 技術検証完了、不具合未然防止精度**X%向上、金型トライアル効率Y%**改善。
+主な取り組み: 
+ワックステスト技術の導入効果検証。
+3Dスキャン比較試験の社内検証。
+評価基準： 
+★★★★: 検証技術の実運用導入。リードタイム短縮A%または精度X+α%向上。
+★★★: 技術検証完了、レポート提出。精度X%または効率Y%向上の見通し。（目標達成）
+★★: レポート1件または内容部分的。効果見通し不明確。
+★: 技術検証未実施または初期段階。レポート未提出。
+カテゴリー3： 技能伝承と多能工化 -組織的な技術力向上と人材育成-
+目標: 暗黙知B件形式知化、技能レベル平均Aポイント向上、M/C多能工X名育成。
+主な取り組み: 
+M/C作業スキルの計画的習得。
+ツール開発プロセスにおける暗黙知の形式知化。
+評価基準： 
+★★★★: 技能レベルA+α向上、M/C多能工X+β名、暗黙知B+γ件形式知化し全社活用。
+★★★: 技能レベルAポイント向上、暗黙知B件形式知化、M/C多能工X名育成。（目標達成）
+★★: 主要指標いずれかが目標の7割程度。
+★: 各主要指標が目標の5割未満、または取り組み遅延。
 
-' メイン処理
-Sub CheckSelected24Rules()
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("工程表")
-
-    Dim lastRow As Long: lastRow = ws.Cells(ws.Rows.Count, "AJ").End(xlUp).Row
-    Set errorDict = CreateObject("Scripting.Dictionary")
-    errorCount = 0
-
-    Dim i As Long, ajVal As String, asVal As String
-    Dim material As String: material = Trim(ws.Range("AF2").Value)
-    Dim coating As String: coating = Trim(ws.Range("Z2").Value)
-    Dim isSubZero As Boolean: isSubZero = (InStr(UCase(coating), "SUBZERO") > 0)
-    Dim isMisumi As Boolean: isMisumi = (ws.Range("AE2").Value = "ミスミ")
-    Dim isOutsource As Boolean: isOutsource = (ws.Range("AD2").Value = "外作")
-    Dim shape As String: shape = ws.Range("AG2").Value
-    Dim hasWire As Boolean: hasWire = (ws.Range("AH2").Value = "あり")
-    Dim wireSize As Double: wireSize = Val(ws.Range("AI2").Value)
-    Dim hasCutEdge As Boolean: hasCutEdge = (ws.Range("AJ2").Value = "あり")
-    Dim hasAfterMC As Boolean: hasAfterMC = (ws.Range("AK2").Value = "あり")
-    Dim hasPolish As Boolean: hasPolish = (ws.Range("AL2").Value = "あり")
-    Dim tsubaCount As Integer: tsubaCount = Val(ws.Range("AM2").Value)
-
-    ' ルールごとのチェック
-    If Not ContainsValue(ws, "AK", "深江") And (material = "DC53" Or material = "SKD11" Or material = "SKS3" Or material = "SS400") Then AddError material & "の購入先が深江特殊鋼でない"
-    If Not ContainsValue(ws, "AK", "ﾒﾀﾙﾜﾝ") And (material = "SKH51" Or material = "SKD51" Or material = "HAP40") Then AddError material & "の購入先がﾒﾀﾙﾜﾝでない"
-    If Not ContainsValue(ws, "AK", "ﾒﾀﾙﾃｯｸ") And material = "SLD-MAGIC" Then AddError "SLD-MAGICの購入先がﾒﾀﾙﾃｯｸでない"
-    If Not ContainsValue(ws, "AJ", "熱処理", "リヒト") And material = "SKH51" Then AddError "SKH51の熱処理先がリヒト精光でない"
-    If Not ContainsValue(ws, "AJ", "熱処理", "光陽") And (material = "DC53" Or material = "SKD11" Or material = "SKS3") Then AddError material & "の熱処理先が光陽産業でない"
-    If Not ContainsValue(ws, "AJ", "熱処理", "エジソン") And material = "SLD-MAGIC" Then AddError "SLD-MAGICの熱処理先がエジソン熱処理でない"
-    If isSubZero And Not ContainsValue(ws, "AJ", "熱処理", "エジソン") Then AddError "サブゼロ指定なのにエジソン熱処理がない"
-    If isMisumi And Not ContainsValue(ws, "AJ", "副材（購入品）") Then AddError "ミスミ購入品に副材（購入品）がない"
-    If ContainsValue(ws, "AJ", "外注", "ｹﾞｲﾋﾞ") And Not ContainsValue(ws, "AS", "ゲイビ") Then AddError "ゲイビ指定なのに備考欄に記載なし"
-    If Not ContainsValue(ws, "AJ", "外注", "和興") And InStr(UCase(coating), "ALCRN") > 0 Then AddError "ALCRN指定なのに和興産業の外注がない"
-    If Not ContainsValue(ws, "AJ", "外注", "北熱") And InStr(UCase(coating), "TICN") > 0 Then AddError "TiCN指定なのに北熱の外注がない"
-    If (InStr(UCase(coating), "ALCRN") > 0 Or InStr(UCase(coating), "TICN") > 0) And Not hasPolish Then AddError "コーティング指定なのに磨きがない"
-    If Not isOutsource And Not isMisumi And Not ContainsValue(ws, "AJ", "主材購入") Then AddError "主材購入工程がない"
-    If Not isOutsource And Not isMisumi And Not ContainsValue(ws, "AJ", "熱処理") Then AddError "熱処理工程がない"
-    If tsubaCount > 0 Then
-        For i = 1 To tsubaCount
-            If Not ContainsValue(ws, "AS", "つば仕上げ " & i & "/") Then AddError "つば仕上げ " & i & "/ が不足"
-            If InStr(coating, "ALCRN") = 0 And InStr(coating, "TICN") = 0 And hasPolish = False Then
-                If Not ContainsValue(ws, "AS", "つば仕上げ " & i & "/・上面") Then AddError "つば仕上げに上面がない"
-            End If
-            If hasPolish And ContainsValue(ws, "AS", "つば仕上げ " & i & "/・上面") Then AddError "磨きありなのに上面がある（つば仕上げ）"
-        Next i
-    End If
-    If Not CheckColumnEmpty(ws, "AO") Then AddError "主材／熱処理／外注に無人時間が入っている"
-    If ws.Cells(lastRow, "AP").Value = "" Then AddError "最終工程に後段取りがない"
-    If Not ContainsValue(ws, "AS", "上面") Or Not ContainsValue(ws, "AS", "ヘソ取り") Or Not ContainsPattern(ws, "AS", "つば仕上げ") Then AddError "備考に必要な加工名が抜けている"
-    If (InStr(UCase(coating), "ALCRN") > 0 Or InStr(UCase(coating), "TICN") > 0) And Not hasPolish Then AddError "コーティングがあるのに磨きが前にない"
-    If Not ContainsValue(ws, "AS", "Cなし") And Not ContainsValue(ws, "AS", "吊り") Then AddError "主材購入時の注意備考（Cなし・吊り）がない"
-    If Not CheckSGSequence(ws) Then AddError "SG工程の1/n表記順がおかしい"
-    If ContainsValue(ws, "AJ", "") Or ContainsValue(ws, "AJ", "工程未定") Then AddError "空欄行または工程未定あり"
-    If Not CheckWire1step(ws) Then AddError "ワイヤー1工程時に後段取り0.5がない"
-    If Not CheckTSEntry(ws) Then AddError "TS（有人／無人／後段取り）の空欄あり"
-
-    ' === 結果出力 ===
-    Dim resultWs As Worksheet
-    Set resultWs = ThisWorkbook.Sheets.Add(After:=ws)
-    resultWs.Name = "ルールチェック結果_" & Format(Now, "yyyymmdd_hhmmss")
-    resultWs.Range("A1").Value = "チェック結果：工程ルール検証"
-    resultWs.Range("A2").Value = "日付：" & Now
-    resultWs.Range("A3").Value = "エラー総件数：" & errorCount
-    resultWs.Range("A4").Value = "エラー内容": resultWs.Range("B4").Value = "発生件数"
-
-    Dim k As Long: k = 5
-    Dim key As Variant
-    For Each key In errorDict.Keys
-        resultWs.Cells(k, 1).Value = key
-        resultWs.Cells(k, 2).Value = errorDict(key)
-        k = k + 1
-    Next key
-
-    MsgBox "チェック完了：" & errorCount & " 件のエラーを出力しました", vbExclamation
-End Sub
-
-' エラー登録関数
-Sub AddError(msg As String)
-    If errorDict.exists(msg) Then
-        errorDict(msg) = errorDict(msg) + 1
-    Else
-        errorDict.Add msg, 1
-    End If
-    errorCount = errorCount + 1
-End Sub
-
-' 汎用チェック関数群
-Function ContainsValue(ws As Worksheet, colName As String, keyword As String, Optional secondKeyword As String = "") As Boolean
-    Dim cell As Range
-    For Each cell In ws.Range(colName & "2:" & colName & ws.Cells(ws.Rows.Count, colName).End(xlUp).Row)
-        If InStr(cell.Value, keyword) > 0 Then
-            If secondKeyword = "" Or InStr(cell.Offset(0, 1).Value, secondKeyword) > 0 Then
-                ContainsValue = True: Exit Function
-            End If
-        End If
-    Next
-    ContainsValue = False
-End Function
-
-Function ContainsPattern(ws As Worksheet, colName As String, pattern As String) As Boolean
-    Dim cell As Range, re As Object
-    Set re = CreateObject("VBScript.RegExp")
-    re.pattern = pattern: re.IgnoreCase = True
-    For Each cell In ws.Range(colName & "2:" & colName & ws.Cells(ws.Rows.Count, colName).End(xlUp).Row)
-        If re.Test(cell.Value) Then
-            ContainsPattern = True: Exit Function
-        End If
-    Next
-    ContainsPattern = False
-End Function
-
-Function CheckColumnEmpty(ws As Worksheet, colName As String) As Boolean
-    Dim cell As Range
-    For Each cell In ws.Range(colName & "2:" & colName & ws.Cells(ws.Rows.Count, colName).End(xlUp).Row)
-        If Trim(cell.Value) <> "" Then CheckColumnEmpty = False: Exit Function
-    Next
-    CheckColumnEmpty = True
-End Function
-
-Function CheckSGSequence(ws As Worksheet) As Boolean
-    Dim i As Long, prev As Integer: prev = 0
-    For i = 2 To ws.Cells(ws.Rows.Count, "AS").End(xlUp).Row
-        If InStr(ws.Cells(i, "AS").Value, "/") > 0 Then
-            Dim parts() As String: parts = Split(ws.Cells(i, "AS").Value, "/")
-            If IsNumeric(parts(0)) Then
-                If CInt(parts(0)) < prev Then CheckSGSequence = False: Exit Function
-                prev = CInt(parts(0))
-            End If
-        End If
-    Next
-    CheckSGSequence = True
-End Function
-
-Function CheckWire1step(ws As Worksheet) As Boolean
-    Dim cnt As Long: cnt = Application.WorksheetFunction.CountIf(ws.Range("AJ:AJ"), "ﾜｲﾔ放電加工")
-    If cnt = 1 Then
-        Dim i As Long
-        For i = 2 To ws.Cells(ws.Rows.Count, "AJ").End(xlUp).Row
-            If ws.Cells(i, "AJ").Value = "ﾜｲﾔ放電加工" Then
-                If ws.Cells(i, "AP").Value = "0.5" Then
-                    CheckWire1step = True
-                    Exit Function
-                End If
-            End If
-        Next i
-        CheckWire1step = False
-    Else
-        CheckWire1step = True
-    End If
-End Function
-
-Function CheckTSEntry(ws As Worksheet) As Boolean
-    Dim i As Long
-    For i = 2 To ws.Cells(ws.Rows.Count, "AJ").End(xlUp).Row
-        If ws.Cells(i, "AJ").Value <> "" Then
-            If ws.Cells(i, "AN").Value = "" Or ws.Cells(i, "AO").Value = "" Or ws.Cells(i, "AP").Value = "" Then
-                CheckTSEntry = False: Exit Function
-            End If
-        End If
-    Next i
-    CheckTSEntry = True
-End Function
