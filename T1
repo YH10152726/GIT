@@ -14,18 +14,21 @@ Option Explicit
 ' Private Const COL_MATERIAL_SUPPLIER As Long = 11    ' K列: 主材購入先
 ' Private Const COL_MATERIAL_HEAT_NORMAL As Long = 12 ' L列: 熱処理先(通常)
 ' Private Const COL_MATERIAL_HEAT_SUBZERO As Long = 13' M列: 熱処理先(サブゼロ)
+'
+' Private Const COL_OUTSOURCE_KEY As Long = 15        ' O列: 外注先管理キー
+' Private Const COL_OUTSOURCE_NAME As Long = 16       ' P列: 外注先名
+
 
 Private Sub CreateSheet2Data()
     Dim ws As Worksheet
     Dim sheetName As String
-    Dim processDataArray() As Variant ' 工程データ用 (A-E列)
-    Dim remarksF_Array() As String    ' F列備考データ用
-    Dim remarksG_Array() As String    ' G列備考データ用
-    Dim materialDataArray() As Variant ' 材質データ用 (J-M列)
+    Dim processDataArray() As Variant
+    Dim materialDataArray() As Variant
+    Dim outsourcingDataArray() As Variant ' ★外注先データ用配列
     
-    Dim dataPart1_AE As Variant, dataPart2_AE As Variant, dataPart3_AE As Variant
-    Dim remarksF_Part1 As Variant, remarksF_Part2 As Variant, remarksF_Part3 As Variant
-    Dim remarksG_Part1 As Variant, remarksG_Part2 As Variant, remarksG_Part3 As Variant
+    Dim dataPart1_AE As Variant, dataPart2_AE As Variant, dataPart3_AE As Variant, dataPart4_AE As Variant, dataPart5_AE As Variant
+    Dim remarksF_Part1 As Variant, remarksF_Part2 As Variant, remarksF_Part3 As Variant, remarksF_Part4 As Variant, remarksF_Part5 As Variant
+    Dim remarksG_Part1 As Variant, remarksG_Part2 As Variant, remarksG_Part3 As Variant, remarksG_Part4 As Variant, remarksG_Part5 As Variant
     Dim materialData_PartA As Variant, materialData_PartB As Variant, materialData_PartC As Variant
     
     Dim i As Long, r As Long, k As Long
@@ -53,13 +56,13 @@ Private Sub CreateSheet2Data()
         "レイアウト後、型彫り後上面研削", "ワイヤー後研削(ブロック/プレート, 刃物有, etc.), 磨き/型彫り後", _
         "単品挿入用, ミスミ追加工用", "単品挿入用" _
     )
-    Dim remarksG_Part4 As Variant ' G列備考の続き
+
      remarksG_Part4 = Array( _
         "ワイヤー後研削 (ファミリー, 磨き有)", "レイアウト切り離し後ヘソ取り (上面含む)", "レイアウト切り離し後ヘソ取り", _
         "ワイヤー後研削(ブロック, 刃物有, etc.)", "単品挿入用", "単品挿入用", "単品挿入用", _
         "単品挿入用, ミスミ追加工用, ユーザー選択", "レイアウト切り離し後、ユーザー選択", "単品挿入用" _
     )
-    Dim remarksG_Part5 As Variant ' G列備考のさらに続き
+    
     remarksG_Part5 = Array( _
         "単品挿入用, 最終調整用", "単品挿入用, Z列指定/ユーザー選択", "単品挿入用", "単品挿入用", _
         "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", _
@@ -68,13 +71,12 @@ Private Sub CreateSheet2Data()
     )
 
     ' --- F列(備考 - 工程表AS列へ)に出力する備考のリスト (G列と同じ内容を仮設定) ---
-    ' 必要に応じて、F列専用のデータに置き換えてください。
     remarksF_Part1 = remarksG_Part1
     remarksF_Part2 = remarksG_Part2
     remarksF_Part3 = remarksG_Part3
-    Dim remarksF_Part4 As Variant
+    
     remarksF_Part4 = remarksG_Part4
-    Dim remarksF_Part5 As Variant
+
     remarksF_Part5 = remarksG_Part5
 
 
@@ -100,7 +102,7 @@ Private Sub CreateSheet2Data()
         Array("平面研削 NC-レイアウト後上面", "", "0.2", "0.2", "0.1"), Array("平面研削 NC-上面後", "", "0.2", "0.2", "0.1"), _
         Array("平面研削 汎用", "", "0.4", "", "0.1"), Array("平面研削 汎用（M調整）", "", "0.4", "", "0.1") _
     )
-    Dim dataPart4_AE As Variant
+    
     dataPart4_AE = Array( _
         Array("平面研削 汎用-ファミリー後ヘソ取り", "", "0.2", "", "0.1"), Array("平面研削 汎用-レイアウト後ヘソ上面", "", "0.1", "", "0.2"), _
         Array("平面研削 汎用-レイアウト後ヘソ取り", "", "0.1", "", "0.2"), Array("平面研削 汎用-上面後", "", "0.2", "", "0.1"), _
@@ -108,7 +110,7 @@ Private Sub CreateSheet2Data()
         Array("平面研削-3", "", "0.3", "0.3", "0.1"), Array("倣い研削", "", "1", "", "0.2"), _
         Array("倣い研削-レイアウト後", "", "1", "", "0.2"), Array("調整 面取", "", "0.3", "", "") _
     )
-    Dim dataPart5_AE As Variant
+    
     dataPart5_AE = Array( _
         Array("調整（P）", "", "0.1", "", ""), Array("磨き", "", "0.4", "", ""), _
         Array("洗浄", "", "0.5", "", ""), Array("溶接", "", "1", "", ""), _
@@ -120,19 +122,17 @@ Private Sub CreateSheet2Data()
         Array("副材（購入品）", "", "", "", ""), Array("型彫り放電", "", "0.9", "0.6", "0.2") _
     )
     
-    ' --- 工程データ配列の結合 ---
     totalProcessItems = (UBound(dataPart1_AE) - LBound(dataPart1_AE) + 1) + _
                         (UBound(dataPart2_AE) - LBound(dataPart2_AE) + 1) + _
                         (UBound(dataPart3_AE) - LBound(dataPart3_AE) + 1) + _
                         (UBound(dataPart4_AE) - LBound(dataPart4_AE) + 1) + _
                         (UBound(dataPart5_AE) - LBound(dataPart5_AE) + 1)
 
-    ReDim processDataArray(0 To totalProcessItems - 1, 0 To 6) ' 7列 (0 to 6)
+    ReDim processDataArray(0 To totalProcessItems - 1, 0 To 6)
     k = 0
     currentRemarkF_Index = 0
     currentRemarkG_Index = 0
 
-    ' Helper Sub to append data parts
     Dim appendPart As Object
     Set appendPart = CreateObject("Scripting.Dictionary")
     appendPart("data") = Array(dataPart1_AE, dataPart2_AE, dataPart3_AE, dataPart4_AE, dataPart5_AE)
@@ -149,25 +149,25 @@ Private Sub CreateSheet2Data()
         currentRemarksFPart = appendPart("remarksF")(partIndex)
         currentRemarksGPart = appendPart("remarksG")(partIndex)
         
-        currentRemarkF_Index = 0 ' Reset for each remarksF part
-        currentRemarkG_Index = 0 ' Reset for each remarksG part
+        currentRemarkF_Index = 0
+        currentRemarkG_Index = 0
 
         For i = LBound(currentDataPart) To UBound(currentDataPart)
-            processDataArray(k, 0) = currentDataPart(i)(0) ' 工程キー
-            processDataArray(k, 1) = currentDataPart(i)(1) ' 前段取
-            processDataArray(k, 2) = currentDataPart(i)(2) ' 有人
-            processDataArray(k, 3) = currentDataPart(i)(3) ' 機械
-            processDataArray(k, 4) = currentDataPart(i)(4) ' 後段取
+            processDataArray(k, 0) = currentDataPart(i)(0)
+            processDataArray(k, 1) = currentDataPart(i)(1)
+            processDataArray(k, 2) = currentDataPart(i)(2)
+            processDataArray(k, 3) = currentDataPart(i)(3)
+            processDataArray(k, 4) = currentDataPart(i)(4)
             
             If currentRemarkF_Index <= UBound(currentRemarksFPart) Then
-                processDataArray(k, 5) = currentRemarksFPart(currentRemarkF_Index) ' 備考 (F列)
+                processDataArray(k, 5) = currentRemarksFPart(currentRemarkF_Index)
             Else
                 processDataArray(k, 5) = ""
             End If
             currentRemarkF_Index = currentRemarkF_Index + 1
 
             If currentRemarkG_Index <= UBound(currentRemarksGPart) Then
-                processDataArray(k, 6) = currentRemarksGPart(currentRemarkG_Index) ' 詳細備考 (G列)
+                processDataArray(k, 6) = currentRemarksGPart(currentRemarkG_Index)
             Else
                 processDataArray(k, 6) = ""
             End If
@@ -244,6 +244,29 @@ Private Sub CreateSheet2Data()
         k = k + 1
     Next i
 
+    ' --- 外注先情報データ (O-P列) ---
+    Dim outsourcingData_Part As Variant
+    outsourcingData_Part = Array( _
+        Array("COATING_ALCRN", "和興産業"), _
+        Array("COATING_TICN", "北熱"), _
+        Array("COATING_DNF", "和興産業"), _
+        Array("GEIBI", "ｹﾞｲﾋﾞ鋼業"), _
+        Array("HOSOI", "細井工作所"), _
+        Array("PUNCH", "ﾊﾟﾝﾁ工業"), _
+        Array("SHIHEN", "四変ﾃｯｸ"), _
+        Array("TOKAI", "ﾄｰｶﾛｲ"), _
+        Array("HEAT_SUBZERO_DEFAULT", "ｴｼﾞｿﾝ熱処理"), _
+        Array("HEAT_SKH51", "ﾘﾋﾄ精光"), _
+        Array("HEAT_DC53", "光陽産業 高温"), _
+        Array("HEAT_HPM38", "光陽産業"), _
+        Array("HEAT_SLDMAGIC", "ｴｼﾞｿﾝ熱処理") _
+    )
+    ReDim outsourcingDataArray(0 To UBound(outsourcingData_Part), 0 To 1)
+    For i = LBound(outsourcingData_Part) To UBound(outsourcingData_Part)
+        outsourcingDataArray(i, 0) = outsourcingData_Part(i)(0)
+        outsourcingDataArray(i, 1) = outsourcingData_Part(i)(1)
+    Next i
+
 
     On Error Resume Next
     Set ws = ThisWorkbook.Sheets(sheetName)
@@ -267,13 +290,17 @@ Private Sub CreateSheet2Data()
     ws.Cells(1, 3).Value = "有人"
     ws.Cells(1, 4).Value = "機械"
     ws.Cells(1, 5).Value = "後段取"
-    ws.Cells(1, 6).Value = "備考"      ' F列
-    ws.Cells(1, 7).Value = "詳細備考"  ' G列
+    ws.Cells(1, 6).Value = "備考(AS列用)" ' F列
+    ws.Cells(1, 7).Value = "詳細備考(G列確認用)" ' G列
     
     ws.Cells(1, 10).Value = "材質コード"
     ws.Cells(1, 11).Value = "主材購入先"
     ws.Cells(1, 12).Value = "熱処理先(通常)"
     ws.Cells(1, 13).Value = "熱処理先(サブゼロ)"
+    
+    ws.Cells(1, 15).Value = "外注先キー" ' O列
+    ws.Cells(1, 16).Value = "外注先名"   ' P列
+
 
     r = 2
     For i = LBound(processDataArray, 1) To UBound(processDataArray, 1)
@@ -296,6 +323,14 @@ Private Sub CreateSheet2Data()
         ws.Cells(r, 11).Value = materialDataArray(i, 1)
         ws.Cells(r, 12).Value = materialDataArray(i, 2)
         ws.Cells(r, 13).Value = materialDataArray(i, 3)
+        r = r + 1
+    Next i
+
+    r = 2 ' ★外注先データの書き込み開始行をリセット
+    For i = LBound(outsourcingDataArray, 1) To UBound(outsourcingDataArray, 1)
+        If IsEmpty(outsourcingDataArray(i, 0)) Then Exit For
+        ws.Cells(r, 15).Value = outsourcingDataArray(i, 0) ' 外注先キー
+        ws.Cells(r, 16).Value = outsourcingDataArray(i, 1) ' 外注先名
         r = r + 1
     Next i
 
