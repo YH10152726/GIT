@@ -13,7 +13,7 @@ Const COL_PROCESS_REMARKS As String = "AT"       ' AT列: 工程備考
 ' AS列（加工内容）は今回のエラーチェックでは直接使用しないが、将来的にE16などで利用価値あり
 ' === 設定項目ここまで ===
 
-Sub SummarizePastProcessErrors_V4() ' メインプロシージャ名をV4に変更
+Sub SummarizePastProcessErrors_V5() ' メインプロシージャ名をV5に変更
     Dim wsTarget As Worksheet
     Dim wsResult As Worksheet
     Dim lastRow As Long
@@ -23,6 +23,7 @@ Sub SummarizePastProcessErrors_V4() ' メインプロシージャ名をV4に変�
     Dim partStartRow As Long
     Dim errorCounts As Object ' Dictionary for error counts
     Dim errorMessages As Object ' Dictionary for error descriptions
+    Dim errorCodeColors As Object ' ★新規: エラーコードと色をマッピングするDictionary
 
     On Error GoTo ErrorHandler
 
@@ -36,9 +37,7 @@ Sub SummarizePastProcessErrors_V4() ' メインプロシージャ名をV4に変�
     End If
 
     Application.ScreenUpdating = False
-
-    ' ★修正: 塗りつぶしをリセットしたい場合は、事前に実行するなどの考慮が必要
-    ' wsTarget.Cells.Interior.ColorIndex = xlNone ' 例: 事前に全セルの背景色をクリアする場合
+    ' wsTarget.Cells.Interior.Color = xlNone ' 必要に応じて実行前に全セルの背景色をクリア
 
     Set wsResult = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
     On Error Resume Next
@@ -51,7 +50,9 @@ Sub SummarizePastProcessErrors_V4() ' メインプロシージャ名をV4に変�
 
     Set errorCounts = CreateObject("Scripting.Dictionary")
     Set errorMessages = CreateObject("Scripting.Dictionary")
+    Set errorCodeColors = CreateObject("Scripting.Dictionary") ' ★初期化
 
+    ' エラーメッセージ定義
     errorMessages.Add "E01", "材質と購入先の不整合"
     errorMessages.Add "E02", "材質と熱処理業者の不整合"
     errorMessages.Add "E03", "コーティング種類とコーティング業者の不整合"
@@ -70,6 +71,26 @@ Sub SummarizePastProcessErrors_V4() ' メインプロシージャ名をV4に変�
     errorMessages.Add "E16", "不適切な工程順序 (例: 熱処理後の荒加工)"
     errorMessages.Add "E17", "Y列備考｢ファミリー加工｣指示と関連工程の不整合"
     errorMessages.Add "E18", "Y列備考｢同時加工(切り離し)｣指示と初期工程の不整合"
+
+    ' ★新規: エラーコードに対応する色を定義 (RGB値) - 薄めの色を選択
+    errorCodeColors.Add "E01", RGB(255, 204, 204) ' 薄い赤
+    errorCodeColors.Add "E02", RGB(255, 229, 204) ' 薄いオレンジ
+    errorCodeColors.Add "E03", RGB(255, 255, 204) ' 薄い黄色
+    errorCodeColors.Add "E04A", RGB(204, 255, 204) ' 薄い緑
+    errorCodeColors.Add "E04B", RGB(204, 255, 229) ' 薄い青緑
+    errorCodeColors.Add "E05A", RGB(204, 229, 255) ' 薄い青
+    errorCodeColors.Add "E05B", RGB(204, 204, 255) ' 薄い青紫
+    errorCodeColors.Add "E08", RGB(229, 204, 255) ' 薄い紫
+    errorCodeColors.Add "E09A", RGB(255, 204, 229) ' 薄いピンク
+    errorCodeColors.Add "E09B", RGB(255, 182, 193) ' ライトピンク
+    errorCodeColors.Add "E10A", RGB(240, 230, 140) ' カーキ
+    errorCodeColors.Add "E10B", RGB(250, 235, 215) ' アンティークホワイト
+    errorCodeColors.Add "E11", RGB(175, 238, 238) ' ペールターコイズ
+    errorCodeColors.Add "E12", RGB(245, 245, 220) ' ベージュ
+    errorCodeColors.Add "E13", RGB(255, 218, 185) ' ピーチパフ
+    errorCodeColors.Add "E16", RGB(211, 211, 211) ' ライトグレー
+    errorCodeColors.Add "E17", RGB(152, 251, 152) ' ペールグリーン
+    errorCodeColors.Add "E18", RGB(173, 216, 230) ' ライトブルー
 
     Dim key As Variant
     For Each key In errorMessages.Keys
@@ -95,14 +116,14 @@ Sub SummarizePastProcessErrors_V4() ' メインプロシージャ名をV4に変�
         End If
 
         If currentHinmei <> prevHinmei And prevHinmei <> "" Then
-            Call CheckPartErrorsForAllTypes_V4(wsTarget, partStartRow, i - 1, errorCounts) ' V4を呼び出し
+            Call CheckPartErrorsForAllTypes_V5(wsTarget, partStartRow, i - 1, errorCounts, errorCodeColors) ' V5を呼び出し、errorCodeColorsを渡す
             partStartRow = i
         End If
         
         If i <= lastRow Then
           prevHinmei = currentHinmei
         ElseIf i = lastRow + 1 And prevHinmei <> "" And partStartRow <= lastRow Then
-             Call CheckPartErrorsForAllTypes_V4(wsTarget, partStartRow, lastRow, errorCounts) ' V4を呼び出し
+             Call CheckPartErrorsForAllTypes_V5(wsTarget, partStartRow, lastRow, errorCounts, errorCodeColors) ' V5を呼び出し、errorCodeColorsを渡す
         End If
     Next i
 
@@ -121,13 +142,17 @@ Sub SummarizePastProcessErrors_V4() ' メインプロシージャ名をV4に変�
         wsResult.Cells(r, 1).Value = key
         wsResult.Cells(r, 2).Value = errorMessages(key)
         wsResult.Cells(r, 3).Value = errorCounts(key)
+        ' ★新規: 結果シートのエラーコードセルに背景色を設定
+        If errorCodeColors.Exists(key) Then
+            wsResult.Cells(r, 1).Interior.Color = errorCodeColors(key)
+        End If
         r = r + 1
     Next key
 
     wsResult.Columns("A:C").AutoFit
     wsResult.Activate
     MsgBox "エラーチェックが完了しました。結果はシート「" & wsResult.name & "」に出力されました。" & vbCrLf & _
-           "エラーの可能性があるセルは対象シート「" & wsTarget.name & "」で黄色くハイライトされています。", vbInformation
+           "エラーの可能性があるセルは対象シート「" & wsTarget.name & "」で対応する色でハイライトされています。", vbInformation
 
 Finally:
     Application.ScreenUpdating = True
@@ -135,6 +160,7 @@ Finally:
     Set wsResult = Nothing
     Set errorCounts = Nothing
     Set errorMessages = Nothing
+    Set errorCodeColors = Nothing
     Set sortedKeys = Nothing
     Exit Sub
 
@@ -143,37 +169,25 @@ ErrorHandler:
     Resume Finally
 End Sub
 
-' ★修正: セル強調表示用のヘルパーサブルーチン
-Private Sub HighlightErrorCell(targetSheet As Worksheet, errorRow As Long, errorColumnLetter As String)
+' ★修正: セル強調表示用のヘルパーサブルーチン (色を引数で受け取る)
+Private Sub HighlightErrorCell(targetSheet As Worksheet, errorRow As Long, errorColumnLetter As String, highlightColor As Long)
     If errorRow > 0 And errorColumnLetter <> "" Then
-        On Error Resume Next ' 列名が無効な場合などを考慮
-        targetSheet.Cells(errorRow, errorColumnLetter).Interior.Color = vbYellow
+        On Error Resume Next
+        targetSheet.Cells(errorRow, errorColumnLetter).Interior.Color = highlightColor
         On Error GoTo 0
     End If
 End Sub
-' ★修正: 複数のセルを強調表示する場合のヘルパー
-Private Sub HighlightErrorCells(targetSheet As Worksheet, errorRow As Long, ParamArray errorColumnLetters() As Variant)
-    Dim col As Variant
-    If errorRow > 0 Then
-        For Each col In errorColumnLetters
-            If CStr(col) <> "" Then
-                On Error Resume Next
-                targetSheet.Cells(errorRow, CStr(col)).Interior.Color = vbYellow
-                On Error GoTo 0
-            End If
-        Next col
-    End If
-End Sub
+' (HighlightErrorCells は今回は未使用なので省略しても可)
 
 
-Private Sub CheckPartErrorsForAllTypes_V4(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, ByRef errorCounts As Object)
+Private Sub CheckPartErrorsForAllTypes_V5(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, ByRef errorCounts As Object, ByVal errorCodeColors As Object) '★errorCodeColors を引数に追加
     Dim materialName As String
     Dim partOverallRemarks As String
     Dim partOverallProcessInfo As String
     Dim partHardnessInfo As String
     Dim partProcesses As Collection
     Dim procDetail As Object
-    Dim i As Long, k As Long ' ★修正: ループ変数 k を追加 (各工程行の実際の行番号を保持するため)
+    Dim i As Long
 
     If startRow > endRow Then Exit Sub
 
@@ -183,11 +197,10 @@ Private Sub CheckPartErrorsForAllTypes_V4(ByVal ws As Worksheet, ByVal startRow 
     partHardnessInfo = Trim(CStr(ws.Cells(startRow, COL_HARDNESS).Value))
 
     Set partProcesses = New Collection
-    k = startRow ' ★修正: 部品ブロック内の最初の実際の行番号
     For i = startRow To endRow
         If Trim(CStr(ws.Cells(i, COL_KOUTEI_NAME).Value)) <> "" Then
             Set procDetail = CreateObject("Scripting.Dictionary")
-            procDetail("ROW_NUM") = i ' ★修正: 実際の行番号をDictionaryに格納
+            procDetail("ROW_NUM") = i
             procDetail("KOUTEI") = Trim(CStr(ws.Cells(i, COL_KOUTEI_NAME).Value))
             procDetail("GYOUSHA") = Trim(CStr(ws.Cells(i, COL_SUPPLIER_NAME).Value))
             procDetail("BIKOU") = Trim(CStr(ws.Cells(i, COL_PROCESS_REMARKS).Value))
@@ -197,39 +210,45 @@ Private Sub CheckPartErrorsForAllTypes_V4(ByVal ws As Worksheet, ByVal startRow 
 
     If partProcesses.Count = 0 Then Exit Sub
 
-    ' 各エラーチェック関数に ws (対象シート) と startRow (部品ブロックの開始行) を渡すように修正
-    If CheckE01_MaterialSupplierMismatch_V4(ws, startRow, partProcesses, materialName) Then errorCounts("E01") = errorCounts("E01") + 1
-    If CheckE02_MaterialHeatTreatSupplierMismatch_V4(ws, startRow, partProcesses, materialName, partOverallProcessInfo) Then errorCounts("E02") = errorCounts("E02") + 1
-    If CheckE03_CoatingTypeSupplierMismatch_V4(ws, startRow, partProcesses, partOverallProcessInfo) Then errorCounts("E03") = errorCounts("E03") + 1
-    Dim e04Result As String: e04Result = CheckE04_CoatingRelatedProcess_V4(ws, startRow, partProcesses, partOverallProcessInfo)
+    ' 各エラーチェック関数に errorCodeColors から取得した色を渡す
+    If CheckE01_MaterialSupplierMismatch_V5(ws, startRow, partProcesses, materialName, errorCodeColors("E01")) Then errorCounts("E01") = errorCounts("E01") + 1
+    If CheckE02_MaterialHeatTreatSupplierMismatch_V5(ws, startRow, partProcesses, materialName, partOverallProcessInfo, errorCodeColors("E02")) Then errorCounts("E02") = errorCounts("E02") + 1
+    If CheckE03_CoatingTypeSupplierMismatch_V5(ws, startRow, partProcesses, partOverallProcessInfo, errorCodeColors("E03")) Then errorCounts("E03") = errorCounts("E03") + 1
+    
+    Dim e04Result As String: e04Result = CheckE04_CoatingRelatedProcess_V5(ws, startRow, partProcesses, partOverallProcessInfo, errorCodeColors("E04A"), errorCodeColors("E04B"))
     If InStr(e04Result, "A") > 0 Then errorCounts("E04A") = errorCounts("E04A") + 1
     If InStr(e04Result, "B") > 0 Then errorCounts("E04B") = errorCounts("E04B") + 1
-    Dim e05Result As String: e05Result = CheckE05_HeatTreatmentNecessity_V4(ws, startRow, partProcesses, materialName)
+    
+    Dim e05Result As String: e05Result = CheckE05_HeatTreatmentNecessity_V5(ws, startRow, partProcesses, materialName, errorCodeColors("E05A"), errorCodeColors("E05B"))
     If InStr(e05Result, "A") > 0 Then errorCounts("E05A") = errorCounts("E05A") + 1
     If InStr(e05Result, "B") > 0 Then errorCounts("E05B") = errorCounts("E05B") + 1
-    If CheckE08_OutsourceSupplierMissing_V4(ws, partProcesses) Then errorCounts("E08") = errorCounts("E08") + 1
-    Dim e09Result As String: e09Result = CheckE09_PurchaseRelated_V4(ws, partProcesses)
+    
+    If CheckE08_OutsourceSupplierMissing_V5(ws, partProcesses, errorCodeColors("E08")) Then errorCounts("E08") = errorCounts("E08") + 1
+    
+    Dim e09Result As String: e09Result = CheckE09_PurchaseRelated_V5(ws, partProcesses, errorCodeColors("E09A"), errorCodeColors("E09B"))
     If InStr(e09Result, "A") > 0 Then errorCounts("E09A") = errorCounts("E09A") + 1
     If InStr(e09Result, "B") > 0 Then errorCounts("E09B") = errorCounts("E09B") + 1
-    Dim e10Result As String: e10Result = CheckE10_GeibiOutsourcePattern_V4(ws, startRow, partProcesses, materialName, partOverallRemarks, partOverallProcessInfo)
+    
+    Dim e10Result As String: e10Result = CheckE10_GeibiOutsourcePattern_V5(ws, startRow, partProcesses, materialName, partOverallRemarks, partOverallProcessInfo, errorCodeColors("E10A"), errorCodeColors("E10B"))
     If InStr(e10Result, "A") > 0 Then errorCounts("E10A") = errorCounts("E10A") + 1
     If InStr(e10Result, "B") > 0 Then errorCounts("E10B") = errorCounts("E10B") + 1
-    If CheckE11_MCProcessRemarksMismatch_V4(ws, partProcesses) Then errorCounts("E11") = errorCounts("E11") + 1
-    If CheckE12_SGProcessCountMismatch_V4(ws, startRow, partProcesses, partOverallRemarks) Then errorCounts("E12") = errorCounts("E12") + 1
-    If CheckE13_HeatTreatHardnessMismatch_V4(ws, startRow, processes:=partProcesses, partOverallProcessInfo:=partOverallProcessInfo, partHardnessInfo:=partHardnessInfo) Then errorCounts("E13") = errorCounts("E13") + 1
-    If CheckE16_ImproperProcessOrder_V4(ws, processes:=partProcesses) Then errorCounts("E16") = errorCounts("E16") + 1
-    If CheckE17_FamilyProcessMismatch_V4(ws, startRow, processes:=partProcesses, partOverallRemarks:=partOverallRemarks) Then errorCounts("E17") = errorCounts("E17") + 1
-    If CheckE18_PostFamilyCutProcessMismatch_V4(ws, startRow, processes:=partProcesses, partOverallRemarks:=partOverallRemarks) Then errorCounts("E18") = errorCounts("E18") + 1
+    
+    If CheckE11_MCProcessRemarksMismatch_V5(ws, partProcesses, errorCodeColors("E11")) Then errorCounts("E11") = errorCounts("E11") + 1
+    If CheckE12_SGProcessCountMismatch_V5(ws, startRow, partProcesses, partOverallRemarks, errorCodeColors("E12")) Then errorCounts("E12") = errorCounts("E12") + 1
+    If CheckE13_HeatTreatHardnessMismatch_V5(ws, startRow, processes:=partProcesses, partOverallProcessInfo:=partOverallProcessInfo, partHardnessInfo:=partHardnessInfo, highlightColor:=errorCodeColors("E13")) Then errorCounts("E13") = errorCounts("E13") + 1
+    If CheckE16_ImproperProcessOrder_V5(ws, processes:=partProcesses, highlightColor:=errorCodeColors("E16")) Then errorCounts("E16") = errorCounts("E16") + 1
+    If CheckE17_FamilyProcessMismatch_V5(ws, startRow, processes:=partProcesses, partOverallRemarks:=partOverallRemarks, highlightColor:=errorCodeColors("E17")) Then errorCounts("E17") = errorCounts("E17") + 1
+    If CheckE18_PostFamilyCutProcessMismatch_V5(ws, startRow, processes:=partProcesses, partOverallRemarks:=partOverallRemarks, highlightColor:=errorCodeColors("E18")) Then errorCounts("E18") = errorCounts("E18") + 1
 End Sub
 
-' --- 既存の個別エラーチェック関数群 (V4に更新し、セル強調表示ロジック追加) ---
-Private Function CheckE01_MaterialSupplierMismatch_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String) As Boolean
-    CheckE01_MaterialSupplierMismatch_V4 = False
+' --- 既存の個別エラーチェック関数群 (V5に更新し、色引数とセル強調表示ロジック修正) ---
+Private Function CheckE01_MaterialSupplierMismatch_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String, ByVal highlightColor As Long) As Boolean
+    CheckE01_MaterialSupplierMismatch_V5 = False
     Dim proc As Object, expectedSupplier As String, actualSupplier As String, procRowNum As Long
     For Each proc In processes
         If proc("KOUTEI") = "主材購入" Then
             actualSupplier = proc("GYOUSHA")
-            procRowNum = proc("ROW_NUM") ' ★修正: 工程行の実際の行番号
+            procRowNum = proc("ROW_NUM")
             Select Case UCase(materialName)
                 Case "SKH51", "HAP40", "SKD51": expectedSupplier = "ﾒﾀﾙﾜﾝ"
                 Case "DC53", "SKD11", "SKS3", "SS400": expectedSupplier = "深江特殊鋼"
@@ -238,25 +257,23 @@ Private Function CheckE01_MaterialSupplierMismatch_V4(ByVal ws As Worksheet, ByV
                 Case Else: expectedSupplier = ""
             End Select
             If expectedSupplier <> "" And actualSupplier <> "" And UCase(actualSupplier) <> UCase(expectedSupplier) Then
-                CheckE01_MaterialSupplierMismatch_V4 = True
-                Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL) ' 材質セル
-                Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME)    ' 業者名セル
+                CheckE01_MaterialSupplierMismatch_V5 = True
+                Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL, highlightColor)
+                Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME, highlightColor)
                 Exit Function
             End If
         End If
     Next
 End Function
 
-Private Function CheckE02_MaterialHeatTreatSupplierMismatch_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String, ByVal partOverallProcessInfo As String) As Boolean
-    CheckE02_MaterialHeatTreatSupplierMismatch_V4 = False
+Private Function CheckE02_MaterialHeatTreatSupplierMismatch_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String, ByVal partOverallProcessInfo As String, ByVal highlightColor As Long) As Boolean
+    CheckE02_MaterialHeatTreatSupplierMismatch_V5 = False
     Dim proc As Object, expectedSupplier As String, actualSupplier As String, hasSubZero As Boolean, procRowNum As Long
-    
     hasSubZero = False
     Dim normalizedZ As String: normalizedZ = UCase(NormalizeTextForSearchHelper(partOverallProcessInfo))
     If InStr(normalizedZ, "SUB0") > 0 Or InStr(normalizedZ, "ｻﾌﾞ0") > 0 Or InStr(normalizedZ, "S0") > 0 Or InStr(normalizedZ, "サブゼロ") > 0 Then
         hasSubZero = True
     End If
-
     For Each proc In processes
         If proc("KOUTEI") = "熱処理" Then
             actualSupplier = proc("GYOUSHA")
@@ -273,70 +290,59 @@ Private Function CheckE02_MaterialHeatTreatSupplierMismatch_V4(ByVal ws As Works
                 End Select
             End If
             If expectedSupplier <> "" And actualSupplier <> "" And UCase(actualSupplier) <> UCase(expectedSupplier) Then
-                CheckE02_MaterialHeatTreatSupplierMismatch_V4 = True
-                Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL)
-                Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL) ' Z列
-                Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME)
+                CheckE02_MaterialHeatTreatSupplierMismatch_V5 = True
+                Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL, highlightColor)
+                Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL, highlightColor)
+                Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME, highlightColor)
                 Exit Function
             End If
         End If
     Next
 End Function
 
-Private Function CheckE03_CoatingTypeSupplierMismatch_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallProcessInfo As String) As Boolean
-    CheckE03_CoatingTypeSupplierMismatch_V4 = False
+Private Function CheckE03_CoatingTypeSupplierMismatch_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallProcessInfo As String, ByVal highlightColor As Long) As Boolean
+    CheckE03_CoatingTypeSupplierMismatch_V5 = False
     Dim proc As Object, coatingType As String, expectedSupplier As String, actualSupplier As String, procRowNum As Long
-    
     coatingType = ""
     Dim normalizedZ As String: normalizedZ = UCase(NormalizeTextForSearchHelper(partOverallProcessInfo))
     If InStr(normalizedZ, "ALCRN") > 0 Then coatingType = "AlCrN"
     If InStr(normalizedZ, "TICN") > 0 Then coatingType = "TiCN"
     If InStr(normalizedZ, "DNF") > 0 Then coatingType = "DNF"
-
     If coatingType = "" Then Exit Function
-
     Select Case coatingType
         Case "AlCrN": expectedSupplier = "和興産業"
         Case "TiCN": expectedSupplier = "北熱"
         Case "DNF": expectedSupplier = "和興産業"
         Case Else: expectedSupplier = ""
     End Select
-
     If expectedSupplier = "" Then Exit Function
-
     For Each proc In processes
         If proc("KOUTEI") = "外注" Or UCase(proc("KOUTEI")) Like "*" & UCase(coatingType) & "*" Then
             actualSupplier = proc("GYOUSHA")
             procRowNum = proc("ROW_NUM")
             If actualSupplier <> "" And UCase(actualSupplier) <> UCase(expectedSupplier) Then
-                CheckE03_CoatingTypeSupplierMismatch_V4 = True
-                Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL) ' Z列
-                Call HighlightErrorCell(ws, procRowNum, COL_KOUTEI_NAME)
-                Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME)
+                CheckE03_CoatingTypeSupplierMismatch_V5 = True
+                Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL, highlightColor)
+                Call HighlightErrorCell(ws, procRowNum, COL_KOUTEI_NAME, highlightColor)
+                Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME, highlightColor)
                 Exit Function
             End If
         End If
     Next
 End Function
 
-Private Function CheckE04_CoatingRelatedProcess_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallProcessInfo As String) As String
+Private Function CheckE04_CoatingRelatedProcess_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallProcessInfo As String, ByVal colorA As Long, ByVal colorB As Long) As String
     Dim result As String: result = ""
     Dim proc As Object, hasCoatingInstruction As Boolean, hasMigaki As Boolean, hasCoatingGaichuProcess As Boolean
-    Dim migakiRowNum As Long: migakiRowNum = 0
-    Dim coatingGaichuRowNum As Long: coatingGaichuRowNum = 0
-
     hasCoatingInstruction = False: hasMigaki = False: hasCoatingGaichuProcess = False
-
     Dim normalizedZ As String: normalizedZ = UCase(NormalizeTextForSearchHelper(partOverallProcessInfo))
     If InStr(normalizedZ, "ALCRN") > 0 Or InStr(normalizedZ, "TICN") > 0 Or InStr(normalizedZ, "DNF") > 0 Then
         hasCoatingInstruction = True
     End If
-
     Dim coatingType As String: coatingType = ""
     If InStr(normalizedZ, "ALCRN") > 0 Then coatingType = "AlCrN"
     If InStr(normalizedZ, "TICN") > 0 Then coatingType = "TiCN"
     If InStr(normalizedZ, "DNF") > 0 Then coatingType = "DNF"
-
     Dim expectedCoatingSupplier As String: expectedCoatingSupplier = ""
     If coatingType <> "" Then
         Select Case coatingType
@@ -345,45 +351,32 @@ Private Function CheckE04_CoatingRelatedProcess_V4(ByVal ws As Worksheet, ByVal 
             Case "DNF": expectedCoatingSupplier = "和興産業"
         End Select
     End If
-
     For Each proc In processes
-        If proc("KOUTEI") = "磨き" Then
-            hasMigaki = True
-            migakiRowNum = proc("ROW_NUM")
-        End If
+        If proc("KOUTEI") = "磨き" Then hasMigaki = True
         If proc("KOUTEI") = "外注" Then
-            If expectedCoatingSupplier <> "" And UCase(proc("GYOUSHA")) = UCase(expectedCoatingSupplier) Then
-                hasCoatingGaichuProcess = True
-                coatingGaichuRowNum = proc("ROW_NUM")
-            ElseIf coatingType <> "" And (UCase(proc("GYOUSHA")) = "和興産業" Or UCase(proc("GYOUSHA")) = "北熱") Then
-                 hasCoatingGaichuProcess = True
-                 coatingGaichuRowNum = proc("ROW_NUM")
-            End If
-        ElseIf UCase(proc("KOUTEI")) Like "*" & UCase(coatingType) & "*" And coatingType <> "" Then
-             hasCoatingGaichuProcess = True
-             coatingGaichuRowNum = proc("ROW_NUM")
+            If expectedCoatingSupplier <> "" And UCase(proc("GYOUSHA")) = UCase(expectedCoatingSupplier) Then hasCoatingGaichuProcess = True
+            ElseIf coatingType <> "" And (UCase(proc("GYOUSHA")) = "和興産業" Or UCase(proc("GYOUSHA")) = "北熱") Then hasCoatingGaichuProcess = True
+        ElseIf UCase(proc("KOUTEI")) Like "*" & UCase(coatingType) & "*" And coatingType <> "" Then hasCoatingGaichuProcess = True
         End If
     Next
-
     If hasCoatingInstruction Then
         If Not hasMigaki Then
             result = result & "A"
-            Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL) ' Z列
+            Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL, colorA)
         End If
         If Not hasCoatingGaichuProcess Then
             result = result & "B"
-            Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL) ' Z列
+            Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL, colorB)
         End If
     End If
-    CheckE04_CoatingRelatedProcess_V4 = result
+    CheckE04_CoatingRelatedProcess_V5 = result
 End Function
 
-Private Function CheckE05_HeatTreatmentNecessity_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String) As String
+Private Function CheckE05_HeatTreatmentNecessity_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String, ByVal colorA As Long, ByVal colorB As Long) As String
     Dim result As String: result = ""
     Dim proc As Object, hasHeatTreatmentProcess As Boolean, isHeatTreatmentRequired As Boolean, isHeatTreatmentUnnecessary As Boolean
     Dim heatTreatRowNum As Long: heatTreatRowNum = 0
     hasHeatTreatmentProcess = False
-
     For Each proc In processes
         If proc("KOUTEI") = "熱処理" Then
             hasHeatTreatmentProcess = True
@@ -391,63 +384,57 @@ Private Function CheckE05_HeatTreatmentNecessity_V4(ByVal ws As Worksheet, ByVal
             Exit For
         End If
     Next
-
-    isHeatTreatmentRequired = False
-    isHeatTreatmentUnnecessary = False
+    isHeatTreatmentRequired = False: isHeatTreatmentUnnecessary = False
     Select Case UCase(materialName)
         Case "NAK80", "FDAC", "SS400": isHeatTreatmentUnnecessary = True
         Case "": isHeatTreatmentRequired = False
         Case Else: isHeatTreatmentRequired = True
     End Select
-
     If isHeatTreatmentRequired And Not hasHeatTreatmentProcess Then
         result = result & "A"
-        Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL)
+        Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL, colorA)
     End If
     If isHeatTreatmentUnnecessary And hasHeatTreatmentProcess Then
         result = result & "B"
-        Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL)
-        Call HighlightErrorCell(ws, heatTreatRowNum, COL_KOUTEI_NAME)
+        Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL, colorB)
+        Call HighlightErrorCell(ws, heatTreatRowNum, COL_KOUTEI_NAME, colorB)
     End If
-    CheckE05_HeatTreatmentNecessity_V4 = result
+    CheckE05_HeatTreatmentNecessity_V5 = result
 End Function
 
-Private Function CheckE08_OutsourceSupplierMissing_V4(ByVal ws As Worksheet, ByVal processes As Collection) As Boolean
-    CheckE08_OutsourceSupplierMissing_V4 = False
+Private Function CheckE08_OutsourceSupplierMissing_V5(ByVal ws As Worksheet, ByVal processes As Collection, ByVal highlightColor As Long) As Boolean
+    CheckE08_OutsourceSupplierMissing_V5 = False
     Dim proc As Object, procRowNum As Long
     For Each proc In processes
         If proc("KOUTEI") = "外注" And proc("GYOUSHA") = "" Then
-            CheckE08_OutsourceSupplierMissing_V4 = True
+            CheckE08_OutsourceSupplierMissing_V5 = True
             procRowNum = proc("ROW_NUM")
-            Call HighlightErrorCell(ws, procRowNum, COL_KOUTEI_NAME)
-            Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME)
+            Call HighlightErrorCell(ws, procRowNum, COL_KOUTEI_NAME, highlightColor)
+            Call HighlightErrorCell(ws, procRowNum, COL_SUPPLIER_NAME, highlightColor)
             Exit Function
         End If
     Next
 End Function
 
-Private Function CheckE09_PurchaseRelated_V4(ByVal ws As Worksheet, ByVal processes As Collection) As String
+Private Function CheckE09_PurchaseRelated_V5(ByVal ws As Worksheet, ByVal processes As Collection, ByVal colorA As Long, ByVal colorB As Long) As String
     Dim result As String: result = ""
     Dim proc As Object, isMisumiPurchase As Boolean, hasOtherShuzaiKounyu As Boolean
     Dim misumiRowNum As Long, shuzaiRowNum As Long, shuzaiGyoushaMissingRowNum As Long
     isMisumiPurchase = False: hasOtherShuzaiKounyu = False
     Dim shuzaiGyoushaMissingChecked As Boolean: shuzaiGyoushaMissingChecked = False
-
     For Each proc In processes
         If Not shuzaiGyoushaMissingChecked And proc("KOUTEI") = "主材購入" And proc("GYOUSHA") = "" Then
             result = result & "A"
             shuzaiGyoushaMissingChecked = True
             shuzaiGyoushaMissingRowNum = proc("ROW_NUM")
-            Call HighlightErrorCell(ws, shuzaiGyoushaMissingRowNum, COL_KOUTEI_NAME)
-            Call HighlightErrorCell(ws, shuzaiGyoushaMissingRowNum, COL_SUPPLIER_NAME)
-            ' Exit For ' E09Bのチェックも続けるため、ここではExitしない
+            Call HighlightErrorCell(ws, shuzaiGyoushaMissingRowNum, COL_KOUTEI_NAME, colorA)
+            Call HighlightErrorCell(ws, shuzaiGyoushaMissingRowNum, COL_SUPPLIER_NAME, colorA)
         End If
         If proc("KOUTEI") = "副材（購入品）" And UCase(proc("GYOUSHA")) = "ﾐｽﾐ" Then
             isMisumiPurchase = True
             misumiRowNum = proc("ROW_NUM")
         End If
     Next
-    
     If isMisumiPurchase Then
         For Each proc In processes
             If proc("KOUTEI") = "主材購入" Then
@@ -458,27 +445,23 @@ Private Function CheckE09_PurchaseRelated_V4(ByVal ws As Worksheet, ByVal proces
         Next
         If hasOtherShuzaiKounyu Then
             result = result & "B"
-            Call HighlightErrorCell(ws, misumiRowNum, COL_KOUTEI_NAME)
-            Call HighlightErrorCell(ws, misumiRowNum, COL_SUPPLIER_NAME)
-            Call HighlightErrorCell(ws, shuzaiRowNum, COL_KOUTEI_NAME)
+            Call HighlightErrorCell(ws, misumiRowNum, COL_KOUTEI_NAME, colorB)
+            Call HighlightErrorCell(ws, misumiRowNum, COL_SUPPLIER_NAME, colorB)
+            Call HighlightErrorCell(ws, shuzaiRowNum, COL_KOUTEI_NAME, colorB)
         End If
     End If
-    CheckE09_PurchaseRelated_V4 = result
+    CheckE09_PurchaseRelated_V5 = result
 End Function
 
-Private Function CheckE10_GeibiOutsourcePattern_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String, ByVal partOverallRemarks As String, ByVal partOverallProcessInfo As String) As String
+Private Function CheckE10_GeibiOutsourcePattern_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal materialName As String, ByVal partOverallRemarks As String, ByVal partOverallProcessInfo As String, ByVal colorA As Long, ByVal colorB As Long) As String
     Dim result As String: result = ""
     Dim proc As Object, isGeibiZairyoYaki As Boolean, isGeibiArakako As Boolean
     Dim hasLaterProcess As Boolean, hasHeatTreatmentForGeibiArakako As Boolean
     Dim geibiGaichuRowNum As Long: geibiGaichuRowNum = 0
     isGeibiZairyoYaki = False: isGeibiArakako = False: hasLaterProcess = False: hasHeatTreatmentForGeibiArakako = False
-    
-    Dim searchPatternText As String
-    searchPatternText = UCase(NormalizeTextForSearchHelper(partOverallRemarks & " " & partOverallProcessInfo))
-
+    Dim searchPatternText As String: searchPatternText = UCase(NormalizeTextForSearchHelper(partOverallRemarks & " " & partOverallProcessInfo))
     If InStr(searchPatternText, "材料~焼きまで") > 0 Or InStr(searchPatternText, "材料～焼きまで") > 0 Then isGeibiZairyoYaki = True
     If InStr(searchPatternText, "荒加工のみ") > 0 Then isGeibiArakako = True
-    
     Dim foundGeibiGaichu As Boolean: foundGeibiGaichu = False
     For Each proc In processes
         If UCase(proc("GYOUSHA")) = "ｹﾞｲﾋﾞ鋼業" And proc("KOUTEI") = "外注" Then
@@ -490,22 +473,17 @@ Private Function CheckE10_GeibiOutsourcePattern_V4(ByVal ws As Worksheet, ByVal 
             Exit For
         End If
     Next
-
-    If Not foundGeibiGaichu And (isGeibiZairyoYaki Or isGeibiArakako) Then Exit Function ' ゲイビ外注そのものがない場合は以降のチェック不要
-
+    If Not foundGeibiGaichu And (isGeibiZairyoYaki Or isGeibiArakako) Then Exit Function
     For Each proc In processes
         If proc("KOUTEI") = "平面研削 NC" Or proc("KOUTEI") = "ワイヤ放電加工" Or _
-           proc("KOUTEI") = "調整P" Or proc("KOUTEI") = "調整（P）" Then
-            hasLaterProcess = True
-        End If
+           proc("KOUTEI") = "調整P" Or proc("KOUTEI") = "調整（P）" Then hasLaterProcess = True
         If proc("KOUTEI") = "熱処理" Then hasHeatTreatmentForGeibiArakako = True
     Next
-
     If isGeibiZairyoYaki And Not hasLaterProcess Then
         result = result & "A"
-        Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL)
-        Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL)
-        If geibiGaichuRowNum > 0 Then Call HighlightErrorCell(ws, geibiGaichuRowNum, COL_KOUTEI_NAME)
+        Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL, colorA)
+        Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL, colorA)
+        If geibiGaichuRowNum > 0 Then Call HighlightErrorCell(ws, geibiGaichuRowNum, COL_KOUTEI_NAME, colorA)
     End If
     If isGeibiArakako Then
         Dim isHeatTreatmentRequired As Boolean
@@ -515,184 +493,152 @@ Private Function CheckE10_GeibiOutsourcePattern_V4(ByVal ws As Worksheet, ByVal 
         End Select
         If isHeatTreatmentRequired And Not hasHeatTreatmentForGeibiArakako Then
             result = result & "B"
-            Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL)
-            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL)
-            Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL)
-            If geibiGaichuRowNum > 0 Then Call HighlightErrorCell(ws, geibiGaichuRowNum, COL_KOUTEI_NAME)
+            Call HighlightErrorCell(ws, partActualStartRow, COL_MATERIAL, colorB)
+            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL, colorB)
+            Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL, colorB)
+            If geibiGaichuRowNum > 0 Then Call HighlightErrorCell(ws, geibiGaichuRowNum, COL_KOUTEI_NAME, colorB)
         End If
     End If
-    CheckE10_GeibiOutsourcePattern_V4 = result
+    CheckE10_GeibiOutsourcePattern_V5 = result
 End Function
 
-Private Function CheckE11_MCProcessRemarksMismatch_V4(ByVal ws As Worksheet, ByVal processes As Collection) As Boolean
-    CheckE11_MCProcessRemarksMismatch_V4 = False
-    Dim i As Long
-    Dim currentMCBlock As Collection
+Private Function CheckE11_MCProcessRemarksMismatch_V5(ByVal ws As Worksheet, ByVal processes As Collection, ByVal highlightColor As Long) As Boolean
+    CheckE11_MCProcessRemarksMismatch_V5 = False
+    Dim i As Long, currentMCBlock As Collection, proc As Object, prevMCKoutei As String
     Set currentMCBlock = New Collection
-    Dim proc As Object, prevMCKoutei As String
     prevMCKoutei = ""
-
     For i = 1 To processes.Count
         Set proc = processes(i)
         Dim currentKoutei As String: currentKoutei = proc("KOUTEI")
-        
         If currentKoutei Like "M/C*" Then
-            If prevMCKoutei = "" Or currentKoutei = prevMCKoutei Then
-                currentMCBlock.Add proc
-            Else 
+            If prevMCKoutei = "" Or currentKoutei = prevMCKoutei Then currentMCBlock.Add proc
+            Else
                 If currentMCBlock.Count > 1 Then
-                    If Not ValidateMCBlockRemarksHelper_V4(ws, currentMCBlock) Then CheckE11_MCProcessRemarksMismatch_V4 = True: Exit Function
+                    If Not ValidateMCBlockRemarksHelper_V5(ws, currentMCBlock, highlightColor) Then CheckE11_MCProcessRemarksMismatch_V5 = True: Exit Function
                 End If
-                Set currentMCBlock = New Collection
-                currentMCBlock.Add proc
+                Set currentMCBlock = New Collection: currentMCBlock.Add proc
             End If
             prevMCKoutei = currentKoutei
-        Else 
+        Else
             If currentMCBlock.Count > 1 Then
-                If Not ValidateMCBlockRemarksHelper_V4(ws, currentMCBlock) Then CheckE11_MCProcessRemarksMismatch_V4 = True: Exit Function
+                If Not ValidateMCBlockRemarksHelper_V5(ws, currentMCBlock, highlightColor) Then CheckE11_MCProcessRemarksMismatch_V5 = True: Exit Function
             End If
-            Set currentMCBlock = New Collection
-            prevMCKoutei = ""
+            Set currentMCBlock = New Collection: prevMCKoutei = ""
         End If
     Next
     If currentMCBlock.Count > 1 Then
-        If Not ValidateMCBlockRemarksHelper_V4(ws, currentMCBlock) Then CheckE11_MCProcessRemarksMismatch_V4 = True
+        If Not ValidateMCBlockRemarksHelper_V5(ws, currentMCBlock, highlightColor) Then CheckE11_MCProcessRemarksMismatch_V5 = True
     End If
 End Function
 
-Private Function ValidateMCBlockRemarksHelper_V4(ByVal ws As Worksheet, ByVal mcBlock As Collection) As Boolean ' ★修正: ws を引数に追加
-    ValidateMCBlockRemarksHelper_V4 = True
+Private Function ValidateMCBlockRemarksHelper_V5(ByVal ws As Worksheet, ByVal mcBlock As Collection, ByVal highlightColor As Long) As Boolean
+    ValidateMCBlockRemarksHelper_V5 = True
     Dim expectedTotal As Long: expectedTotal = mcBlock.Count
-    Dim i As Long
-    Dim proc As Object, procRowNum As Long
+    Dim i As Long, proc As Object, procRowNum As Long
     For i = 1 To mcBlock.Count
-        Set proc = mcBlock(i)
-        procRowNum = proc("ROW_NUM")
+        Set proc = mcBlock(i): procRowNum = proc("ROW_NUM")
         Dim bikou As String: bikou = proc("BIKOU")
         Dim expectedRemark As String: expectedRemark = i & "/" & expectedTotal
         If InStr(bikou, expectedRemark) = 0 Then
             If bikou = "" And expectedTotal > 1 Then
-                ValidateMCBlockRemarksHelper_V4 = False
-                Call HighlightErrorCell(ws, procRowNum, COL_PROCESS_REMARKS)
+                ValidateMCBlockRemarksHelper_V5 = False
+                Call HighlightErrorCell(ws, procRowNum, COL_PROCESS_REMARKS, highlightColor)
                 Exit Function
             ElseIf bikou <> "" Then
-                ValidateMCBlockRemarksHelper_V4 = False
-                Call HighlightErrorCell(ws, procRowNum, COL_PROCESS_REMARKS)
+                ValidateMCBlockRemarksHelper_V5 = False
+                Call HighlightErrorCell(ws, procRowNum, COL_PROCESS_REMARKS, highlightColor)
                 Exit Function
             End If
         End If
     Next
 End Function
 
-Private Function CheckE12_SGProcessCountMismatch_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallRemarks As String) As Boolean
-    CheckE12_SGProcessCountMismatch_V4 = False
+Private Function CheckE12_SGProcessCountMismatch_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallRemarks As String, ByVal highlightColor As Long) As Boolean
+    CheckE12_SGProcessCountMismatch_V5 = False
     Dim sgCount As Long: sgCount = 0
     Dim isFamilyKako As Boolean: isFamilyKako = False
-    Dim proc As Object
-    Dim firstSgRowNum As Long: firstSgRowNum = 0 ' ★修正: 最初のSG工程行を記録
-
+    Dim proc As Object, firstSgRowNum As Long: firstSgRowNum = 0
     If InStr(UCase(NormalizeTextForSearchHelper(partOverallRemarks)), "材変レイアウト") > 0 Or _
-       InStr(UCase(NormalizeTextForSearchHelper(partOverallRemarks)), "ファミリー加工") > 0 Then
-        isFamilyKako = True
-    End If
-    
+       InStr(UCase(NormalizeTextForSearchHelper(partOverallRemarks)), "ファミリー加工") > 0 Then isFamilyKako = True
     For Each proc In processes
         If proc("KOUTEI") = "平面研削 NC" Then
             sgCount = sgCount + 1
-            If firstSgRowNum = 0 Then firstSgRowNum = proc("ROW_NUM") ' ★修正
+            If firstSgRowNum = 0 Then firstSgRowNum = proc("ROW_NUM")
         End If
-        If proc("KOUTEI") = "ファミリー加工" Then isFamilyKako = True 
+        If proc("KOUTEI") = "ファミリー加工" Then isFamilyKako = True
     Next
-
     If isFamilyKako Then
         If sgCount > 0 And sgCount <> 2 Then
-            CheckE12_SGProcessCountMismatch_V4 = True
-            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL)
-            If firstSgRowNum > 0 Then Call HighlightErrorCell(ws, firstSgRowNum, COL_KOUTEI_NAME) ' 代表して最初のSG工程
+            CheckE12_SGProcessCountMismatch_V5 = True
+            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL, highlightColor)
+            If firstSgRowNum > 0 Then Call HighlightErrorCell(ws, firstSgRowNum, COL_KOUTEI_NAME, highlightColor)
         End If
     Else
         If sgCount > 6 Then
-            CheckE12_SGProcessCountMismatch_V4 = True
-            If firstSgRowNum > 0 Then Call HighlightErrorCell(ws, firstSgRowNum, COL_KOUTEI_NAME) ' 代表して最初のSG工程
+            CheckE12_SGProcessCountMismatch_V5 = True
+            If firstSgRowNum > 0 Then Call HighlightErrorCell(ws, firstSgRowNum, COL_KOUTEI_NAME, highlightColor)
         End If
     End If
 End Function
 
-' --- 新規追加のエラーチェック関数群 (V4に更新し、セル強調表示ロジック追加) ---
-Private Function CheckE13_HeatTreatHardnessMismatch_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallProcessInfo As String, ByVal partHardnessInfo As String) As Boolean
-    CheckE13_HeatTreatHardnessMismatch_V4 = False
+Private Function CheckE13_HeatTreatHardnessMismatch_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallProcessInfo As String, ByVal partHardnessInfo As String, ByVal highlightColor As Long) As Boolean
+    CheckE13_HeatTreatHardnessMismatch_V5 = False
     Dim hasHeatTreatmentIndication As Boolean: hasHeatTreatmentIndication = False
-    Dim proc As Object
-    Dim heatTreatIndicationSourceRow As Long: heatTreatIndicationSourceRow = partActualStartRow ' デフォルトは部品開始行(Z列)
-    Dim heatTreatIndicationSourceCol As String: heatTreatIndicationSourceCol = COL_PROCESS_INFO_PART_OVERALL
-
+    Dim proc As Object, heatTreatIndicationSourceRow As Long, heatTreatIndicationSourceCol As String
+    heatTreatIndicationSourceRow = partActualStartRow: heatTreatIndicationSourceCol = COL_PROCESS_INFO_PART_OVERALL
     For Each proc In processes
         If proc("KOUTEI") = "熱処理" Then
             hasHeatTreatmentIndication = True
-            heatTreatIndicationSourceRow = proc("ROW_NUM")
-            heatTreatIndicationSourceCol = COL_KOUTEI_NAME
+            heatTreatIndicationSourceRow = proc("ROW_NUM"): heatTreatIndicationSourceCol = COL_KOUTEI_NAME
             Exit For
         End If
     Next
     If Not hasHeatTreatmentIndication Then
         Dim normalizedZ As String: normalizedZ = UCase(NormalizeTextForSearchHelper(partOverallProcessInfo))
         If InStr(normalizedZ, "焼入") > 0 Or InStr(normalizedZ, "熱処理") > 0 Or InStr(normalizedZ, "調質") > 0 Or _
-           InStr(normalizedZ, "SUB0") > 0 Or InStr(normalizedZ, "サブゼロ") > 0 Or InStr(normalizedZ, "S0") > 0 Then
-            hasHeatTreatmentIndication = True
-            ' heatTreatIndicationSourceRow と Col はデフォルトのまま
-        End If
+           InStr(normalizedZ, "SUB0") > 0 Or InStr(normalizedZ, "サブゼロ") > 0 Or InStr(normalizedZ, "S0") > 0 Then hasHeatTreatmentIndication = True
     End If
-
     Dim isHardnessRecorded As Boolean: isHardnessRecorded = False
     If partHardnessInfo <> "" And Not (partHardnessInfo Like "－*" Or partHardnessInfo Like "*なし*" Or partHardnessInfo Like "*ナシ*") Then
-         Dim tempHardness As String: tempHardness = Replace(partHardnessInfo, " ", "")
-         tempHardness = Replace(tempHardness, "　", "")
-         If IsNumeric(Left(tempHardness,1)) Or UCase(Left(tempHardness,3)) = "HRC" Or UCase(Left(tempHardness,2)) = "HV" Then
-            isHardnessRecorded = True
-         End If
+         Dim tempHardness As String: tempHardness = Replace(Replace(partHardnessInfo, " ", ""), "　", "")
+         If IsNumeric(Left(tempHardness,1)) Or UCase(Left(tempHardness,3)) = "HRC" Or UCase(Left(tempHardness,2)) = "HV" Then isHardnessRecorded = True
     End If
-
     If hasHeatTreatmentIndication And Not isHardnessRecorded Then
-        CheckE13_HeatTreatHardnessMismatch_V4 = True
-        Call HighlightErrorCell(ws, heatTreatIndicationSourceRow, heatTreatIndicationSourceCol)
-        Call HighlightErrorCell(ws, partActualStartRow, COL_HARDNESS) ' AE列
+        CheckE13_HeatTreatHardnessMismatch_V5 = True
+        Call HighlightErrorCell(ws, heatTreatIndicationSourceRow, heatTreatIndicationSourceCol, highlightColor)
+        Call HighlightErrorCell(ws, partActualStartRow, COL_HARDNESS, highlightColor)
     ElseIf Not hasHeatTreatmentIndication And isHardnessRecorded Then
-        CheckE13_HeatTreatHardnessMismatch_V4 = True
-        Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL) ' Z列 (熱処理指示がないことの根拠)
-        Call HighlightErrorCell(ws, partActualStartRow, COL_HARDNESS) ' AE列
+        CheckE13_HeatTreatHardnessMismatch_V5 = True
+        Call HighlightErrorCell(ws, partActualStartRow, COL_PROCESS_INFO_PART_OVERALL, highlightColor)
+        Call HighlightErrorCell(ws, partActualStartRow, COL_HARDNESS, highlightColor)
     End If
 End Function
 
-Private Function CheckE16_ImproperProcessOrder_V4(ByVal ws As Worksheet, ByVal processes As Collection) As Boolean
-    CheckE16_ImproperProcessOrder_V4 = False
-    Dim heatTreatmentRowIndex As Long: heatTreatmentRowIndex = 0 ' Collection内でのインデックス
-    Dim heatTreatmentActualRowNum As Long: heatTreatmentActualRowNum = 0 ' シート上の実際の行番号
-    Dim i As Long
-    Dim proc As Object
-
+Private Function CheckE16_ImproperProcessOrder_V5(ByVal ws As Worksheet, ByVal processes As Collection, ByVal highlightColor As Long) As Boolean
+    CheckE16_ImproperProcessOrder_V5 = False
+    Dim heatTreatmentRowIndex As Long: heatTreatmentRowIndex = 0
+    Dim heatTreatmentActualRowNum As Long: heatTreatmentActualRowNum = 0
+    Dim i As Long, proc As Object
     For i = 1 To processes.Count
         Set proc = processes(i)
         If proc("KOUTEI") = "熱処理" Then
-            heatTreatmentRowIndex = i
-            heatTreatmentActualRowNum = proc("ROW_NUM")
+            heatTreatmentRowIndex = i: heatTreatmentActualRowNum = proc("ROW_NUM")
             Exit For
         End If
     Next
-
     If heatTreatmentRowIndex > 0 And heatTreatmentRowIndex < processes.Count Then
         For i = heatTreatmentRowIndex + 1 To processes.Count
             Set proc = processes(i)
             Dim kouteiNameUpper As String: kouteiNameUpper = UCase(proc("KOUTEI"))
             Dim kouteiBikouUpper As String: kouteiBikouUpper = UCase(proc("BIKOU"))
             Dim currentProcRowNum As Long: currentProcRowNum = proc("ROW_NUM")
-
             If kouteiNameUpper Like "M/C*" Then
                 If InStr(kouteiNameUpper, "荒") > 0 Or InStr(kouteiBikouUpper, "荒") > 0 Or _
                    kouteiNameUpper Like "M/C-1" Or kouteiNameUpper Like "MC-1" Then
-                    CheckE16_ImproperProcessOrder_V4 = True
-                    Call HighlightErrorCell(ws, heatTreatmentActualRowNum, COL_KOUTEI_NAME) ' 熱処理工程
-                    Call HighlightErrorCell(ws, currentProcRowNum, COL_KOUTEI_NAME)        ' 問題のM/C工程
-                    If InStr(kouteiBikouUpper, "荒") > 0 Then Call HighlightErrorCell(ws, currentProcRowNum, COL_PROCESS_REMARKS)
+                    CheckE16_ImproperProcessOrder_V5 = True
+                    Call HighlightErrorCell(ws, heatTreatmentActualRowNum, COL_KOUTEI_NAME, highlightColor)
+                    Call HighlightErrorCell(ws, currentProcRowNum, COL_KOUTEI_NAME, highlightColor)
+                    If InStr(kouteiBikouUpper, "荒") > 0 Then Call HighlightErrorCell(ws, currentProcRowNum, COL_PROCESS_REMARKS, highlightColor)
                     Exit Function
                 End If
             End If
@@ -700,66 +646,52 @@ Private Function CheckE16_ImproperProcessOrder_V4(ByVal ws As Worksheet, ByVal p
     End If
 End Function
 
-Private Function CheckE17_FamilyProcessMismatch_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallRemarks As String) As Boolean
-    CheckE17_FamilyProcessMismatch_V4 = False
+Private Function CheckE17_FamilyProcessMismatch_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallRemarks As String, ByVal highlightColor As Long) As Boolean
+    CheckE17_FamilyProcessMismatch_V5 = False
     Dim hasFamilyIndicationInRemarks As Boolean: hasFamilyIndicationInRemarks = False
     Dim hasFamilyRelatedProcess As Boolean: hasFamilyRelatedProcess = False
-    Dim proc As Object
-
-    Dim normalizedY As String: normalizedY = UCase(NormalizeTextForSearchHelper(partOverallRemarks))
-    If InStr(normalizedY, "材変レイアウト") > 0 Or InStr(normalizedY, "ファミリー加工") > 0 Then
-        hasFamilyIndicationInRemarks = True
-    End If
-
+    Dim proc As Object, normalizedY As String
+    normalizedY = UCase(NormalizeTextForSearchHelper(partOverallRemarks))
+    If InStr(normalizedY, "材変レイアウト") > 0 Or InStr(normalizedY, "ファミリー加工") > 0 Then hasFamilyIndicationInRemarks = True
     If hasFamilyIndicationInRemarks Then
         For Each proc In processes
             Dim kouteiNameUpper As String: kouteiNameUpper = UCase(proc("KOUTEI"))
             If kouteiNameUpper = "ワイヤ放電加工" Or kouteiNameUpper = "ワイヤーカット" Or kouteiNameUpper = "ファミリー加工" Then
-                hasFamilyRelatedProcess = True
-                Exit For
+                hasFamilyRelatedProcess = True: Exit For
             End If
         Next
         If Not hasFamilyRelatedProcess Then
-            CheckE17_FamilyProcessMismatch_V4 = True
-            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL) ' Y列
+            CheckE17_FamilyProcessMismatch_V5 = True
+            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL, highlightColor)
         End If
     End If
 End Function
 
-Private Function CheckE18_PostFamilyCutProcessMismatch_V4(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallRemarks As String) As Boolean
-    CheckE18_PostFamilyCutProcessMismatch_V4 = False
+Private Function CheckE18_PostFamilyCutProcessMismatch_V5(ByVal ws As Worksheet, ByVal partActualStartRow As Long, ByVal processes As Collection, ByVal partOverallRemarks As String, ByVal highlightColor As Long) As Boolean
+    CheckE18_PostFamilyCutProcessMismatch_V5 = False
     Dim hasPostCutIndicationInRemarks As Boolean: hasPostCutIndicationInRemarks = False
     Dim hasInitialGrinding As Boolean: hasInitialGrinding = False
-    Dim proc As Object
-    Dim i As Long
-    Dim initialGrindingRowNum As Long: initialGrindingRowNum = 0
-
-    Dim normalizedY As String: normalizedY = UCase(NormalizeTextForSearchHelper(partOverallRemarks))
-    If InStr(normalizedY, "同時") > 0 And (InStr(normalizedY, "切り離し") > 0 Or InStr(normalizedY, "カット後") > 0 Or InStr(normalizedY, "カットゴ") > 0) Then
-        hasPostCutIndicationInRemarks = True
-    End If
-
+    Dim proc As Object, i As Long, normalizedY As String
+    normalizedY = UCase(NormalizeTextForSearchHelper(partOverallRemarks))
+    If InStr(normalizedY, "同時") > 0 And (InStr(normalizedY, "切り離し") > 0 Or InStr(normalizedY, "カット後") > 0 Or InStr(normalizedY, "カットゴ") > 0) Then hasPostCutIndicationInRemarks = True
     If hasPostCutIndicationInRemarks And processes.Count > 0 Then
-        For i = 1 To Application.WorksheetFunction.Min(3, processes.Count) ' 最初の数工程をチェック
+        For i = 1 To Application.WorksheetFunction.Min(3, processes.Count)
             Set proc = processes(i)
             If UCase(proc("KOUTEI")) = "平面研削 汎用" Then
                 Dim bikouOrAS As String: bikouOrAS = UCase(NormalizeTextForSearchHelper(proc("BIKOU")))
                 If InStr(bikouOrAS, "ヘソトリ") > 0 Or InStr(bikouOrAS, "上面") > 0 Or InStr(bikouOrAS, "ヘソ取り") > 0 Then
-                    hasInitialGrinding = True
-                    initialGrindingRowNum = proc("ROW_NUM")
-                    Exit For
+                    hasInitialGrinding = True: Exit For
                 End If
             End If
         Next i
         If Not hasInitialGrinding Then
-            CheckE18_PostFamilyCutProcessMismatch_V4 = True
-            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL) ' Y列
+            CheckE18_PostFamilyCutProcessMismatch_V5 = True
+            Call HighlightErrorCell(ws, partActualStartRow, COL_REMARKS_PART_OVERALL, highlightColor)
         End If
     End If
 End Function
 
-
-' --- 共通ヘルパー関数 (前回と同様) ---
+' --- 共通ヘルパー関数 (変更なし) ---
 Private Function GetMaterialNameFromCodeHelper(ByVal materialCode As String) As String
     Select Case UCase(Trim(materialCode))
         Case "SKH51", "DC53", "SLD-MAGIC", "S20C", "S45C", "S50C", "S50C相当", "SS400", "SS41", "SK3", "SK4", "SK4相当", "SKD11", "SKD11相当", "SKD51", "SKD61", "SKD-MAGIC", "SKD相当", "SKH51相当", "SKH52", "SKS3", "SKS3相当", "HAP10", "HAP40", "HAP40相当", "FDAC", "DEX40", "DH2F相当", "ASP23", "粉末ハイス", "粉末ハイス鋼", "粉末ハイス相当", "遊休材DC53", "SUS", "SUS304", "SUS304相当", "ステンシム", "ステンシム（SUS304）", "ステンシムSUS304", "A7075P", "BC6", "QCM8", "GTI20", "V30", "VC-50", "VM-30（超硬）", "VM40", "VM-40", "VM50", "VM-50", "VW-50", "YXR3", "YXR33", "YXR 7", "超硬", "超硬VM40", "HPM38", "NAK80"
@@ -778,3 +710,4 @@ Private Function NormalizeTextForSearchHelper(ByVal inputText As String) As Stri
     temp = Replace(temp, "　", "")  
     NormalizeTextForSearchHelper = temp
 End Function
+
