@@ -2,11 +2,11 @@ Option Explicit
 
 ' === モジュールレベル定数 ===
 Private Const SHEET_KOUTEIHYO As String = "工程表"
-Private Const SHEET_KOUTEI_TIMES As String = "シート2" ' ★工数管理シート名
+Private Const SHEET_KOUTEI_TIMES As String = "シート2" ' ★工数・材質情報管理シート名
 
 ' 入力列 (工程表シート)
 Private Const COL_Z_INPUT As Long = 26      ' Z列：コーティング or サブゼロ
-Private Const COL_AC_INPUT As Long = 29     ' AC列：材質
+Private Const COL_AC_INPUT As Long = 29     ' AC列：材質コード
 Private Const COL_AD_SIZE_INPUT As Long = 30  ' AD列：サイズ (例: 10*20*30)
 Private Const COL_AH_ITEMNAME_INPUT As Long = 34 ' AH列：品名
 Private Const COL_Y_REMARKS_INPUT As Long = 25    ' Y列：備考
@@ -20,7 +20,7 @@ Private Const COL_JINKAN_MACHINE As Long = 41       ' AO列: 工数: 機械
 Private Const COL_JINKAN_SETUP As Long = 42         ' AP列: 工数: 段取 (後段取)
 Private Const COL_BIKOU As Long = 45                ' AS列: 備考
 
-' 工数シート列定義 (シート2)
+' 工数シート列定義 (シート2) - A列からG列
 Private Const COL_TIME_KEY As Long = 1              ' A列: 工程キー
 Private Const COL_TIME_MAE_DANDORI As Long = 2      ' ★B列: 前段取時間
 Private Const COL_TIME_YUJIN As Long = 3            ' ★C列: 有人時間
@@ -29,9 +29,16 @@ Private Const COL_TIME_SETUP As Long = 5            ' ★E列: 段取時間 (後
 Private Const COL_TIME_REMARKS As Long = 6          ' ★F列: 備考 (シート2の一般的な備考、これが工程表AS列へ)
 Private Const COL_TIME_REMARKS_DETAIL As Long = 7   ' ★G列: 詳細備考 (ユーザー確認用、工程表へは出力しない)
 
+' ★材質情報シート列定義 (シート2) - J列からM列
+Private Const COL_MATERIAL_CODE As Long = 10        ' J列: 材質コード (キー)
+Private Const COL_MATERIAL_SUPPLIER As Long = 11    ' K列: 主材購入先
+Private Const COL_MATERIAL_HEAT_NORMAL As Long = 12 ' L列: 熱処理先 (サブゼロなし)
+Private Const COL_MATERIAL_HEAT_SUBZERO As Long = 13 ' M列: 熱処理先 (サブゼロあり)
+
 
 ' === モジュールレベル変数 ===
-Private processTimesDict As Object ' ★工程別工数・備考格納用Dictionary
+Private processTimesDict As Object ' 工程別工数・備考格納用Dictionary
+Private materialInfoDict As Object ' ★材質情報格納用Dictionary
 
 ' === サイズ文字列に基づいて部品を分類する関数 ===
 Private Function ClassifyPartBasedOnSizeString(ByVal sizeString As String) As String
@@ -138,6 +145,49 @@ Private Sub LoadProcessTimes()
     Debug.Print "LoadProcessTimes: Dictionary loaded. Item count: " & processTimesDict.Count
 End Sub
 
+' === ★材質情報をシート2から読み込むサブルーチン (新規追加) ===
+Private Sub LoadMaterialInfo()
+    Dim wsMaterial As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim materialCodeKey As String ' Dictionaryのキー用に変更
+    Dim supplier As String, heatNormal As String, heatSubzero As String
+
+    Set materialInfoDict = CreateObject("Scripting.Dictionary")
+    materialInfoDict.CompareMode = vbTextCompare ' 材質コード検索時に大文字・小文字を区別しない
+
+    On Error Resume Next
+    Set wsMaterial = ThisWorkbook.Sheets(SHEET_KOUTEI_TIMES) ' 工数と同じシートを使用
+    On Error GoTo 0
+
+    If wsMaterial Is Nothing Then
+        MsgBox "材質情報管理用のシート「" & SHEET_KOUTEI_TIMES & "」が見つかりません。", vbCritical
+        Set materialInfoDict = Nothing
+        Exit Sub
+    End If
+
+    ' J列の最終行を取得して材質情報を読み込む
+    lastRow = wsMaterial.Cells(wsMaterial.Rows.Count, COL_MATERIAL_CODE).End(xlUp).Row
+    Debug.Print "LoadMaterialInfo: Loading data from '" & SHEET_KOUTEI_TIMES & "'. Last material row: " & lastRow
+
+    For i = 2 To lastRow ' 1行目はヘッダーと想定
+        materialCodeKey = UCase(Trim(CStr(wsMaterial.Cells(i, COL_MATERIAL_CODE).Value))) ' キーは比較のため大文字化
+        supplier = Trim(CStr(wsMaterial.Cells(i, COL_MATERIAL_SUPPLIER).Value))
+        heatNormal = Trim(CStr(wsMaterial.Cells(i, COL_MATERIAL_HEAT_NORMAL).Value))
+        heatSubzero = Trim(CStr(wsMaterial.Cells(i, COL_MATERIAL_HEAT_SUBZERO).Value))
+
+        If materialCodeKey <> "" Then
+            If Not materialInfoDict.Exists(materialCodeKey) Then
+                materialInfoDict.Add materialCodeKey, Array(supplier, heatNormal, heatSubzero)
+            Else
+                Debug.Print "LoadMaterialInfo Warning: Duplicate material code found and skipped: '" & materialCodeKey & "'"
+            End If
+        End If
+    Next i
+    Debug.Print "LoadMaterialInfo: Dictionary loaded. Item count: " & materialInfoDict.Count
+End Sub
+
+
 ' === ★工程キーに対応する工数とデフォルト備考を取得する関数 ===
 ' 戻り値:
 '   成功時: Array(前段取, 有人, 機械, 後段取, 備考(F列), 詳細備考(G列)) の Variant配列
@@ -170,14 +220,20 @@ End Function
 
 ' === ユーザーフォーム初期化 ===
 Private Sub UserForm_Initialize()
-    Dim i As Integer ' ★ ComboBoxSgCount用ループ変数
+    Dim i As Integer
     Call LoadProcessTimes
-    If processTimesDict Is Nothing Then
-        MsgBox "工数データの読み込みに失敗しました。処理を中断します。", vbCritical
+    Call LoadMaterialInfo ' ★材質情報を読み込む
+    
+    If processTimesDict Is Nothing Or materialInfoDict Is Nothing Then
+        MsgBox "データ読み込みに失敗しました。処理を中断します。", vbCritical
         Unload Me
         Exit Sub
+    ElseIf processTimesDict.Count = 0 And materialInfoDict.Count = 0 Then
+         MsgBox "工数データおよび材質データがシート「" & SHEET_KOUTEI_TIMES & "」に登録されていません。", vbExclamation
     ElseIf processTimesDict.Count = 0 Then
-         MsgBox "工数データがシート「" & SHEET_KOUTEI_TIMES & "」に登録されていません。", vbExclamation
+         MsgBox "工数データがシート「" & SHEET_KOUTEI_TIMES & "」のA-G列に登録されていません。", vbExclamation
+    ElseIf materialInfoDict.Count = 0 Then
+         MsgBox "材質データがシート「" & SHEET_KOUTEI_TIMES & "」のJ-M列に登録されていません。", vbExclamation
     End If
 
     With Me.ComboBox工程選択
@@ -287,7 +343,9 @@ End Sub
 ' === メイン処理: 工程作成ボタンクリック ===
 Private Sub CommandButton1_Click()
     Dim ws As Worksheet, targetRow As Long, currentRow As Long
-    Dim materialCode As String, zValue As String, materialName As String, coatingType As String
+    Dim materialCodeInput As String ' ★入力された材質コード
+    Dim materialCode As String      ' ★正規化された材質コード (シート2のキーと照合する用)
+    Dim zValue As String, coatingType As String
     Dim hasSubZero As Boolean, needsOutsourcingForCoating As Boolean, needsPolishing As Boolean
     Dim shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean
     Dim hasCuttingEdge As Boolean, isOutsourcedProduct As Boolean, isMisumiPurchase As Boolean
@@ -307,9 +365,14 @@ Private Sub CommandButton1_Click()
     currentRow = targetRow
 
     zValue = Trim(CStr(ws.Cells(targetRow, COL_Z_INPUT).Value))
-    materialCode = Trim(CStr(ws.Cells(targetRow, COL_AC_INPUT).Value))
-    materialName = GetMaterialName(materialCode)
-    If materialName = "" Then MsgBox "材質不明", vbExclamation: GoTo Finally
+    materialCodeInput = Trim(CStr(ws.Cells(targetRow, COL_AC_INPUT).Value))
+    
+    materialCode = GetMaterialName(materialCodeInput) '★ GetMaterialName は材質コードの存在確認と正規化された名前を返す
+    If materialCode = "" Then
+        MsgBox "材質コード「" & materialCodeInput & "」がシート「" & SHEET_KOUTEI_TIMES & "」のJ列に見つかりません。", vbExclamation
+        GoTo Finally
+    End If
+    
     Call ParseZColumnInfo(zValue, coatingType, hasSubZero, needsOutsourcingForCoating, needsPolishing)
     isGeibiOutsource = Me.CheckBoxGeibi.Value: If isGeibiOutsource Then geibiPattern = Me.ComboBoxGeibiType.Value
     shape = GetShapeFromOptionButtons(): useWireEDM = Me.CheckBox1.Value: If shape = "ファミリー加工" Then useWireEDM = True
@@ -350,10 +413,10 @@ Private Sub CommandButton1_Click()
         Call ProcessLayoutAfterCut(ws, currentRow, targetRow, needsPolishing, hasCuttingEdge, needsOutsourcingForCoating, coatingType, needsAdjustP, _
                                    hasTsubaProcessing, tsubaCount, tsubaRoughMethod, kataboriChoosenByUser, naraiKensakuChoosenByUser, useAfterMC, shape)
     ElseIf isGeibiOutsource Then
-        Call ProcessGeibiOutsource(ws, currentRow, targetRow, materialName, geibiPattern, hasSubZero, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, _
+        Call ProcessGeibiOutsource(ws, currentRow, targetRow, materialCode, geibiPattern, hasSubZero, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, _
                                    hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, noChamfer, hasLiftingScrew, kataboriChoosenByUser, naraiKensakuChoosenByUser, isSingleMCPreHeat, isTripleMCPreHeat, autoSgCount, userSgCount)
     Else
-        Call ProcessNormalRoute(ws, currentRow, targetRow, materialName, hasSubZero, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, _
+        Call ProcessNormalRoute(ws, currentRow, targetRow, materialCode, hasSubZero, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, _
                                 hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, noChamfer, hasLiftingScrew, kataboriChoosenByUser, naraiKensakuChoosenByUser, isSingleMCPreHeat, isTripleMCPreHeat, autoSgCount, userSgCount)
     End If
 
@@ -387,13 +450,24 @@ Private Function ValidateActiveCell(ByVal targetSheet As Worksheet, ByRef outTar
     ValidateActiveCell = True
 End Function
 
-' --- 材質名取得 ---
-Private Function GetMaterialName(ByVal materialCode As String) As String
-    Select Case UCase(Trim(materialCode))
-        Case "SKH51", "DC53", "SLD-MAGIC", "S20C", "S45C", "S50C", "S50C相当", "SS400", "SS41", "SK3", "SK4", "SK4相当", "SKD11", "SKD11相当", "SKD51", "SKD61", "SKD-MAGIC", "SKD相当", "SKH51相当", "SKH52", "SKS3", "SKS3相当", "HAP10", "HAP40", "HAP40相当", "FDAC", "DEX40", "DH2F相当", "ASP23", "粉末ハイス", "粉末ハイス鋼", "粉末ハイス相当", "遊休材DC53", "SUS", "SUS304", "SUS304相当", "ステンシム", "ステンシム（SUS304）", "ステンシムSUS304", "A7075P", "BC6", "QCM8", "GTI20", "V30", "VC-50", "VM-30（超硬）", "VM40", "VM-40", "VM50", "VM-50", "VW-50", "YXR3", "YXR33", "YXR 7", "超硬", "超硬VM40", "HPM38", "NAK80"
-            GetMaterialName = Trim(materialCode)
-        Case Else: GetMaterialName = ""
-    End Select
+' --- ★材質コードの存在確認と正規化された名前を返す関数 (修正) ---
+Private Function GetMaterialName(ByVal materialCodeInput As String) As String
+    Dim normalizedCode As String
+    normalizedCode = UCase(Trim(materialCodeInput)) ' 大文字に統一して検索
+
+    If materialInfoDict Is Nothing Then
+        Debug.Print "GetMaterialName Error: materialInfoDict is not initialized."
+        GetMaterialName = "" ' Dictionaryが未初期化なら空文字
+        Exit Function
+    End If
+
+    If materialInfoDict.Exists(normalizedCode) Then
+        GetMaterialName = normalizedCode ' Dictionaryに存在すれば正規化されたコードを返す
+    Else
+        ' Dictionaryにない場合は空文字を返し、呼び出し元でエラー処理
+        GetMaterialName = ""
+        Debug.Print "GetMaterialName Warning: Material code '" & materialCodeInput & "' (Normalized: '" & normalizedCode & "') not found in materialInfoDict."
+    End If
 End Function
 
 ' --- Z列情報解析 ---
@@ -421,7 +495,7 @@ End Function
 Private Sub AddProcessToSheet(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
                               processName As String, Optional supplier As String = "", _
                               Optional maeDandoriTime As Variant = "", Optional yujinTime As Variant = "", Optional machineTime As Variant = "", Optional goDandoriTime As Variant = "", _
-                              Optional memo As String = "") ' memo は AS列(詳細備考)用
+                              Optional memo As String = "")
     If currentRow > initialTargetRow Then
         ws.Rows(currentRow).Insert Shift:=xlDown
     ElseIf ws.Cells(currentRow, COL_KOUTEI).Value <> "" Or ws.Cells(currentRow, COL_JINKAN_YUJIN).Value <> "" Then
@@ -443,10 +517,10 @@ End Sub
 Private Sub AddAdjustPProcess(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, needsAdjustP As Boolean)
     If needsAdjustP Then
         Dim times As Variant
-        Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+        Dim remarksFromSheetF As String
         times = GetProcessTimes("調整（P）")
         If IsArray(times) Then
-            remarksFromSheetF = CStr(times(4)) ' ★備考(F列の内容)を取得
+            remarksFromSheetF = CStr(times(4))
             Call AddProcessToSheet(ws, currentRow, initialTargetRow, "調整（P）", , times(0), times(1), times(2), times(3), remarksFromSheetF)
         Else
             Call AddProcessToSheet(ws, currentRow, initialTargetRow, "調整（P）", , "", "", "", "", "※工数/備考未設定")
@@ -475,13 +549,13 @@ Private Sub ProcessMisumiPurchase(ws As Worksheet, ByRef currentRow As Long, ini
     Call AddProcessToSheet(ws, currentRow, initialTargetRow, "副材(購入品)", "ﾐｽﾐ")
     If hasAdditionalProcessing Then
         Dim times As Variant
-        Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+        Dim remarksFromSheetF As String
         
         Debug.Print "ProcessMisumiPurchase: additionalProcessName (ComboBox3.Value) = '" & additionalProcessName & "'"
         times = GetProcessTimes(additionalProcessName)
 
         If IsArray(times) Then
-            remarksFromSheetF = CStr(times(4)) ' ★備考(F列の内容)を取得
+            remarksFromSheetF = CStr(times(4))
             Call AddProcessToSheet(ws, currentRow, initialTargetRow, additionalProcessName, , times(0), times(1), times(2), times(3), remarksFromSheetF)
             Debug.Print "ProcessMisumiPurchase: Data applied for '" & additionalProcessName & "'"
         Else
@@ -502,7 +576,7 @@ Private Sub ProcessLayoutAfterCut(ws As Worksheet, ByRef currentRow As Long, ini
     Dim specificMemo As String
     Dim times As Variant
     Dim processKeyDetail As String
-    Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+    Dim remarksFromSheetF As String
 
     If hasCuttingEdge Then
         If hasTsubaProcessing Or kataboriChoosenByUserAsLayout Or needsPolishing Then specificMemo = "ﾍｿ取り" Else specificMemo = "ﾍｿ取り・上面"
@@ -564,20 +638,26 @@ Private Sub ProcessLayoutAfterCut(ws As Worksheet, ByRef currentRow As Long, ini
 End Sub
 
 
-' --- 材料購入処理 ---
+' --- 材料購入処理 (修正) ---
 Private Sub AddMaterialPurchase(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
-                                materialName As String, noChamfer As Boolean, hasLiftingScrew As Boolean)
+                                materialCode As String, noChamfer As Boolean, hasLiftingScrew As Boolean)
     Dim supplier As String
-    Select Case materialName
-        Case "SKH51", "HAP40", "SKD51": supplier = "ﾒﾀﾙﾜﾝ"
-        Case "DC53", "SKD11", "SKS3", "SS400": supplier = "深江特殊鋼"
-        Case "SLD-MAGIC": supplier = "ﾒﾀﾙﾃｯｸ"
-        Case "FDAC", "S50C", "S50C相当", "HPM38", "NAK80": supplier = "小山鋼材"
-        Case Else: supplier = ""
-    End Select
+    Dim materialData As Variant
+    Dim normalizedMaterialCode As String
+    normalizedMaterialCode = UCase(Trim(materialCode))
+
+    If materialInfoDict Is Nothing Or Not materialInfoDict.Exists(normalizedMaterialCode) Then
+        supplier = ""
+        Debug.Print "AddMaterialPurchase Warning: Material code '" & materialCode & "' not found in materialInfoDict. Supplier will be empty."
+    Else
+        materialData = materialInfoDict(normalizedMaterialCode)
+        supplier = CStr(materialData(0))
+    End If
+
     Dim specificMemo As String
     specificMemo = IIf(noChamfer, "Cなし", "Cあり")
     If hasLiftingScrew Then specificMemo = specificMemo & ",吊り"
+    
     Call AddProcessToSheet(ws, currentRow, initialTargetRow, "主材購入", supplier, , , , , specificMemo)
 End Sub
 
@@ -617,7 +697,7 @@ End Sub
 ' --- 穴あけタップ処理 ---
 Private Sub AddTapHole(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, hasSubZero As Boolean)
     Dim specificMemo As String
-    Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+    Dim remarksFromSheetF As String
     Dim finalMemo As String
     Dim times As Variant
     Dim maeDandoriTime As String
@@ -627,7 +707,7 @@ Private Sub AddTapHole(ws As Worksheet, ByRef currentRow As Long, initialTargetR
     times = GetProcessTimes("穴あけﾀｯﾌﾟ")
     If IsArray(times) Then
         maeDandoriTime = CStr(times(0))
-        remarksFromSheetF = CStr(times(4)) ' ★備考(F列の内容)を取得
+        remarksFromSheetF = CStr(times(4))
         If specificMemo <> "" Then finalMemo = specificMemo Else finalMemo = remarksFromSheetF
         Call AddProcessToSheet(ws, currentRow, initialTargetRow, "穴あけﾀｯﾌﾟ", , maeDandoriTime, times(1), times(2), times(3), finalMemo)
     Else
@@ -636,24 +716,44 @@ Private Sub AddTapHole(ws As Worksheet, ByRef currentRow As Long, initialTargetR
     End If
 End Sub
 
-' --- 熱処理 ---
-Private Sub AddHeatTreatment(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, materialName As String, hasSubZero As Boolean)
+' --- 熱処理 (修正) ---
+Private Sub AddHeatTreatment(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, materialCode As String, hasSubZero As Boolean)
     Dim supplier As String
-    If hasSubZero Then
-        supplier = "ｴｼﾞｿﾝ熱処理"
+    Dim materialData As Variant
+    Dim normalizedMaterialCode As String
+    normalizedMaterialCode = UCase(Trim(materialCode))
+
+    If materialInfoDict Is Nothing Or Not materialInfoDict.Exists(normalizedMaterialCode) Then
+        supplier = ""
+        Debug.Print "AddHeatTreatment Warning: Material code '" & materialCode & "' not found in materialInfoDict. Supplier will be empty."
+        If hasSubZero Then
+            supplier = "ｴｼﾞｿﾝ熱処理"
+        Else
+            Select Case normalizedMaterialCode
+                Case "SKH51", "HAP40", "SKD51": supplier = "ﾘﾋﾄ精光"
+                Case "DC53", "SKD11", "SKS3":   supplier = "光陽産業 高温"
+                Case "HPM38": supplier = "光陽産業"
+                Case "SLD-MAGIC": supplier = "ｴｼﾞｿﾝ熱処理"
+                Case Else: supplier = ""
+            End Select
+        End If
     Else
-        Select Case materialName
-            Case "SKH51", "HAP40", "SKD51": supplier = "ﾘﾋﾄ精光"
-            Case "DC53", "SKD11", "SKS3": supplier = "光陽産業 高温"
-            Case "HPM38": supplier = "光陽産業"
-            Case "SLD-MAGIC": supplier = "ｴｼﾞｿﾝ熱処理"
-            Case Else: supplier = ""
-        End Select
+        materialData = materialInfoDict(normalizedMaterialCode)
+        If hasSubZero Then
+            supplier = CStr(materialData(2))
+            If supplier = "" Then supplier = "ｴｼﾞｿﾝ熱処理"
+        Else
+            supplier = CStr(materialData(1))
+        End If
     End If
-    If supplier <> "" Or hasSubZero Then
+
+    If supplier <> "" Then
         Call AddProcessToSheet(ws, currentRow, initialTargetRow, "熱処理", supplier)
+    ElseIf hasSubZero And supplier = "" Then
+         Call AddProcessToSheet(ws, currentRow, initialTargetRow, "熱処理", "ｴｼﾞｿﾝ熱処理")
     End If
 End Sub
+
 
 ' --- 焼き入れ後SG (平面研削 NC) ---
 Private Sub AddPostHeatTreatmentSG(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
@@ -713,8 +813,8 @@ Private Sub AddAfterMCFinish(ws As Worksheet, ByRef currentRow As Long, initialT
     If IsArray(times) Then
         maeDandori = CStr(times(0))
         yujin = CStr(times(1)): machine = CStr(times(2)): setup = CStr(times(3))
-        finalMemo = CStr(times(4)) ' ★備考(F列)を取得
-        If finalMemo = "" Then finalMemo = "MC仕上げ" ' シートに備考がなければデフォルトテキスト
+        finalMemo = CStr(times(4))
+        If finalMemo = "" Then finalMemo = "MC仕上げ"
     Else
         maeDandori = ""
         If shape = "プレート" Then yujin = "0.4": machine = "0.2": setup = "0.2" Else yujin = "0.25": machine = "0.1": setup = "0.1"
@@ -727,12 +827,12 @@ End Sub
 ' --- スタート穴 (細穴放電) ---
 Private Sub AddSmallStartHole(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long)
     Dim times As Variant
-    Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+    Dim remarksFromSheetF As String
     Dim maeDandoriTime As String
     times = GetProcessTimes("細穴放電加工")
     If IsArray(times) Then
         maeDandoriTime = CStr(times(0))
-        remarksFromSheetF = CStr(times(4)) ' ★備考(F列の内容)を取得
+        remarksFromSheetF = CStr(times(4))
         Call AddProcessToSheet(ws, currentRow, initialTargetRow, "細穴放電加工", , maeDandoriTime, times(1), times(2), times(3), remarksFromSheetF)
     Else
         Call AddProcessToSheet(ws, currentRow, initialTargetRow, "細穴放電加工", , "", "0.8", , "0.1", "※工数/備考未設定")
@@ -743,9 +843,9 @@ End Sub
 Private Sub AddWireEDMProcessing(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
                                  isDia10OrLess As Boolean, hasShapeProcessing As Boolean, isFamilyProcessing As Boolean)
     Dim times As Variant
-    Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+    Dim remarksFromSheetF As String
     Dim maeDandori As String, yTime As String, mTime As String, sTime As String
-    Dim specificMemo As String ' プログラムで生成する備考
+    Dim specificMemo As String
 
     If isFamilyProcessing Then
         times = GetProcessTimes("ﾜｲﾔ放電加工")
@@ -861,7 +961,7 @@ Private Sub AddPolishingAndCoating(ws As Worksheet, ByRef currentRow As Long, in
                                    needsPolishing As Boolean, hasCuttingEdge As Boolean, _
                                    needsOutsourcingForCoating As Boolean, coatingType As String)
     Dim times As Variant
-    Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+    Dim remarksFromSheetF As String
     Dim specificMemo As String
     Dim maeDandori As String, yTime As String, mTime As String, sTime As String
 
@@ -889,17 +989,17 @@ End Sub
 
 ' --- 熱処理後から最終調整までの共通工程群 ---
 Private Sub AddPostHeatTreatmentProcesses(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
-                                        materialName As String, shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean, hasCuttingEdge As Boolean, _
+                                        materialCode As String, shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean, hasCuttingEdge As Boolean, _
                                         useAfterMC As Boolean, useSmallStartHole As Boolean, _
                                         hasTsubaProcessing As Boolean, tsubaCount As Integer, tsubaRoughMethod As String, _
                                         needsPolishing As Boolean, needsOutsourcingForCoating As Boolean, coatingType As String, needsAdjustP As Boolean, _
                                         kataboriChoosenByUser As Boolean, naraiKensakuChoosenByUser As Boolean, _
                                         autoSg As Boolean, userSgNum As Integer)
     Dim skipPostHeatProcesses As Boolean
-    skipPostHeatProcesses = (materialName = "NAK80" Or materialName = "FDAC" Or materialName = "SS400")
+    skipPostHeatProcesses = (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400")
 
     Dim times As Variant
-    Dim remarksFromSheetF As String ' ★シート2のF列から取得する備考
+    Dim remarksFromSheetF As String
     Dim specificMemo As String
     Dim maeDandori As String, yTime As String, mTime As String, sTime As String
 
@@ -936,7 +1036,7 @@ End Sub
 
 ' --- 4-4. ゲイビ外注パターンの場合 ---
 Private Sub ProcessGeibiOutsource(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
-                                 materialName As String, geibiPattern As String, hasSubZero As Boolean, _
+                                 materialCode As String, geibiPattern As String, hasSubZero As Boolean, _
                                  shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean, hasCuttingEdge As Boolean, _
                                  useAfterMC As Boolean, useSmallStartHole As Boolean, _
                                  hasTsubaProcessing As Boolean, tsubaCount As Integer, tsubaRoughMethod As String, _
@@ -948,23 +1048,23 @@ Private Sub ProcessGeibiOutsource(ws As Worksheet, ByRef currentRow As Long, ini
     Select Case geibiPattern
         Case "材料～焼きまで"
             Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", "ｹﾞｲﾋﾞ鋼業", , , , , geibiPattern)
-            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
         Case "荒加工のみ"
-            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialName, noChamfer, hasLiftingScrew)
+            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCode, noChamfer, hasLiftingScrew)
             Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", "ｹﾞｲﾋﾞ鋼業", , , , , geibiPattern)
             Call AddTapHole(ws, currentRow, initialTargetRow, hasSubZero)
-            If Not (materialName = "NAK80" Or materialName = "FDAC" Or materialName = "SS400") Then Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialName, hasSubZero)
-            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
+            If Not (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400") Then Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialCode, hasSubZero)
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
         Case "荒～焼きまで"
-            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialName, noChamfer, hasLiftingScrew)
+            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCode, noChamfer, hasLiftingScrew)
             Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", "ｹﾞｲﾋﾞ鋼業", , , , , geibiPattern)
-            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
     End Select
 End Sub
 
 ' --- 4-5. 通常ルート（主材購入～最後まで）の場合 ---
 Private Sub ProcessNormalRoute(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
-                               materialName As String, hasSubZero As Boolean, _
+                               materialCode As String, hasSubZero As Boolean, _
                                shape As String, useWireEDM As Boolean, isDia10OrLess As Boolean, hasShapeProcessing As Boolean, hasCuttingEdge As Boolean, _
                                useAfterMC As Boolean, useSmallStartHole As Boolean, _
                                hasTsubaProcessing As Boolean, tsubaCount As Integer, tsubaRoughMethod As String, _
@@ -973,11 +1073,11 @@ Private Sub ProcessNormalRoute(ws As Worksheet, ByRef currentRow As Long, initia
                                kataboriChoosenByUser As Boolean, naraiKensakuChoosenByUser As Boolean, _
                                isSingleMCPreHeat As Boolean, isTripleMCPreHeat As Boolean, _
                                autoSg As Boolean, userSgNum As Integer)
-    Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialName, noChamfer, hasLiftingScrew)
+    Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCode, noChamfer, hasLiftingScrew)
     Call AddMCBeforeHeatTreatment(ws, currentRow, initialTargetRow, shape, isSingleMCPreHeat, isTripleMCPreHeat)
     Call AddTapHole(ws, currentRow, initialTargetRow, hasSubZero)
-    If Not (materialName = "NAK80" Or materialName = "FDAC" Or materialName = "SS400") Then Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialName, hasSubZero)
-    Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialName, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
+    If Not (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400") Then Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialCode, hasSubZero)
+    Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingType, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSg, userSgNum)
 End Sub
 
 ' === NormalizeZText 関数 ===
