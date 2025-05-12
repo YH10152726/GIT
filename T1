@@ -3,161 +3,247 @@ Option Explicit
 ' === モジュールレベル定数 (既存のものを参照) ===
 ' Private Const SHEET_KOUTEI_TIMES As String = "シート2"
 ' Private Const COL_TIME_KEY As Long = 1
-' Private Const COL_TIME_MAE_DANDORI As Long = 2 ' ★前段取
+' Private Const COL_TIME_MAE_DANDORI As Long = 2
 ' Private Const COL_TIME_YUJIN As Long = 3
 ' Private Const COL_TIME_MACHINE As Long = 4
-' Private Const COL_TIME_SETUP As Long = 5       ' ★後段取
-' Private Const COL_TIME_REMARKS As Long = 6
-' Private Const COL_TIME_REMARKS_DETAIL As Long = 7
+' Private Const COL_TIME_SETUP As Long = 5
+' Private Const COL_TIME_REMARKS As Long = 6          ' F列: 備考 (工程表AS列へ)
+' Private Const COL_TIME_REMARKS_DETAIL As Long = 7   ' G列: 詳細備考 (ユーザー確認用)
+'
+' Private Const COL_MATERIAL_CODE As Long = 10        ' J列: 材質コード
+' Private Const COL_MATERIAL_SUPPLIER As Long = 11    ' K列: 主材購入先
+' Private Const COL_MATERIAL_HEAT_NORMAL As Long = 12 ' L列: 熱処理先(通常)
+' Private Const COL_MATERIAL_HEAT_SUBZERO As Long = 13' M列: 熱処理先(サブゼロ)
 
 Private Sub CreateSheet2Data()
     Dim ws As Worksheet
     Dim sheetName As String
-    Dim dataArray() As Variant
-    Dim dataPart1 As Variant, dataPart2 As Variant, dataPart3 As Variant
+    Dim processDataArray() As Variant ' 工程データ用 (A-E列)
+    Dim remarksF_Array() As String    ' F列備考データ用
+    Dim remarksG_Array() As String    ' G列備考データ用
+    Dim materialDataArray() As Variant ' 材質データ用 (J-M列)
+    
+    Dim dataPart1_AE As Variant, dataPart2_AE As Variant, dataPart3_AE As Variant
     Dim remarksF_Part1 As Variant, remarksF_Part2 As Variant, remarksF_Part3 As Variant
-    Dim i As Long, r As Long, k As Long, currentRemarkF_Index As Long
-    Dim totalItems As Long
+    Dim remarksG_Part1 As Variant, remarksG_Part2 As Variant, remarksG_Part3 As Variant
+    Dim materialData_PartA As Variant, materialData_PartB As Variant, materialData_PartC As Variant
+    
+    Dim i As Long, r As Long, k As Long
+    Dim currentRemarkF_Index As Long, currentRemarkG_Index As Long
+    Dim totalProcessItems As Long
+    Dim totalMaterialItems As Long
 
     sheetName = "シート2"
 
-    ' --- F列(詳細備考)に出力する備考のリスト ---
-    remarksF_Part1 = Array( _
+    ' --- G列(詳細備考 - ユーザー確認用)に出力する備考のリスト ---
+    remarksG_Part1 = Array( _
         "単品挿入用", "単品挿入用", "単品挿入用, ミスミ追加工用", "焼き後MC仕上げ (プレート)", _
         "レイアウト切り離し後MC (プレート)", "熱処理前MC (プレート)", "単品挿入用, ミスミ追加工用", _
-        "焼き後MC仕上げ (ブロック/他)", "レイアウト切り離し後MC (ブロック/他)", "熱処理前MC (ブロック/他)", _
+        "焼き後MC仕上げ (ブロック/他)", "レイアウト切り離し後MC (ブロック/他)", "熱処理前MC (ブロック/他)" _
+    )
+    remarksG_Part2 = Array( _
         "ツバ荒加工方法", "単品挿入用", "単品挿入用, ミスミ追加工用, ワイヤー(φ10以下or形状無)", _
         "ワイヤー(φ16超かつ形状有) - 1/2", "ワイヤー(φ16超かつ形状有) - 2/2", "ツバ荒加工方法", _
-        "単品挿入用", "単品挿入用, ミスミ追加工用(型彫り放電), ユーザー選択" _
+        "単品挿入用", "単品挿入用, ミスミ追加工用(型彫り放電), ユーザー選択", "レイアウト切り離し後、ユーザー選択", _
+        "熱処理前、ゲイビ外注(荒加工のみ)後" _
     )
-    remarksF_Part2 = Array( _
-        "レイアウト切り離し後、ユーザー選択", "熱処理前、ゲイビ外注(荒加工のみ)後", "単品挿入用, スタート穴用", _
-        "単品挿入用, ミスミ追加工用", "焼き入れ後SG", "ツバ仕上げ加工", _
+    remarksG_Part3 = Array( _
+        "単品挿入用, スタート穴用", "単品挿入用, ミスミ追加工用", "焼き入れ後SG", "ツバ仕上げ加工", _
         "ワイヤー後研削 (ファミリー, 磨き無, 刃物有, etc.)", "ワイヤー後研削 (ファミリー, 磨き無)", _
         "レイアウト後、型彫り後上面研削", "ワイヤー後研削(ブロック/プレート, 刃物有, etc.), 磨き/型彫り後", _
-        "単品挿入用, ミスミ追加工用", "単品挿入用", "ワイヤー後研削 (ファミリー, 磨き有)", _
-        "レイアウト切り離し後ヘソ取り (上面含む)", "レイアウト切り離し後ヘソ取り", _
-        "ワイヤー後研削(ブロック, 刃物有, etc.)", "単品挿入用", "単品挿入用" _
+        "単品挿入用, ミスミ追加工用", "単品挿入用" _
     )
-    remarksF_Part3 = Array( _
-        "単品挿入用", "単品挿入用, ミスミ追加工用, ユーザー選択", "レイアウト切り離し後、ユーザー選択", _
-        "単品挿入用", "単品挿入用, 最終調整用", "単品挿入用, Z列指定/ユーザー選択", _
-        "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", _
+    Dim remarksG_Part4 As Variant ' G列備考の続き
+     remarksG_Part4 = Array( _
+        "ワイヤー後研削 (ファミリー, 磨き有)", "レイアウト切り離し後ヘソ取り (上面含む)", "レイアウト切り離し後ヘソ取り", _
+        "ワイヤー後研削(ブロック, 刃物有, etc.)", "単品挿入用", "単品挿入用", "単品挿入用", _
+        "単品挿入用, ミスミ追加工用, ユーザー選択", "レイアウト切り離し後、ユーザー選択", "単品挿入用" _
+    )
+    Dim remarksG_Part5 As Variant ' G列備考のさらに続き
+    remarksG_Part5 = Array( _
+        "単品挿入用, 最終調整用", "単品挿入用, Z列指定/ユーザー選択", "単品挿入用", "単品挿入用", _
+        "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", _
         "単品挿入用 (時間は通常不要)", "単品挿入用 (時間は通常不要)", "単品挿入用 (時間は通常不要)", _
         "単品挿入用 (時間は通常不要)", "単品挿入用" _
     )
 
-    ' --- シート2に書き込むデータ (E列備考を含む) ---
-    ' 配列の各要素: 工程キー, 前段取, 有人, 機械, 後段取, 備考(F列), 詳細備考(G列)
+    ' --- F列(備考 - 工程表AS列へ)に出力する備考のリスト (G列と同じ内容を仮設定) ---
+    ' 必要に応じて、F列専用のデータに置き換えてください。
+    remarksF_Part1 = remarksG_Part1
+    remarksF_Part2 = remarksG_Part2
+    remarksF_Part3 = remarksG_Part3
+    Dim remarksF_Part4 As Variant
+    remarksF_Part4 = remarksG_Part4
+    Dim remarksF_Part5 As Variant
+    remarksF_Part5 = remarksG_Part5
 
-    dataPart1 = Array( _
-        Array("M/C-1", "", "0.3", "0.25", "0.1", ""), _
-        Array("M/C-2", "", "0.3", "0.25", "0.1", ""), _
-        Array("M/C（大）", "", "0.4", "0.25", "0.1", ""), _
-        Array("M/C（大）-MC仕上げ", "", "0.4", "0.2", "0.2", "MC仕上げ"), _
-        Array("M/C（大）-レイアウト後MC", "", "0.4", "0.2", "0.2", ""), _
-        Array("M/C（大）-熱処理前", "", "0.25", "0.1", "0.1", ""), _
-        Array("M/C（小）", "", "0.3", "0.25", "0.1", ""), _
-        Array("M/C（小）-MC仕上げ", "", "0.25", "0.1", "0.1", "MC仕上げ"), _
-        Array("M/C（小）-レイアウト後MC", "", "0.25", "0.1", "0.1", ""), _
-        Array("M/C（小）-熱処理前", "", "0.25", "0.1", "0.1", ""), _
-        Array("MC（小）-つば荒", "", "0.6", "0.1", "0.1", "つば荒"), _
-        Array("M/C（電極）", "", "0.3", "0.8", "0.1", ""), _
-        Array("ﾜｲﾔ放電加工", "", "0.75", "2", "0.5", ""), _
-        Array("ﾜｲﾔ放電加工-荒加工", "", "0.75", "3", "", "荒加工"), _
-        Array("ﾜｲﾔ放電加工-ｶｽ取り・仕上げ", "", "0.75", "6", "0.5", "ｶｽ取り・仕上げ"), _
-        Array("ﾜｲﾔ放電加工-つば荒", "", "0.6", "0.1", "0.1", ""), _
-        Array("ワイヤ加工（電極）", "", "0.5", "1.5", "0.2", ""), _
-        Array("型彫放電加工", "", "0.5", "1.5", "0.5", "") _
+
+    ' --- 工程データ (A-E列: 工程キー, 前段取, 有人, 機械, 後段取) ---
+    dataPart1_AE = Array( _
+        Array("M/C-1", "", "0.3", "0.25", "0.1"), Array("M/C-2", "", "0.3", "0.25", "0.1"), _
+        Array("M/C（大）", "", "0.4", "0.25", "0.1"), Array("M/C（大）-MC仕上げ", "", "0.4", "0.2", "0.2"), _
+        Array("M/C（大）-レイアウト後MC", "", "0.4", "0.2", "0.2"), Array("M/C（大）-熱処理前", "", "0.25", "0.1", "0.1"), _
+        Array("M/C（小）", "", "0.3", "0.25", "0.1"), Array("M/C（小）-MC仕上げ", "", "0.25", "0.1", "0.1"), _
+        Array("M/C（小）-レイアウト後MC", "", "0.25", "0.1", "0.1"), Array("M/C（小）-熱処理前", "", "0.25", "0.1", "0.1") _
     )
-    dataPart2 = Array( _
-        Array("型彫放電加工-レイアウト後", "", "0.5", "1.5", "0.2", ""), _
-        Array("穴あけﾀｯﾌﾟ", "", "0.3", "", "", ""), _
-        Array("細穴放電加工", "", "0.5", "0.8", "0.2", ""), _
-        Array("平面研削 NC", "", "0.3", "0.3", "0.1", ""), _
-        Array("平面研削 NC-SG", "", "0.3", "0.3", "0.1", ""), _
-        Array("平面研削 NC-つば仕上げ", "", "0.3", "0.1", "0.1", "つば仕上げ"), _
-        Array("平面研削 NC-ファミリー後ヘソ上面", "", "0.2", "0.3", "0.1", "ﾍｿ・上面"), _
-        Array("平面研削 NC-ファミリー後ヘソ取り", "", "0.2", "0.3", "0.1", "ﾍｿ取り"), _
-        Array("平面研削 NC-レイアウト後上面", "", "0.2", "0.2", "0.1", "上面"), _
-        Array("平面研削 NC-上面後", "", "0.2", "0.2", "0.1", "上面"), _
-        Array("平面研削 汎用", "", "0.4", "", "0.1", "ﾍｿ取り"), _
-        Array("平面研削 汎用（M調整）", "", "0.4", "", "0.1", "ﾍｿ取り・上面"), _
-        Array("平面研削 汎用-ファミリー後ヘソ取り", "", "0.2", "", "0.1", "ﾍｿ取り"), _
-        Array("平面研削 汎用-レイアウト後ヘソ上面", "", "0.1", "", "0.2", "上面"), _
-        Array("平面研削 汎用-レイアウト後ヘソ取り", "", "0.1", "", "0.2", ""), _
-        Array("平面研削 汎用-上面後", "", "0.2", "", "0.1", ""), _
-        Array("平面研削-1", "", "0.3", "0.3", "0.1", ""), _
-        Array("平面研削-2", "", "0.3", "0.3", "0.1", "") _
+    dataPart2_AE = Array( _
+        Array("MC（小）-つば荒", "", "0.6", "0.1", "0.1"), Array("M/C（電極）", "", "0.3", "0.8", "0.1"), _
+        Array("ﾜｲﾔ放電加工", "", "0.75", "2", "0.5"), Array("ﾜｲﾔ放電加工-荒加工", "", "0.75", "3", ""), _
+        Array("ﾜｲﾔ放電加工-ｶｽ取り・仕上げ", "", "0.75", "6", "0.5"), Array("ﾜｲﾔ放電加工-つば荒", "", "0.6", "0.1", "0.1"), _
+        Array("ワイヤ加工（電極）", "", "0.5", "1.5", "0.2"), Array("型彫放電加工", "", "0.5", "1.5", "0.5"), _
+        Array("型彫放電加工-レイアウト後", "", "0.5", "1.5", "0.2"), Array("穴あけﾀｯﾌﾟ", "", "0.3", "", "") _
     )
-    dataPart3 = Array( _
-        Array("平面研削-3", "", "0.3", "0.3", "0.1", ""), _
-        Array("倣い研削", "", "1", "", "0.2", ""), _
-        Array("倣い研削-レイアウト後", "", "1", "", "0.2", ""), _
-        Array("調整 面取", "", "0.3", "", "", ""), _
-        Array("調整（P）", "", "0.1", "", "", ""), _
-        Array("磨き", "", "0.4", "", "", ""), _
-        Array("洗浄", "", "0.5", "", "", ""), _
-        Array("溶接", "", "1", "", "", ""), _
-        Array("電極設計", "", "0.5", "", "", ""), _
-        Array("電極リスト作成", "", "0.3", "", "", ""), _
-        Array("確認測定M", "", "0.5", "", "", ""), _
-        Array("確認測定P", "", "0.5", "", "", ""), _
-        Array("社内TRY", "", "2", "", "", ""), _
-        Array("ツバ荒", "", "0.6", "0.1", "0.1", ""), _
-        Array("ツバ仕上げ", "", "0.3", "0.1", "0.1", ""), _
-        Array("熱処理", "", "", "", "", ""), _
-        Array("外注", "", "", "", "", ""), _
-        Array("主材購入", "", "", "", "", ""), _
-        Array("副材（購入品）", "", "", "", "", ""), _
-        Array("型彫り放電", "", "0.9", "0.6", "0.2", "") _
+    dataPart3_AE = Array( _
+        Array("細穴放電加工", "", "0.5", "0.8", "0.2"), Array("平面研削 NC", "", "0.3", "0.3", "0.1"), _
+        Array("平面研削 NC-SG", "", "0.3", "0.3", "0.1"), Array("平面研削 NC-つば仕上げ", "", "0.3", "0.1", "0.1"), _
+        Array("平面研削 NC-ファミリー後ヘソ上面", "", "0.2", "0.3", "0.1"), Array("平面研削 NC-ファミリー後ヘソ取り", "", "0.2", "0.3", "0.1"), _
+        Array("平面研削 NC-レイアウト後上面", "", "0.2", "0.2", "0.1"), Array("平面研削 NC-上面後", "", "0.2", "0.2", "0.1"), _
+        Array("平面研削 汎用", "", "0.4", "", "0.1"), Array("平面研削 汎用（M調整）", "", "0.4", "", "0.1") _
+    )
+    Dim dataPart4_AE As Variant
+    dataPart4_AE = Array( _
+        Array("平面研削 汎用-ファミリー後ヘソ取り", "", "0.2", "", "0.1"), Array("平面研削 汎用-レイアウト後ヘソ上面", "", "0.1", "", "0.2"), _
+        Array("平面研削 汎用-レイアウト後ヘソ取り", "", "0.1", "", "0.2"), Array("平面研削 汎用-上面後", "", "0.2", "", "0.1"), _
+        Array("平面研削-1", "", "0.3", "0.3", "0.1"), Array("平面研削-2", "", "0.3", "0.3", "0.1"), _
+        Array("平面研削-3", "", "0.3", "0.3", "0.1"), Array("倣い研削", "", "1", "", "0.2"), _
+        Array("倣い研削-レイアウト後", "", "1", "", "0.2"), Array("調整 面取", "", "0.3", "", "") _
+    )
+    Dim dataPart5_AE As Variant
+    dataPart5_AE = Array( _
+        Array("調整（P）", "", "0.1", "", ""), Array("磨き", "", "0.4", "", ""), _
+        Array("洗浄", "", "0.5", "", ""), Array("溶接", "", "1", "", ""), _
+        Array("電極設計", "", "0.5", "", ""), Array("電極リスト作成", "", "0.3", "", ""), _
+        Array("確認測定M", "", "0.5", "", ""), Array("確認測定P", "", "0.5", "", ""), _
+        Array("社内TRY", "", "2", "", ""), Array("ツバ荒", "", "0.6", "0.1", "0.1"), _
+        Array("ツバ仕上げ", "", "0.3", "0.1", "0.1"), Array("熱処理", "", "", "", ""), _
+        Array("外注", "", "", "", ""), Array("主材購入", "", "", "", ""), _
+        Array("副材（購入品）", "", "", "", ""), Array("型彫り放電", "", "0.9", "0.6", "0.2") _
     )
     
-    totalItems = (UBound(dataPart1) - LBound(dataPart1) + 1) + _
-                 (UBound(dataPart2) - LBound(dataPart2) + 1) + _
-                 (UBound(dataPart3) - LBound(dataPart3) + 1)
-    
-    ReDim dataArray(0 To totalItems - 1, 0 To 6) ' ★7列分の配列 (0から6)
+    ' --- 工程データ配列の結合 ---
+    totalProcessItems = (UBound(dataPart1_AE) - LBound(dataPart1_AE) + 1) + _
+                        (UBound(dataPart2_AE) - LBound(dataPart2_AE) + 1) + _
+                        (UBound(dataPart3_AE) - LBound(dataPart3_AE) + 1) + _
+                        (UBound(dataPart4_AE) - LBound(dataPart4_AE) + 1) + _
+                        (UBound(dataPart5_AE) - LBound(dataPart5_AE) + 1)
+
+    ReDim processDataArray(0 To totalProcessItems - 1, 0 To 6) ' 7列 (0 to 6)
     k = 0
     currentRemarkF_Index = 0
+    currentRemarkG_Index = 0
 
-    For i = LBound(dataPart1) To UBound(dataPart1)
-        dataArray(k, 0) = dataPart1(i)(0) ' 工程キー
-        dataArray(k, 1) = dataPart1(i)(1) ' 前段取
-        dataArray(k, 2) = dataPart1(i)(2) ' 有人
-        dataArray(k, 3) = dataPart1(i)(3) ' 機械
-        dataArray(k, 4) = dataPart1(i)(4) ' 後段取
-        dataArray(k, 5) = dataPart1(i)(5) ' 備考 (F列)
-        If currentRemarkF_Index <= UBound(remarksF_Part1) Then dataArray(k, 6) = remarksF_Part1(currentRemarkF_Index) Else dataArray(k, 6) = "" ' 詳細備考 (G列)
-        k = k + 1
-        currentRemarkF_Index = currentRemarkF_Index + 1
-    Next i
+    ' Helper Sub to append data parts
+    Dim appendPart As Object
+    Set appendPart = CreateObject("Scripting.Dictionary")
+    appendPart("data") = Array(dataPart1_AE, dataPart2_AE, dataPart3_AE, dataPart4_AE, dataPart5_AE)
+    appendPart("remarksF") = Array(remarksF_Part1, remarksF_Part2, remarksF_Part3, remarksF_Part4, remarksF_Part5)
+    appendPart("remarksG") = Array(remarksG_Part1, remarksG_Part2, remarksG_Part3, remarksG_Part4, remarksG_Part5)
+
+    Dim partIndex As Long
+    For partIndex = 0 To UBound(appendPart("data"))
+        Dim currentDataPart As Variant
+        Dim currentRemarksFPart As Variant
+        Dim currentRemarksGPart As Variant
+        
+        currentDataPart = appendPart("data")(partIndex)
+        currentRemarksFPart = appendPart("remarksF")(partIndex)
+        currentRemarksGPart = appendPart("remarksG")(partIndex)
+        
+        currentRemarkF_Index = 0 ' Reset for each remarksF part
+        currentRemarkG_Index = 0 ' Reset for each remarksG part
+
+        For i = LBound(currentDataPart) To UBound(currentDataPart)
+            processDataArray(k, 0) = currentDataPart(i)(0) ' 工程キー
+            processDataArray(k, 1) = currentDataPart(i)(1) ' 前段取
+            processDataArray(k, 2) = currentDataPart(i)(2) ' 有人
+            processDataArray(k, 3) = currentDataPart(i)(3) ' 機械
+            processDataArray(k, 4) = currentDataPart(i)(4) ' 後段取
+            
+            If currentRemarkF_Index <= UBound(currentRemarksFPart) Then
+                processDataArray(k, 5) = currentRemarksFPart(currentRemarkF_Index) ' 備考 (F列)
+            Else
+                processDataArray(k, 5) = ""
+            End If
+            currentRemarkF_Index = currentRemarkF_Index + 1
+
+            If currentRemarkG_Index <= UBound(currentRemarksGPart) Then
+                processDataArray(k, 6) = currentRemarksGPart(currentRemarkG_Index) ' 詳細備考 (G列)
+            Else
+                processDataArray(k, 6) = ""
+            End If
+            currentRemarkG_Index = currentRemarkG_Index + 1
+            
+            k = k + 1
+        Next i
+    Next partIndex
+
+
+    ' --- 材質情報データ (J-M列) ---
+    materialData_PartA = Array( _
+        Array("SKH51", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), Array("DC53", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SLD-MAGIC", "ﾒﾀﾙﾃｯｸ", "ｴｼﾞｿﾝ熱処理", "ｴｼﾞｿﾝ熱処理"), Array("S20C", "小山鋼材", "", ""), _
+        Array("S45C", "小山鋼材", "", ""), Array("S50C", "小山鋼材", "", ""), _
+        Array("S50C相当", "小山鋼材", "", ""), Array("SS400", "深江特殊鋼", "", ""), _
+        Array("SS41", "深江特殊鋼", "", ""), Array("SK3", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SK4", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), Array("SK4相当", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SKD11", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), Array("SKD11相当", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SKD51", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), Array("SKD61", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SKD-MAGIC", "ﾒﾀﾙﾃｯｸ", "ｴｼﾞｿﾝ熱処理", "ｴｼﾞｿﾝ熱処理"), Array("SKD相当", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SKH51相当", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理") _
+    )
+    materialData_PartB = Array( _
+        Array("SKH52", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), Array("SKS3", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SKS3相当", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), Array("HAP10", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), _
+        Array("HAP40", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), Array("HAP40相当", "ﾒﾀﾙﾜﾝ", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), _
+        Array("FDAC", "小山鋼材", "", ""), Array("DEX40", "", "", ""), _
+        Array("DH2F相当", "", "", ""), Array("ASP23", "", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), _
+        Array("粉末ハイス", "", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), Array("粉末ハイス鋼", "", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), _
+        Array("粉末ハイス相当", "", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), Array("遊休材DC53", "深江特殊鋼", "光陽産業 高温", "ｴｼﾞｿﾝ熱処理"), _
+        Array("SUS", "", "", ""), Array("SUS304", "", "", ""), _
+        Array("SUS304相当", "", "", ""), Array("ステンシム", "", "", ""), _
+        Array("ステンシム（SUS304）", "", "", "") _
+    )
+    materialData_PartC = Array( _
+        Array("ステンシムSUS304", "", "", ""), Array("A7075P", "", "", ""), _
+        Array("BC6", "", "", ""), Array("QCM8", "", "", ""), _
+        Array("GTI20", "", "", ""), Array("V30", "", "", ""), _
+        Array("VC-50", "", "", ""), Array("VM-30（超硬）", "", "", ""), _
+        Array("VM40", "", "", ""), Array("VM-40", "", "", ""), _
+        Array("VM50", "", "", ""), Array("VM-50", "", "", ""), _
+        Array("VW-50", "", "", ""), Array("YXR3", "", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), _
+        Array("YXR33", "", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), Array("YXR 7", "", "ﾘﾋﾄ精光", "ｴｼﾞｿﾝ熱処理"), _
+        Array("超硬", "", "", ""), Array("超硬VM40", "", "", ""), _
+        Array("HPM38", "小山鋼材", "光陽産業", "ｴｼﾞｿﾝ熱処理"), Array("NAK80", "小山鋼材", "", "") _
+    )
+
+    totalMaterialItems = (UBound(materialData_PartA) - LBound(materialData_PartA) + 1) + _
+                         (UBound(materialData_PartB) - LBound(materialData_PartB) + 1) + _
+                         (UBound(materialData_PartC) - LBound(materialData_PartC) + 1)
+    ReDim materialDataArray(0 To totalMaterialItems - 1, 0 To 3)
     
-    currentRemarkF_Index = 0
-    For i = LBound(dataPart2) To UBound(dataPart2)
-        dataArray(k, 0) = dataPart2(i)(0)
-        dataArray(k, 1) = dataPart2(i)(1)
-        dataArray(k, 2) = dataPart2(i)(2)
-        dataArray(k, 3) = dataPart2(i)(3)
-        dataArray(k, 4) = dataPart2(i)(4)
-        dataArray(k, 5) = dataPart2(i)(5)
-        If currentRemarkF_Index <= UBound(remarksF_Part2) Then dataArray(k, 6) = remarksF_Part2(currentRemarkF_Index) Else dataArray(k, 6) = ""
+    k = 0
+    For i = LBound(materialData_PartA) To UBound(materialData_PartA)
+        materialDataArray(k, 0) = materialData_PartA(i)(0)
+        materialDataArray(k, 1) = materialData_PartA(i)(1)
+        materialDataArray(k, 2) = materialData_PartA(i)(2)
+        materialDataArray(k, 3) = materialData_PartA(i)(3)
         k = k + 1
-        currentRemarkF_Index = currentRemarkF_Index + 1
+    Next i
+    For i = LBound(materialData_PartB) To UBound(materialData_PartB)
+        materialDataArray(k, 0) = materialData_PartB(i)(0)
+        materialDataArray(k, 1) = materialData_PartB(i)(1)
+        materialDataArray(k, 2) = materialData_PartB(i)(2)
+        materialDataArray(k, 3) = materialData_PartB(i)(3)
+        k = k + 1
+    Next i
+    For i = LBound(materialData_PartC) To UBound(materialData_PartC)
+        materialDataArray(k, 0) = materialData_PartC(i)(0)
+        materialDataArray(k, 1) = materialData_PartC(i)(1)
+        materialDataArray(k, 2) = materialData_PartC(i)(2)
+        materialDataArray(k, 3) = materialData_PartC(i)(3)
+        k = k + 1
     Next i
 
-    currentRemarkF_Index = 0
-    For i = LBound(dataPart3) To UBound(dataPart3)
-        dataArray(k, 0) = dataPart3(i)(0)
-        dataArray(k, 1) = dataPart3(i)(1)
-        dataArray(k, 2) = dataPart3(i)(2)
-        dataArray(k, 3) = dataPart3(i)(3)
-        dataArray(k, 4) = dataPart3(i)(4)
-        dataArray(k, 5) = dataPart3(i)(5)
-        If currentRemarkF_Index <= UBound(remarksF_Part3) Then dataArray(k, 6) = remarksF_Part3(currentRemarkF_Index) Else dataArray(k, 6) = ""
-        k = k + 1
-        currentRemarkF_Index = currentRemarkF_Index + 1
-    Next i
 
     On Error Resume Next
     Set ws = ThisWorkbook.Sheets(sheetName)
@@ -167,6 +253,7 @@ Private Sub CreateSheet2Data()
         Debug.Print sheetName & " を新規作成しました。"
     Else
         Debug.Print sheetName & " は既に存在します。"
+        ws.Cells.ClearContents
     End If
     On Error GoTo 0
     
@@ -175,27 +262,40 @@ Private Sub CreateSheet2Data()
         Exit Sub
     End If
     
-    ws.Cells.ClearContents
-
     ws.Cells(1, 1).Value = "工程キー"
-    ws.Cells(1, 2).Value = "前段取"  ' ★B列ヘッダー
+    ws.Cells(1, 2).Value = "前段取"
     ws.Cells(1, 3).Value = "有人"
     ws.Cells(1, 4).Value = "機械"
-    ws.Cells(1, 5).Value = "後段取"  ' ★E列ヘッダー (旧段取)
-    ws.Cells(1, 6).Value = "備考"      ' ★F列ヘッダー
-    ws.Cells(1, 7).Value = "詳細備考"  ' ★G列ヘッダー
+    ws.Cells(1, 5).Value = "後段取"
+    ws.Cells(1, 6).Value = "備考"      ' F列
+    ws.Cells(1, 7).Value = "詳細備考"  ' G列
+    
+    ws.Cells(1, 10).Value = "材質コード"
+    ws.Cells(1, 11).Value = "主材購入先"
+    ws.Cells(1, 12).Value = "熱処理先(通常)"
+    ws.Cells(1, 13).Value = "熱処理先(サブゼロ)"
 
     r = 2
-    For i = LBound(dataArray, 1) To UBound(dataArray, 1)
-        If IsEmpty(dataArray(i, 0)) Then Exit For
+    For i = LBound(processDataArray, 1) To UBound(processDataArray, 1)
+        If IsEmpty(processDataArray(i, 0)) And IsEmpty(processDataArray(i, 1)) Then Exit For
         
-        ws.Cells(r, 1).Value = dataArray(i, 0) ' 工程キー
-        If CStr(dataArray(i, 1)) <> "" Then ws.Cells(r, 2).Value = CDbl(dataArray(i, 1)) Else ws.Cells(r, 2).Value = "" ' 前段取
-        If CStr(dataArray(i, 2)) <> "" Then ws.Cells(r, 3).Value = CDbl(dataArray(i, 2)) Else ws.Cells(r, 3).Value = "" ' 有人
-        If CStr(dataArray(i, 3)) <> "" Then ws.Cells(r, 4).Value = CDbl(dataArray(i, 3)) Else ws.Cells(r, 4).Value = "" ' 機械
-        If CStr(dataArray(i, 4)) <> "" Then ws.Cells(r, 5).Value = CDbl(dataArray(i, 4)) Else ws.Cells(r, 5).Value = "" ' 後段取
-        ws.Cells(r, 6).Value = dataArray(i, 5) ' 備考 (F列)
-        ws.Cells(r, 7).Value = dataArray(i, 6) ' 詳細備考 (G列)
+        ws.Cells(r, 1).Value = processDataArray(i, 0)
+        If CStr(processDataArray(i, 1)) <> "" Then ws.Cells(r, 2).Value = CDbl(processDataArray(i, 1)) Else ws.Cells(r, 2).Value = ""
+        If CStr(processDataArray(i, 2)) <> "" Then ws.Cells(r, 3).Value = CDbl(processDataArray(i, 2)) Else ws.Cells(r, 3).Value = ""
+        If CStr(processDataArray(i, 3)) <> "" Then ws.Cells(r, 4).Value = CDbl(processDataArray(i, 3)) Else ws.Cells(r, 4).Value = ""
+        If CStr(processDataArray(i, 4)) <> "" Then ws.Cells(r, 5).Value = CDbl(processDataArray(i, 4)) Else ws.Cells(r, 5).Value = ""
+        ws.Cells(r, 6).Value = processDataArray(i, 5)
+        ws.Cells(r, 7).Value = processDataArray(i, 6)
+        r = r + 1
+    Next i
+    
+    r = 2
+    For i = LBound(materialDataArray, 1) To UBound(materialDataArray, 1)
+        If IsEmpty(materialDataArray(i, 0)) Then Exit For
+        ws.Cells(r, 10).Value = materialDataArray(i, 0)
+        ws.Cells(r, 11).Value = materialDataArray(i, 1)
+        ws.Cells(r, 12).Value = materialDataArray(i, 2)
+        ws.Cells(r, 13).Value = materialDataArray(i, 3)
         r = r + 1
     Next i
 
