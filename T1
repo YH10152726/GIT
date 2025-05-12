@@ -1,35 +1,207 @@
-はい、承知いたしました。評価基準（星の部分）を、さらに「ものすごく簡潔に」 ключевые слова で表現します。
-今年度の重点取り組み目標（評価基準 超簡潔版）
-【大方針】 今年度は、**「TS効率化」「品質向上」「技能伝承と多能工化」**を3つの柱とし、デジタル技術の活用と現場力の強化を通じて、生産性と競争力の大幅な向上を目指します。
-カテゴリー1： TS効率化 -デジタルツールによる工程設計・作業時間の最適化-
-目標: 年間作業時間80時間削減、設定TS精度**Y%**向上。
-主な取り組み: 
-工程作成支援ツールの開発・導入。
-仕上げ時間設定ツールの開発・導入。
-その他随時開発、導入。
-評価基準： 
-★★★★: 作業時間100H超削減、TS精度大幅向上。ツール全社定着、波及効果大。
-★★★: 作業時間80H削減、TS精度**Y%**向上。主要ツール活用開始。（目標達成）
-★★: 作業時間50H削減またはTS精度目標7割。ツール一部活用。
-★: 作業時間50H未満。ツール開発・導入遅延。
-カテゴリー2： 品質向上 -先進技術検証による不具合未然防止体制の高度化-
-目標: 技術検証完了、不具合未然防止精度**X%向上、金型トライアル効率Y%**改善。
-主な取り組み: 
-ワックステスト技術の導入効果検証。
-3Dスキャン比較試験の社内検証。
-評価基準： 
-★★★★: 検証技術の実運用導入。リードタイム短縮A%または精度X+α%向上。
-★★★: 技術検証完了、レポート提出。精度X%または効率Y%向上の見通し。（目標達成）
-★★: レポート1件または内容部分的。効果見通し不明確。
-★: 技術検証未実施または初期段階。レポート未提出。
-カテゴリー3： 技能伝承と多能工化 -組織的な技術力向上と人材育成-
-目標: 暗黙知B件形式知化、技能レベル平均Aポイント向上、M/C多能工X名育成。
-主な取り組み: 
-M/C作業スキルの計画的習得。
-ツール開発プロセスにおける暗黙知の形式知化。
-評価基準： 
-★★★★: 技能レベルA+α向上、M/C多能工X+β名、暗黙知B+γ件形式知化し全社活用。
-★★★: 技能レベルAポイント向上、暗黙知B件形式知化、M/C多能工X名育成。（目標達成）
-★★: 主要指標いずれかが目標の7割程度。
-★: 各主要指標が目標の5割未満、または取り組み遅延。
+Option Explicit
+
+' === モジュールレベル定数 (既存のものを参照) ===
+' Private Const SHEET_KOUTEI_TIMES As String = "シート2"
+' Private Const COL_TIME_KEY As Long = 1
+' Private Const COL_TIME_MAE_DANDORI As Long = 2 ' ★前段取
+' Private Const COL_TIME_YUJIN As Long = 3
+' Private Const COL_TIME_MACHINE As Long = 4
+' Private Const COL_TIME_SETUP As Long = 5       ' ★後段取
+' Private Const COL_TIME_REMARKS As Long = 6
+' Private Const COL_TIME_REMARKS_DETAIL As Long = 7
+
+Private Sub CreateSheet2Data()
+    Dim ws As Worksheet
+    Dim sheetName As String
+    Dim dataArray() As Variant
+    Dim dataPart1 As Variant, dataPart2 As Variant, dataPart3 As Variant
+    Dim remarksF_Part1 As Variant, remarksF_Part2 As Variant, remarksF_Part3 As Variant
+    Dim i As Long, r As Long, k As Long, currentRemarkF_Index As Long
+    Dim totalItems As Long
+
+    sheetName = "シート2"
+
+    ' --- F列(詳細備考)に出力する備考のリスト ---
+    remarksF_Part1 = Array( _
+        "単品挿入用", "単品挿入用", "単品挿入用, ミスミ追加工用", "焼き後MC仕上げ (プレート)", _
+        "レイアウト切り離し後MC (プレート)", "熱処理前MC (プレート)", "単品挿入用, ミスミ追加工用", _
+        "焼き後MC仕上げ (ブロック/他)", "レイアウト切り離し後MC (ブロック/他)", "熱処理前MC (ブロック/他)", _
+        "ツバ荒加工方法", "単品挿入用", "単品挿入用, ミスミ追加工用, ワイヤー(φ10以下or形状無)", _
+        "ワイヤー(φ16超かつ形状有) - 1/2", "ワイヤー(φ16超かつ形状有) - 2/2", "ツバ荒加工方法", _
+        "単品挿入用", "単品挿入用, ミスミ追加工用(型彫り放電), ユーザー選択" _
+    )
+    remarksF_Part2 = Array( _
+        "レイアウト切り離し後、ユーザー選択", "熱処理前、ゲイビ外注(荒加工のみ)後", "単品挿入用, スタート穴用", _
+        "単品挿入用, ミスミ追加工用", "焼き入れ後SG", "ツバ仕上げ加工", _
+        "ワイヤー後研削 (ファミリー, 磨き無, 刃物有, etc.)", "ワイヤー後研削 (ファミリー, 磨き無)", _
+        "レイアウト後、型彫り後上面研削", "ワイヤー後研削(ブロック/プレート, 刃物有, etc.), 磨き/型彫り後", _
+        "単品挿入用, ミスミ追加工用", "単品挿入用", "ワイヤー後研削 (ファミリー, 磨き有)", _
+        "レイアウト切り離し後ヘソ取り (上面含む)", "レイアウト切り離し後ヘソ取り", _
+        "ワイヤー後研削(ブロック, 刃物有, etc.)", "単品挿入用", "単品挿入用" _
+    )
+    remarksF_Part3 = Array( _
+        "単品挿入用", "単品挿入用, ミスミ追加工用, ユーザー選択", "レイアウト切り離し後、ユーザー選択", _
+        "単品挿入用", "単品挿入用, 最終調整用", "単品挿入用, Z列指定/ユーザー選択", _
+        "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", "単品挿入用", _
+        "単品挿入用 (時間は通常不要)", "単品挿入用 (時間は通常不要)", "単品挿入用 (時間は通常不要)", _
+        "単品挿入用 (時間は通常不要)", "単品挿入用" _
+    )
+
+    ' --- シート2に書き込むデータ (E列備考を含む) ---
+    ' 配列の各要素: 工程キー, 前段取, 有人, 機械, 後段取, 備考(F列), 詳細備考(G列)
+
+    dataPart1 = Array( _
+        Array("M/C-1", "", "0.3", "0.25", "0.1", ""), _
+        Array("M/C-2", "", "0.3", "0.25", "0.1", ""), _
+        Array("M/C（大）", "", "0.4", "0.25", "0.1", ""), _
+        Array("M/C（大）-MC仕上げ", "", "0.4", "0.2", "0.2", "MC仕上げ"), _
+        Array("M/C（大）-レイアウト後MC", "", "0.4", "0.2", "0.2", ""), _
+        Array("M/C（大）-熱処理前", "", "0.25", "0.1", "0.1", ""), _
+        Array("M/C（小）", "", "0.3", "0.25", "0.1", ""), _
+        Array("M/C（小）-MC仕上げ", "", "0.25", "0.1", "0.1", "MC仕上げ"), _
+        Array("M/C（小）-レイアウト後MC", "", "0.25", "0.1", "0.1", ""), _
+        Array("M/C（小）-熱処理前", "", "0.25", "0.1", "0.1", ""), _
+        Array("MC（小）-つば荒", "", "0.6", "0.1", "0.1", "つば荒"), _
+        Array("M/C（電極）", "", "0.3", "0.8", "0.1", ""), _
+        Array("ﾜｲﾔ放電加工", "", "0.75", "2", "0.5", ""), _
+        Array("ﾜｲﾔ放電加工-荒加工", "", "0.75", "3", "", "荒加工"), _
+        Array("ﾜｲﾔ放電加工-ｶｽ取り・仕上げ", "", "0.75", "6", "0.5", "ｶｽ取り・仕上げ"), _
+        Array("ﾜｲﾔ放電加工-つば荒", "", "0.6", "0.1", "0.1", ""), _
+        Array("ワイヤ加工（電極）", "", "0.5", "1.5", "0.2", ""), _
+        Array("型彫放電加工", "", "0.5", "1.5", "0.5", "") _
+    )
+    dataPart2 = Array( _
+        Array("型彫放電加工-レイアウト後", "", "0.5", "1.5", "0.2", ""), _
+        Array("穴あけﾀｯﾌﾟ", "", "0.3", "", "", ""), _
+        Array("細穴放電加工", "", "0.5", "0.8", "0.2", ""), _
+        Array("平面研削 NC", "", "0.3", "0.3", "0.1", ""), _
+        Array("平面研削 NC-SG", "", "0.3", "0.3", "0.1", ""), _
+        Array("平面研削 NC-つば仕上げ", "", "0.3", "0.1", "0.1", "つば仕上げ"), _
+        Array("平面研削 NC-ファミリー後ヘソ上面", "", "0.2", "0.3", "0.1", "ﾍｿ・上面"), _
+        Array("平面研削 NC-ファミリー後ヘソ取り", "", "0.2", "0.3", "0.1", "ﾍｿ取り"), _
+        Array("平面研削 NC-レイアウト後上面", "", "0.2", "0.2", "0.1", "上面"), _
+        Array("平面研削 NC-上面後", "", "0.2", "0.2", "0.1", "上面"), _
+        Array("平面研削 汎用", "", "0.4", "", "0.1", "ﾍｿ取り"), _
+        Array("平面研削 汎用（M調整）", "", "0.4", "", "0.1", "ﾍｿ取り・上面"), _
+        Array("平面研削 汎用-ファミリー後ヘソ取り", "", "0.2", "", "0.1", "ﾍｿ取り"), _
+        Array("平面研削 汎用-レイアウト後ヘソ上面", "", "0.1", "", "0.2", "上面"), _
+        Array("平面研削 汎用-レイアウト後ヘソ取り", "", "0.1", "", "0.2", ""), _
+        Array("平面研削 汎用-上面後", "", "0.2", "", "0.1", ""), _
+        Array("平面研削-1", "", "0.3", "0.3", "0.1", ""), _
+        Array("平面研削-2", "", "0.3", "0.3", "0.1", "") _
+    )
+    dataPart3 = Array( _
+        Array("平面研削-3", "", "0.3", "0.3", "0.1", ""), _
+        Array("倣い研削", "", "1", "", "0.2", ""), _
+        Array("倣い研削-レイアウト後", "", "1", "", "0.2", ""), _
+        Array("調整 面取", "", "0.3", "", "", ""), _
+        Array("調整（P）", "", "0.1", "", "", ""), _
+        Array("磨き", "", "0.4", "", "", ""), _
+        Array("洗浄", "", "0.5", "", "", ""), _
+        Array("溶接", "", "1", "", "", ""), _
+        Array("電極設計", "", "0.5", "", "", ""), _
+        Array("電極リスト作成", "", "0.3", "", "", ""), _
+        Array("確認測定M", "", "0.5", "", "", ""), _
+        Array("確認測定P", "", "0.5", "", "", ""), _
+        Array("社内TRY", "", "2", "", "", ""), _
+        Array("ツバ荒", "", "0.6", "0.1", "0.1", ""), _
+        Array("ツバ仕上げ", "", "0.3", "0.1", "0.1", ""), _
+        Array("熱処理", "", "", "", "", ""), _
+        Array("外注", "", "", "", "", ""), _
+        Array("主材購入", "", "", "", "", ""), _
+        Array("副材（購入品）", "", "", "", "", ""), _
+        Array("型彫り放電", "", "0.9", "0.6", "0.2", "") _
+    )
+    
+    totalItems = (UBound(dataPart1) - LBound(dataPart1) + 1) + _
+                 (UBound(dataPart2) - LBound(dataPart2) + 1) + _
+                 (UBound(dataPart3) - LBound(dataPart3) + 1)
+    
+    ReDim dataArray(0 To totalItems - 1, 0 To 6) ' ★7列分の配列 (0から6)
+    k = 0
+    currentRemarkF_Index = 0
+
+    For i = LBound(dataPart1) To UBound(dataPart1)
+        dataArray(k, 0) = dataPart1(i)(0) ' 工程キー
+        dataArray(k, 1) = dataPart1(i)(1) ' 前段取
+        dataArray(k, 2) = dataPart1(i)(2) ' 有人
+        dataArray(k, 3) = dataPart1(i)(3) ' 機械
+        dataArray(k, 4) = dataPart1(i)(4) ' 後段取
+        dataArray(k, 5) = dataPart1(i)(5) ' 備考 (F列)
+        If currentRemarkF_Index <= UBound(remarksF_Part1) Then dataArray(k, 6) = remarksF_Part1(currentRemarkF_Index) Else dataArray(k, 6) = "" ' 詳細備考 (G列)
+        k = k + 1
+        currentRemarkF_Index = currentRemarkF_Index + 1
+    Next i
+    
+    currentRemarkF_Index = 0
+    For i = LBound(dataPart2) To UBound(dataPart2)
+        dataArray(k, 0) = dataPart2(i)(0)
+        dataArray(k, 1) = dataPart2(i)(1)
+        dataArray(k, 2) = dataPart2(i)(2)
+        dataArray(k, 3) = dataPart2(i)(3)
+        dataArray(k, 4) = dataPart2(i)(4)
+        dataArray(k, 5) = dataPart2(i)(5)
+        If currentRemarkF_Index <= UBound(remarksF_Part2) Then dataArray(k, 6) = remarksF_Part2(currentRemarkF_Index) Else dataArray(k, 6) = ""
+        k = k + 1
+        currentRemarkF_Index = currentRemarkF_Index + 1
+    Next i
+
+    currentRemarkF_Index = 0
+    For i = LBound(dataPart3) To UBound(dataPart3)
+        dataArray(k, 0) = dataPart3(i)(0)
+        dataArray(k, 1) = dataPart3(i)(1)
+        dataArray(k, 2) = dataPart3(i)(2)
+        dataArray(k, 3) = dataPart3(i)(3)
+        dataArray(k, 4) = dataPart3(i)(4)
+        dataArray(k, 5) = dataPart3(i)(5)
+        If currentRemarkF_Index <= UBound(remarksF_Part3) Then dataArray(k, 6) = remarksF_Part3(currentRemarkF_Index) Else dataArray(k, 6) = ""
+        k = k + 1
+        currentRemarkF_Index = currentRemarkF_Index + 1
+    Next i
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(sheetName)
+    If ws Is Nothing Then
+        Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        ws.name = sheetName
+        Debug.Print sheetName & " を新規作成しました。"
+    Else
+        Debug.Print sheetName & " は既に存在します。"
+    End If
+    On Error GoTo 0
+    
+    If ws Is Nothing Then
+        MsgBox "シートの作成または取得に失敗しました。", vbCritical
+        Exit Sub
+    End If
+    
+    ws.Cells.ClearContents
+
+    ws.Cells(1, 1).Value = "工程キー"
+    ws.Cells(1, 2).Value = "前段取"  ' ★B列ヘッダー
+    ws.Cells(1, 3).Value = "有人"
+    ws.Cells(1, 4).Value = "機械"
+    ws.Cells(1, 5).Value = "後段取"  ' ★E列ヘッダー (旧段取)
+    ws.Cells(1, 6).Value = "備考"      ' ★F列ヘッダー
+    ws.Cells(1, 7).Value = "詳細備考"  ' ★G列ヘッダー
+
+    r = 2
+    For i = LBound(dataArray, 1) To UBound(dataArray, 1)
+        If IsEmpty(dataArray(i, 0)) Then Exit For
+        
+        ws.Cells(r, 1).Value = dataArray(i, 0) ' 工程キー
+        If CStr(dataArray(i, 1)) <> "" Then ws.Cells(r, 2).Value = CDbl(dataArray(i, 1)) Else ws.Cells(r, 2).Value = "" ' 前段取
+        If CStr(dataArray(i, 2)) <> "" Then ws.Cells(r, 3).Value = CDbl(dataArray(i, 2)) Else ws.Cells(r, 3).Value = "" ' 有人
+        If CStr(dataArray(i, 3)) <> "" Then ws.Cells(r, 4).Value = CDbl(dataArray(i, 3)) Else ws.Cells(r, 4).Value = "" ' 機械
+        If CStr(dataArray(i, 4)) <> "" Then ws.Cells(r, 5).Value = CDbl(dataArray(i, 4)) Else ws.Cells(r, 5).Value = "" ' 後段取
+        ws.Cells(r, 6).Value = dataArray(i, 5) ' 備考 (F列)
+        ws.Cells(r, 7).Value = dataArray(i, 6) ' 詳細備考 (G列)
+        r = r + 1
+    Next i
+
+    ws.Columns.AutoFit
+
+    MsgBox sheetName & " にデータを書き込みました。", vbInformation
+End Sub
+
 
