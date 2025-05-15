@@ -1758,7 +1758,3 @@ Private Sub AddPolishingAndCoating(ws As Worksheet, ByRef currentRow As Long, in
     End If
 End Sub
 
-
-
-
-
