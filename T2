@@ -1,32 +1,12 @@
-
-
-
-MC仕上げ
-
-
-
-MC仕上げ
-
-
-つば荒
-
-
-荒加工
-ｶｽ取り・仕上げ
-
-
-
-
-
-
-
-
-つば仕上げ
-ﾍｿ・上面
-ﾍｿ取り
-上面
-上面
-ﾍｿ取り
-ﾍｿ取り・上面
-ﾍｿ取り
-上面
+FrameEditControls
+cboNameEdit
+cboSupplierEdit
+txtMaeDandoriEdit
+txtYujinTimeEdit
+txtMachineTimeEdit
+txtGoDandoriEdit
+txtBikouEdit
+cmdCancelEdit　キャンセル
+cmdUpdateEdit　更新
+cmdDuplicatePreviewItem　行を複製
+lblWeightDisplay
