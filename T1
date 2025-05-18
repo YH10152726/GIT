@@ -64,14 +64,31 @@ Private Const COL_ZKEYWORD_NEEDSOUTSourcing As Long = 23 ' V列: outNeedsOutsour
 Private Const COL_ZKEYWORD_NEEDSPOLISHING As Long = 24   ' W列: outNeedsPolishing (TRUE/FALSE)
 
 ' === モジュールレベル変数 ===
-Private m_arrPreviewProcesses() As PreviewProcessItem ' プレビュー工程を格納する動的配列
-Private m_lPreviewProcessCount As Long              ' m_arrPreviewProcesses内の有効な工程数
-Private m_lEditingArrayIndex As Long                ' ★追加: 現在編集中のプレビュー配列のインデックス
-Private m_dblCalculatedWeightGrams As Double ' 計算された重量をグラム単位で保持
-Private processTimesDict As Object ' 工程別工数・備考格納用Dictionary
-Private materialInfoDict As Object ' 材質情報格納用Dictionary
-Private outsourcingInfoDict As Object ' ★外注先情報格納用Dictionary
+Private m_arrPreviewProcesses() As PreviewProcessItem
+Private m_lPreviewProcessCount As Long
+Private m_lEditingArrayIndex As Long
+Private m_dblCalculatedWeightGrams As Double
+Private processTimesDict As Object
+Private materialInfoDict As Object
+Private outsourcingInfoDict As Object
 Private zKeywordsDict As Object
+
+' --- ★★★ 変更キャンセル時の値復元用 モジュールレベル変数 ★★★ ---
+Private m_bIsProgrammaticChange As Boolean      ' ★これが重要です★
+
+' ComboBox用
+Private m_sOldComboBoxGeibiType As String
+Private m_sOldComboBoxTsubaCount As String
+Private m_sOldComboBoxTsubaRough As String
+Private m_sOldComboBoxSgCount As String
+Private m_sOldComboBox2Value As String      ' 外作選択用 ComboBox2
+Private m_sOldComboBox3Value As String      ' 追加加工(ミスミ)用 ComboBox3
+' TextBox用 (プレビュー用TextBox)
+Private m_sOldTxtMaterialCodePreview As String
+Private m_sOldTxtZValuePreview As String
+Private m_sOldTxtSizePreview As String
+' OptionButton用 (形状選択グループ) - クリック前の選択ボタン名を保持
+Private m_sPreviouslySelectedShapeOption As String ' ★形状OptionButtonの復元に使用
 
 
 
@@ -1026,15 +1043,23 @@ m_dblCalculatedWeightGrams = 0 ' ★追加: 計算重量を初期化
         End If
     End If
 
-    ' --- オプションボタンのデフォルト選択 (既存のものを流用) ---
-    If TypeName(Me.Controls("OptionButton4")) = "OptionButton" And _
-       TypeName(Me.Controls("OptionButton5")) = "OptionButton" And _
-       TypeName(Me.Controls("OptionButton6")) = "OptionButton" Then
-        If Not Me.OptionButton4.Value And Not Me.OptionButton5.Value And Not Me.OptionButton6.Value Then
-            Me.OptionButton4.Value = True ' デフォルトで「ブロック」を選択
+    ' --- OptionButtonの初期選択状態を保存 (念のためデフォルトも設定) ---
+    If TypeName(Me.Controls("OptionButton4")) = "OptionButton" And Me.OptionButton4.Value Then
+        m_sPreviouslySelectedShapeOption = Me.OptionButton4.name
+    ElseIf TypeName(Me.Controls("OptionButton5")) = "OptionButton" And Me.OptionButton5.Value Then
+        m_sPreviouslySelectedShapeOption = Me.OptionButton5.name
+    ElseIf TypeName(Me.Controls("OptionButton6")) = "OptionButton" And Me.OptionButton6.Value Then
+        m_sPreviouslySelectedShapeOption = Me.OptionButton6.name
+    ' --- もし "レイアウト切り離し後" が optLayoutAfterCut のようなOptionButtonになっていれば、それもここに追加 ---
+    ' ElseIf TypeName(Me.Controls("optLayoutAfterCut")) = "OptionButton" And Me.optLayoutAfterCut.Value Then
+    '    m_sPreviouslySelectedShapeOption = Me.optLayoutAfterCut.Name
+    Else ' いずれも選択されていない、またはCheckBoxLayoutがTrueの場合のデフォルト
+        If TypeName(Me.Controls("OptionButton4")) = "OptionButton" Then
+            Me.OptionButton4.Value = True ' デフォルトでブロックを選択
+            m_sPreviouslySelectedShapeOption = Me.OptionButton4.name
         End If
     End If
-    
+
     ' ミスミ購入チェックボックスの状態に応じて追加工コンボボックスの有効/無効を初期設定
     If TypeName(Me.Controls("CheckBox7")) = "CheckBox" And TypeName(Me.Controls("ComboBox3")) = "ComboBox" Then
         Me.ComboBox3.Enabled = Me.CheckBox7.Value
@@ -1920,191 +1945,519 @@ End If
     Call PreviewAddAdjustPProcess(needsAdjustPP)
 End Sub
 
+Private Sub HandleShapeOptionChange(ByVal newlyClickedOptionButtonName As String)
+    If m_bIsProgrammaticChange Then Exit Sub
+
+    ' newlyClickedOptionButtonName が実際に True になったことを確認
+    ' (OptionButtonのClickイベントは、値がFalseからTrueに変わった時に発生する想定)
+    If Not Me.Controls(newlyClickedOptionButtonName).Value Then
+        ' グループ内の他のボタンがクリックされてこのボタンがFalseになった場合など
+        Exit Sub
+    End If
+
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        ' --- 以前選択されていたオプションボタンをTrueに戻す ---
+        If m_sPreviouslySelectedShapeOption <> "" And m_sPreviouslySelectedShapeOption <> newlyClickedOptionButtonName Then
+            On Error Resume Next
+            Me.Controls(m_sPreviouslySelectedShapeOption).Value = True
+            On Error GoTo 0
+            ' newlyClickedOptionButtonName は自動的にFalseになるはず
+        Else
+            ' 元々newlyClickedOptionButtonNameが選択されていて、再度クリックされたか、
+            ' m_sPreviouslySelectedShapeOption が空だったなどの特殊ケース。
+            ' この場合、実質的な変更はなかったので、何もしないか、
+            ' 強制的にデフォルトに戻すなら RevertShapeOptionButton を直接呼んでもよいが、
+            ' ここでは何もしないことで、現在の状態を維持する。
+            ' ただし、これが無限ループの原因になる場合は、
+            ' newlyClickedOptionButtonName.Value = False とし、
+            ' m_sPreviouslySelectedShapeOption を True にする必要がある。
+            ' しかし、OptionButtonの性質上、必ずどれか一つがTrueになるため、
+            ' 以前のものをTrueに戻せば、現在クリックされたものはFalseになる。
+        End If
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
+
+    ' ユーザーが「はい」を押したか、編集がなかった場合
+    m_sPreviouslySelectedShapeOption = newlyClickedOptionButtonName ' 新しい選択を「以前の選択」として記憶
+    Call UpdatePreview
+End Sub
+
+' === イベントハンドラ：変更前の値を保存 (ComboBox と TextBox) ===
+Private Sub ComboBoxGeibiType_Enter()
+    m_sOldComboBoxGeibiType = Me.ComboBoxGeibiType.Value
+End Sub
+Private Sub ComboBoxTsubaCount_Enter()
+    m_sOldComboBoxTsubaCount = Me.ComboBoxTsubaCount.Value
+End Sub
+Private Sub ComboBoxTsubaRough_Enter()
+    m_sOldComboBoxTsubaRough = Me.ComboBoxTsubaRough.Value
+End Sub
+Private Sub ComboBoxSgCount_Enter()
+    m_sOldComboBoxSgCount = Me.ComboBoxSgCount.Value
+End Sub
+Private Sub ComboBox2_Enter() ' 外作選択用
+    m_sOldComboBox2Value = Me.ComboBox2.Value
+End Sub
+Private Sub ComboBox3_Enter() ' 追加加工 ミスミ用
+    m_sOldComboBox3Value = Me.ComboBox3.Value
+End Sub
+Private Sub txtMaterialCodePreview_Enter()
+    m_sOldTxtMaterialCodePreview = Me.txtMaterialCodePreview.Text
+End Sub
+Private Sub txtZValuePreview_Enter()
+    m_sOldTxtZValuePreview = Me.txtZValuePreview.Text
+End Sub
+Private Sub txtSizePreview_Enter()
+    m_sOldTxtSizePreview = Me.txtSizePreview.Text
+End Sub
+
+' === OptionButtonの値を変更前に保存するための Enter イベント (または GotFocus) ===
+' グループ内のどのボタンが現在Trueかをクリック前に把握するために使用
+Private Sub OptionButton4_Enter()
+    If Me.OptionButton4.Value Then m_sPreviouslySelectedShapeOption = Me.OptionButton4.name
+End Sub
+Private Sub OptionButton5_Enter()
+    If Me.OptionButton5.Value Then m_sPreviouslySelectedShapeOption = Me.OptionButton5.name
+End Sub
+Private Sub OptionButton6_Enter()
+    If Me.OptionButton6.Value Then m_sPreviouslySelectedShapeOption = Me.OptionButton6.name
+End Sub
+' (もし optLayoutAfterCut が OptionButton なら、その _Enter イベントも同様に追加)
 
 ' === 各コントロールのイベントハンドラ (プレビュー更新をトリガー) ===
 Private Sub CheckBoxGeibi_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加: 確認し、キャンセルなら処理中断
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxGeibi.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxGeibi.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
 Private Sub ComboBoxGeibiType_Change()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
-    Call UpdatePreview
-End Sub
-Private Sub CheckBox1_Click() ' ワイヤーEDM (CheckBox1自体がクリックされた場合)
-    ' 編集済みの場合の確認とキャンセル処理
+    If m_bIsProgrammaticChange Then Exit Sub
     If Not ConfirmAndUpdatePreviewIfEdited() Then
-        Me.CheckBox1.Value = Not Me.CheckBox1.Value ' クリック操作を元に戻す
+        m_bIsProgrammaticChange = True
+        Me.ComboBoxGeibiType.Value = m_sOldComboBoxGeibiType
+        m_bIsProgrammaticChange = False
         Exit Sub
     End If
     Call UpdatePreview
 End Sub
-Private Sub CheckBox4_Click() ' DIA10以下 (CheckBox4がクリックされた場合)
-    Dim previousCheckBox4Value As Boolean
-    previousCheckBox4Value = Not Me.CheckBox4.Value ' クリック前の値を保持
-
-    ' 編集済みの場合の確認とキャンセル処理
+Private Sub CheckBox1_Click() ' ワイヤーEDM
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBox1.Value
     If Not ConfirmAndUpdatePreviewIfEdited() Then
-        Me.CheckBox4.Value = previousCheckBox4Value ' クリック操作を元に戻す
+        m_bIsProgrammaticChange = True
+        Me.CheckBox1.Value = originalValue
+        m_bIsProgrammaticChange = False
         Exit Sub
     End If
+    Call UpdatePreview
+End Sub
+Private Sub CheckBox4_Click() ' DIA10以下
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBox4.Value
+    Dim originalCb1Value As Boolean: originalCb1Value = Me.CheckBox1.Value ' 連動前のCB1の状態
 
-    '--- CheckBox1の連動ロジック ---
-    Dim currentCheckBox1Value As Boolean
-    currentCheckBox1Value = Me.CheckBox1.Value ' CheckBox1の現在の状態を記憶
-
-    Me.CheckBox1.Value = (Me.CheckBox4.Value Or Me.CheckBox5.Value)
-    '--- 連動ロジックここまで ---
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBox4.Value = originalValue
+        Me.CheckBox1.Value = originalCb1Value ' 連動するCB1も元に戻す
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     
-    ' プレビュー更新
-    ' CheckBox1の値がプログラムによって変更された場合、CheckBox1_Clickイベントも発生し、
-    ' そこでもUpdatePreviewが呼ばれる可能性があります。
-    ' 現状、UpdatePreviewが複数回呼ばれても大きな問題がなければこのままでシンプルです。
+    m_bIsProgrammaticChange = True ' これからの変更はプログラムによるもの
+    Me.CheckBox1.Value = (Me.CheckBox4.Value Or Me.CheckBox5.Value)
+    m_bIsProgrammaticChange = False
     Call UpdatePreview
 End Sub
-Private Sub CheckBox5_Click() ' 形状加工 (CheckBox5がクリックされた場合)
-    Dim previousCheckBox5Value As Boolean
-    previousCheckBox5Value = Not Me.CheckBox5.Value ' クリック前の値を保持
-
-    ' 編集済みの場合の確認とキャンセル処理
+Private Sub CheckBox5_Click() ' 形状加工
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBox5.Value
+    Dim originalCb1Value As Boolean: originalCb1Value = Me.CheckBox1.Value ' 連動前のCB1の状態
+    
     If Not ConfirmAndUpdatePreviewIfEdited() Then
-        Me.CheckBox5.Value = previousCheckBox5Value ' クリック操作を元に戻す
+        m_bIsProgrammaticChange = True
+        Me.CheckBox5.Value = originalValue
+        Me.CheckBox1.Value = originalCb1Value ' 連動するCB1も元に戻す
+        m_bIsProgrammaticChange = False
         Exit Sub
     End If
 
-    '--- CheckBox1の連動ロジック ---
-    Dim currentCheckBox1Value As Boolean
-    currentCheckBox1Value = Me.CheckBox1.Value ' CheckBox1の現在の状態を記憶
-    
+    m_bIsProgrammaticChange = True ' これからの変更はプログラムによるもの
     Me.CheckBox1.Value = (Me.CheckBox4.Value Or Me.CheckBox5.Value)
-    '--- 連動ロジックここまで ---
-
-    ' プレビュー更新
+    m_bIsProgrammaticChange = False
     Call UpdatePreview
 End Sub
 
 Private Sub CheckBox6_Click() ' 刃付
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBox6.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBox6.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
 Private Sub CheckBox7_Click() ' ミスミ購入
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加 (他の処理より先に確認)
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBox7.Value
+    Dim originalCb3Enabled As Boolean: originalCb3Enabled = Me.ComboBox3.Enabled
+    Dim originalCb8Value As Boolean: originalCb8Value = Me.CheckBox8.Value
+    Dim originalCb8Enabled As Boolean: originalCb8Enabled = Me.CheckBox8.Enabled
+
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBox7.Value = originalValue
+        Me.ComboBox3.Enabled = originalCb3Enabled
+        Me.CheckBox8.Value = originalCb8Value
+        Me.CheckBox8.Enabled = originalCb8Enabled
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Me.ComboBox3.Enabled = Me.CheckBox7.Value
-    If Not Me.CheckBox7.Value Then Me.CheckBox8.Value = False ' ミスミ購入OFFなら追加工もOFF
+    If Not Me.CheckBox7.Value Then Me.CheckBox8.Value = False
     Me.CheckBox8.Enabled = Me.CheckBox7.Value
     Call UpdatePreview
 End Sub
 Private Sub CheckBox8_Click() ' 追加加工あり (ミスミ用)
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加 (他の処理より先に確認)
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBox8.Value
+    Dim originalCb3Enabled As Boolean: originalCb3Enabled = Me.ComboBox3.Enabled
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBox8.Value = originalValue
+        Me.ComboBox3.Enabled = originalCb3Enabled
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Me.ComboBox3.Enabled = Me.CheckBox8.Value
     Call UpdatePreview
 End Sub
 Private Sub CheckBox9_Click() ' 外作
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加 (他の処理より先に確認)
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBox9.Value
+    Dim originalCb2Enabled As Boolean: originalCb2Enabled = Me.ComboBox2.Enabled
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBox9.Value = originalValue
+        Me.ComboBox2.Enabled = originalCb2Enabled
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Me.ComboBox2.Enabled = Me.CheckBox9.Value
     Call UpdatePreview
 End Sub
-Private Sub CheckBoxLayout_Click() ' レイアウト切り離し後
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+Private Sub CheckBoxLayout_Click() ' レイアウト切り離し後 (まだCheckBoxの場合)
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxLayout.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxLayout.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
 Private Sub CheckBoxAfterMC_Click() ' 焼き後MC
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxAfterMC.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxAfterMC.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
 Private Sub CheckBoxAdjustP_Click() ' 調整(P)
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxAdjustP.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxAdjustP.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxTsuba_Click() ' ツバ加工
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加 (他の処理より先に確認)
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxTsuba.Value
+    Dim originalTsubaCountEnabled As Boolean: originalTsubaCountEnabled = Me.ComboBoxTsubaCount.Enabled
+    Dim originalTsubaRoughEnabled As Boolean: originalTsubaRoughEnabled = Me.ComboBoxTsubaRough.Enabled
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxTsuba.Value = originalValue
+        Me.ComboBoxTsubaCount.Enabled = originalTsubaCountEnabled
+        Me.ComboBoxTsubaRough.Enabled = originalTsubaRoughEnabled
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Me.ComboBoxTsubaCount.Enabled = Me.CheckBoxTsuba.Value
     Me.ComboBoxTsubaRough.Enabled = Me.CheckBoxTsuba.Value
     Call UpdatePreview
 End Sub
+
 Private Sub ComboBoxTsubaCount_Change()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.ComboBoxTsubaCount.Value = m_sOldComboBoxTsubaCount
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub ComboBoxTsubaRough_Change()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.ComboBoxTsubaRough.Value = m_sOldComboBoxTsubaRough
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxChamferなし_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxChamferなし.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxChamferなし.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxTsurinejiあり_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxTsurinejiあり.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxTsurinejiあり.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxStartHoleSmall_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxStartHoleSmall.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxStartHoleSmall.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxKatabori_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxKatabori.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxKatabori.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxNaraiKensaku_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxNaraiKensaku.Value
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxNaraiKensaku.Value = originalValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxSingleMCPreHeat_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加 (他の処理より先に確認)
-    If Me.CheckBoxSingleMCPreHeat.Value Then Me.CheckBoxTripleMCPreHeat.Value = False
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxSingleMCPreHeat.Value
+    Dim originalTripleMCValue As Boolean: If TypeName(Me.Controls("CheckBoxTripleMCPreHeat")) = "CheckBox" Then originalTripleMCValue = Me.CheckBoxTripleMCPreHeat.Value
+    
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxSingleMCPreHeat.Value = originalValue
+        If TypeName(Me.Controls("CheckBoxTripleMCPreHeat")) = "CheckBox" Then Me.CheckBoxTripleMCPreHeat.Value = originalTripleMCValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
+    If Me.CheckBoxSingleMCPreHeat.Value Then
+        If TypeName(Me.Controls("CheckBoxTripleMCPreHeat")) = "CheckBox" Then
+            m_bIsProgrammaticChange = True
+            Me.CheckBoxTripleMCPreHeat.Value = False
+            m_bIsProgrammaticChange = False
+        End If
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxTripleMCPreHeat_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加 (他の処理より先に確認)
-    If Me.CheckBoxTripleMCPreHeat.Value Then Me.CheckBoxSingleMCPreHeat.Value = False
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxTripleMCPreHeat.Value
+    Dim originalSingleMCValue As Boolean: If TypeName(Me.Controls("CheckBoxSingleMCPreHeat")) = "CheckBox" Then originalSingleMCValue = Me.CheckBoxSingleMCPreHeat.Value
+
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxTripleMCPreHeat.Value = originalValue
+        If TypeName(Me.Controls("CheckBoxSingleMCPreHeat")) = "CheckBox" Then Me.CheckBoxSingleMCPreHeat.Value = originalSingleMCValue
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
+    If Me.CheckBoxTripleMCPreHeat.Value Then
+        If TypeName(Me.Controls("CheckBoxSingleMCPreHeat")) = "CheckBox" Then
+            m_bIsProgrammaticChange = True
+            Me.CheckBoxSingleMCPreHeat.Value = False
+            m_bIsProgrammaticChange = False
+        End If
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub CheckBoxAutoSgCount_Click()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加 (他の処理より先に確認)
+    If m_bIsProgrammaticChange Then Exit Sub
+    Dim originalValue As Boolean: originalValue = Not Me.CheckBoxAutoSgCount.Value
+    Dim originalSgComboEnabled As Boolean: If TypeName(Me.Controls("ComboBoxSgCount")) = "ComboBox" Then originalSgComboEnabled = Me.ComboBoxSgCount.Enabled
+
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.CheckBoxAutoSgCount.Value = originalValue
+        If TypeName(Me.Controls("ComboBoxSgCount")) = "ComboBox" Then Me.ComboBoxSgCount.Enabled = originalSgComboEnabled
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     If TypeName(Me.Controls("ComboBoxSgCount")) = "ComboBox" Then Me.ComboBoxSgCount.Enabled = Not Me.CheckBoxAutoSgCount.Value
     Call UpdatePreview
 End Sub
+
 Private Sub ComboBoxSgCount_Change()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.ComboBoxSgCount.Value = m_sOldComboBoxSgCount
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub ComboBox2_Change() ' 外注先 (外作時)
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.ComboBox2.Value = m_sOldComboBox2Value
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub ComboBox3_Change() ' 追加加工 (ミスミ時)
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.ComboBox3.Value = m_sOldComboBox3Value
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
+End Sub
+Private Sub RevertShapeOptionButton()
+    On Error Resume Next ' コントロールが存在しない場合や不正な名前の場合を考慮
+    If m_sPreviouslySelectedShapeOption <> "" Then
+        Dim ctrl As MSForms.Control
+        Set ctrl = Me.Controls(m_sPreviouslySelectedShapeOption)
+        If Not ctrl Is Nothing Then
+            If TypeName(ctrl) = "OptionButton" Then
+                ctrl.Value = True ' ★★★ CType を削除し、直接Valueを設定 ★★★
+            End If
+        Else ' 保存されていたボタン名が無効ならデフォルトに戻す (例: OptionButton4)
+            Debug.Print "RevertShapeOptionButton: Stored option '" & m_sPreviouslySelectedShapeOption & "' not found. Defaulting."
+            If TypeName(Me.Controls("OptionButton4")) = "OptionButton" Then
+                 Me.OptionButton4.Value = True ' ★★★ CType を削除 ★★★
+            End If
+        End If
+    Else ' 保存されていた名前が空ならデフォルトに戻す (例: OptionButton4)
+         Debug.Print "RevertShapeOptionButton: No previously selected option stored. Defaulting."
+        If TypeName(Me.Controls("OptionButton4")) = "OptionButton" Then
+            Me.OptionButton4.Value = True ' ★★★ CType を削除 ★★★
+        End If
+    End If
+    On Error GoTo 0
 End Sub
 
 ' --- オプションボタンのイベントハンドラ ---
 Private Sub OptionButton4_Click() ' ブロック
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
-    Call UpdatePreview
+    HandleShapeOptionChange Me.OptionButton4.name
 End Sub
+
 Private Sub OptionButton5_Click() ' プレート
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
-    Call UpdatePreview
+    HandleShapeOptionChange Me.OptionButton5.name
 End Sub
+
+
 Private Sub OptionButton6_Click() ' ファミリー加工
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    HandleShapeOptionChange Me.OptionButton6.name
+End Sub
+' (もし optLayoutAfterCut が OptionButton なら、その _Click イベントも同様に RevertShapeOptionButton を呼び出す)
+
+
+' --- プレビュー用テキストボックスのChangeイベント ---
+Private Sub txtMaterialCodePreview_Change()
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.txtMaterialCodePreview.Text = m_sOldTxtMaterialCodePreview
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
 
-' --- プレビュー用テキストボックスのChangeイベント (フォームに配置した場合) ---
-Private Sub txtMaterialCodePreview_Change()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
-    Call UpdatePreview
-End Sub
 Private Sub txtZValuePreview_Change()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.txtZValuePreview.Text = m_sOldTxtZValuePreview
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
     Call UpdatePreview
 End Sub
+
 Private Sub txtSizePreview_Change()
-    If Not ConfirmAndUpdatePreviewIfEdited() Then Exit Sub ' ★追加
+    If m_bIsProgrammaticChange Then Exit Sub
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        Me.txtSizePreview.Text = m_sOldTxtSizePreview
+        m_bIsProgrammaticChange = False
+        ' UpdateWeightDisplayはUpdatePreviewから呼ばれるのでここでは不要かも
+        Exit Sub
+    End If
     Call UpdatePreview
-    Call UpdateWeightDisplay ' ★追加: 重さ表示を更新
+    Call UpdateWeightDisplay ' サイズ変更時は重量再計算
 End Sub
+
 Private Sub AutoRenumberProcessRemarks()
     Dim i As Long, j As Long
     Dim currentProcessName As String
@@ -3353,4 +3706,8 @@ Private Sub AddPolishingAndCoating(ws As Worksheet, ByRef currentRow As Long, in
         End If
     End If
 End Sub
+
+
+
+
 
