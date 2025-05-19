@@ -629,6 +629,10 @@ Private Sub cmdCancelEdit_Click()
 End Sub
 
 
+Private Sub txtBikouEdit_Change()
+
+End Sub
+
 ' === ユーザーフォーム初期化 ===
 Private Sub UserForm_Initialize()
 m_dblCalculatedWeightGrams = 0 ' ★追加: 計算重量を初期化
@@ -1273,26 +1277,42 @@ Private Sub UpdatePreview()
         Call PreviewAddAdjustPProcess(needsAdjustP)
     ElseIf shape = "レイアウト切り離し後" Then ' ★形状オプションボタンへの変更を反映
         Call PreviewProcessLayoutAfterCut(needsPolishing, hasCuttingEdge, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, kataboriChoosenByUser, naraiKensakuChoosenByUser, useAfterMC, shape)
-    ElseIf isGeibiOutsource Then
-        Dim geibiSupplierNamePreview As String
-        geibiSupplierNamePreview = GetOutsourcingSupplierName("GEIBI")
-        If geibiSupplierNamePreview = "" Then geibiSupplierNamePreview = "ｹﾞｲﾋﾞ鋼業"
-        Select Case geibiPattern
-            Case "材料～荒"
-                Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", "材料～荒加工")
-                Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
-            Case "材料～焼きまで"
-                Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", geibiPattern)
-                Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
-            Case "荒加工のみ"
-                Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)
-                Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", geibiPattern)
-                Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
-            Case "荒～焼きまで"
-                Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)
-                Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", geibiPattern)
-                Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
-        End Select
+ElseIf isGeibiOutsource Then
+    Dim geibiSupplierNamePreview As String
+    geibiSupplierNamePreview = GetOutsourcingSupplierName("GEIBI")
+    If geibiSupplierNamePreview = "" Then geibiSupplierNamePreview = "ｹﾞｲﾋﾞ鋼業" ' ハードコードされたフォールバック
+
+    Select Case geibiPattern
+        Case "材料～荒"
+            Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", "材料～荒加工")
+            ' ★★★ 修正点：穴あけタップと熱処理を追加 ★★★
+            Call PreviewAddTapHole(hasSubZero)
+            If Not (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400") Then
+                Call PreviewAddHeatTreatment(materialCode, hasSubZero)
+            End If
+            ' ★★★ 修正ここまで ★★★
+            Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
+
+        Case "材料～焼きまで" ' これは元々問題なし
+            Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", geibiPattern)
+            Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
+
+        Case "荒加工のみ"
+            Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)
+            Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", geibiPattern)
+            ' ★★★ 修正点：穴あけタップと熱処理を追加 ★★★
+            Call PreviewAddTapHole(hasSubZero)
+            If Not (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400") Then
+                Call PreviewAddHeatTreatment(materialCode, hasSubZero)
+            End If
+            ' ★★★ 修正ここまで ★★★
+            Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
+
+        Case "荒～焼きまで" ' これは元々問題なし
+            Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)
+            Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", geibiPattern)
+            Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
+    End Select
     Else ' 通常ルート (ブロック, プレート, ファミリー加工)
         Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)
         Call PreviewAddMCBeforeHeatTreatment(shape, isSingleMCPreHeat, isTripleMCPreHeat)
@@ -3706,6 +3726,8 @@ Private Sub AddPolishingAndCoating(ws As Worksheet, ByRef currentRow As Long, in
         End If
     End If
 End Sub
+
+
 
 
 
