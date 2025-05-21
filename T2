@@ -1,12 +1,5 @@
-FrameEditControls
-cboNameEdit
-cboSupplierEdit
-txtMaeDandoriEdit
-txtYujinTimeEdit
-txtMachineTimeEdit
-txtGoDandoriEdit
-txtBikouEdit
-cmdCancelEdit　キャンセル
-cmdUpdateEdit　更新
-cmdDuplicatePreviewItem　行を複製
-lblWeightDisplay
+コマンドボタン1個追加
+cmdExecuteLastOutputToActive
+
+焼き前MCチェックボックス削除
+ワイヤー加工あり　ビジブル
