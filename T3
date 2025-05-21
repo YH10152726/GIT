@@ -1,4 +1,39 @@
-Sub Show工程作成フォーム()
-    UserForm1.Show
+Option Explicit
+
+' ================================================================
+' 列 AH が空白 かつ 列 AJ も空白の “挟まった行” だけを削除して上に詰める
+' ・最後のデータ行より下（いわゆるフッター領域）は対象外
+' ・列 AJ に文字が入っている行は AH が空でも残す
+' ================================================================
+Public Sub DeleteInnerBlanks_AH_withAJKeep()
+
+    Dim ws              As Worksheet
+    Dim lastRowAH       As Long
+    Dim lastRowAJ       As Long
+    Dim lastDataRow     As Long
+    Dim i               As Long
+    
+    Set ws = ActiveSheet                ' 必要ならシート固定
+    
+    Application.ScreenUpdating = False
+    
+    With ws
+        ' AH / AJ それぞれで “最後に値が入った行” を取得
+        lastRowAH = .Cells(.Rows.Count, "AH").End(xlUp).Row
+        lastRowAJ = .Cells(.Rows.Count, "AJ").End(xlUp).Row
+        
+        ' どちらか大きい方が “データ範囲の最終行”
+        lastDataRow = WorksheetFunction.Max(lastRowAH, lastRowAJ)
+        
+        ' 見出し 1 行目を除き、下→上ループで空白行だけ削除
+        For i = lastDataRow - 1 To 2 Step -1
+            If LenB(.Cells(i, "AH").Value) = 0 _
+               And LenB(.Cells(i, "AJ").Value) = 0 Then
+                   .Rows(i).Delete
+            End If
+        Next i
+    End With
+    
+    Application.ScreenUpdating = True
 End Sub
 
