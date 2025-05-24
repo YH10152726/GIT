@@ -1277,9 +1277,23 @@ ElseIf isGeibiOutsource Then
         Case "材料～荒"
             Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", "材料～荒加工")
             Call PreviewAddTapHole(hasSubZero)
-            If Not (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400") Then
-                Call PreviewAddHeatTreatment(materialCode, hasSubZero)
-            End If
+Dim requiresHeatTreatmentPreview As Boolean
+requiresHeatTreatmentPreview = True ' デフォルトは熱処理あり
+If materialInfoDict.Exists(materialCode) Then
+    Dim matData As Variant
+    matData = materialInfoDict(materialCode)
+    If UBound(matData) >= 3 Then ' 格納した配列にフラグ情報（インデックス3）があるか確認
+        If CStr(matData(3)) = "SKIP_HEAT" Then
+            requiresHeatTreatmentPreview = False
+        End If
+    End If
+End If
+
+If requiresHeatTreatmentPreview Then
+    Call PreviewAddHeatTreatment(materialCode, hasSubZero)
+End If
+
+
             Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
 
         Case "材料～焼きまで" ' これは元々問題なし
@@ -1290,9 +1304,21 @@ ElseIf isGeibiOutsource Then
             Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)
             Call AddItemToPreviewList("外注", geibiSupplierNamePreview, "", "", "", "", geibiPattern)
             Call PreviewAddTapHole(hasSubZero)
-            If Not (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400") Then
-                Call PreviewAddHeatTreatment(materialCode, hasSubZero)
-            End If
+requiresHeatTreatmentPreview = True ' デフォルトは熱処理あり
+If materialInfoDict.Exists(materialCode) Then
+    matData = materialInfoDict(materialCode)
+    If UBound(matData) >= 3 Then ' 格納した配列にフラグ情報（インデックス3）があるか確認
+        If CStr(matData(3)) = "SKIP_HEAT" Then
+            requiresHeatTreatmentPreview = False
+        End If
+    End If
+End If
+
+If requiresHeatTreatmentPreview Then
+    Call PreviewAddHeatTreatment(materialCode, hasSubZero)
+End If
+
+
             Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
 
         Case "荒～焼きまで" ' これは元々問題なし
@@ -1304,9 +1330,22 @@ ElseIf isGeibiOutsource Then
         Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)
         Call PreviewAddMCBeforeHeatTreatment(shape)
         Call PreviewAddTapHole(hasSubZero)
-        If Not (materialCode = "NAK80" Or materialCode = "FDAC" Or materialCode = "SS400") Then
-            Call PreviewAddHeatTreatment(materialCode, hasSubZero)
+requiresHeatTreatmentPreview = True ' デフォルトは熱処理あり
+If materialInfoDict.Exists(materialCode) Then
+
+    matData = materialInfoDict(materialCode)
+    If UBound(matData) >= 3 Then ' 格納した配列にフラグ情報（インデックス3）があるか確認
+        If CStr(matData(3)) = "SKIP_HEAT" Then
+            requiresHeatTreatmentPreview = False
         End If
+    End If
+End If
+
+If requiresHeatTreatmentPreview Then
+    Call PreviewAddHeatTreatment(materialCode, hasSubZero)
+End If
+
+
         Call PreviewAddPostHeatTreatmentProcesses(materialCode, shape, useWireEDM, isDia10OrLess, hasShapeProcessing, hasCuttingEdge, useAfterMC, useSmallStartHole, hasTsubaProcessing, tsubaCount, tsubaRoughMethod, needsPolishing, needsOutsourcingForCoating, coatingTypeKey, needsAdjustP, kataboriChoosenByUser, naraiKensakuChoosenByUser, autoSgCountValue, userSgCountValue)
     End If
     
@@ -1556,7 +1595,7 @@ Private Sub PreviewAddHeatTreatment(materialCodePreview As String, hasSubZeroPre
         
     End If
     
-    If supplier = "" Then supplier = "(熱処理業者不明)"
+    If supplier = "" Then supplier = "(熱処理業者未設定)"
     
     Call AddItemToPreviewList("熱処理", supplier, "", "", "", "", IIf(hasSubZeroPreview, "", ""))
 End Sub
@@ -2604,18 +2643,39 @@ End Sub
 Private Sub LoadMaterialInfo()
     Set materialInfoDict = CreateObject("Scripting.Dictionary")
     Dim wsMaterial As Worksheet, lastRow As Long, iLng As Long, materialCodeKey As String
-    Dim arrData(0 To 2) As String ' supplier, heatNormal, heatSubzero
+    Dim arrData(0 To 3) As String
+    Dim heatNormalSupplierOrSkipFlag As String ' L列の値を一時格納
+
     On Error Resume Next
     Set wsMaterial = ThisWorkbook.Sheets(SHEET_KOUTEI_TIMES)
     On Error GoTo 0
-    If wsMaterial Is Nothing Then Exit Sub
+    If wsMaterial Is Nothing Then
+        ' UserForm_Initialize でエラーメッセージ表示とUnload処理があるのでここではExit Subのみ
+        Exit Sub
+    End If
+
     lastRow = wsMaterial.Cells(wsMaterial.Rows.Count, COL_MATERIAL_CODE).End(xlUp).Row
-    For iLng = 2 To lastRow
-        materialCodeKey = UCase(Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_CODE).Value)))
-        arrData(0) = Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_SUPPLIER).Value))
-        arrData(1) = Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_HEAT_NORMAL).Value))
-        arrData(2) = Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_HEAT_SUBZERO).Value))
-        If materialCodeKey <> "" Then If Not materialInfoDict.Exists(materialCodeKey) Then materialInfoDict.Add materialCodeKey, arrData
+    For iLng = 2 To lastRow ' 1行目はヘッダーと仮定
+        materialCodeKey = UCase(Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_CODE).Value))) ' J列
+        arrData(0) = Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_SUPPLIER).Value))     ' K列
+        
+        heatNormalSupplierOrSkipFlag = Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_HEAT_NORMAL).Value)) ' L列
+        arrData(1) = heatNormalSupplierOrSkipFlag ' L列の値をそのまま arrData(1) に格納
+
+        ' L列の値が「無」（全角・半角、大文字・小文字を区別しない）の場合、スキップフラグを立てる
+        If LCase(StrConv(heatNormalSupplierOrSkipFlag, vbNarrow)) = "無" Then
+            arrData(3) = "SKIP_HEAT" ' 熱処理スキップを示す内部フラグ
+        Else
+            arrData(3) = "DO_HEAT"   ' 熱処理実行を示す内部フラグ (L列が業者名や空欄の場合)
+        End If
+
+        arrData(2) = Trim(CStr(wsMaterial.Cells(iLng, COL_MATERIAL_HEAT_SUBZERO).Value))    ' M列
+        
+        If materialCodeKey <> "" Then
+            If Not materialInfoDict.Exists(materialCodeKey) Then
+                materialInfoDict.Add materialCodeKey, arrData
+            End If
+        End If
     Next iLng
 End Sub
 Private Sub LoadOutsourcingInfo()
@@ -3107,20 +3167,64 @@ If hasTsubaProcessing Then Call AddTsubaProcessing(ws, currentRow, initialTarget
     Call AddAdjustPProcess(ws, currentRow, initialTargetRow, needsAdjustP)
 End Sub
 Private Sub ProcessGeibiOutsource(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, materialCodeActual As String, geibiPatternCmd As String, hasSubZeroCmd As Boolean, shapeCmd As String, useWireEDMCmd As Boolean, isDia10OrLessCmd As Boolean, hasShapeProcessingCmd As Boolean, hasCuttingEdgeCmd As Boolean, useAfterMCCmd As Boolean, useSmallStartHoleCmd As Boolean, hasTsubaProcessingCmd As Boolean, tsubaCountCmd As Integer, tsubaRoughMethodCmd As String, needsPolishingCmd As Boolean, needsOutsourcingForCoatingCmd As Boolean, coatingTypeKeyCmd As String, needsAdjustPCmd As Boolean, noChamferCmd As Boolean, hasLiftingScrewCmd As Boolean, kataboriChoosenByUserCmd As Boolean, naraiKensakuChoosenByUserCmd As Boolean, isSingleMCPreHeatCmd As Boolean, isTripleMCPreHeatCmd As Boolean, autoSgCountCmd As Boolean, userSgCountCmd As Integer)
-    Dim geibiSupplierName As String: geibiSupplierName = GetOutsourcingSupplierName("GEIBI"): If geibiSupplierName = "" Then geibiSupplierName = "ｹﾞｲﾋﾞ鋼業"
+    Dim geibiSupplierName As String
+    geibiSupplierName = GetOutsourcingSupplierName("GEIBI")
+    If geibiSupplierName = "" Then geibiSupplierName = "ｹﾞｲﾋﾞ鋼業"
+    
     Select Case geibiPatternCmd
-        Case "材料～焼きまで": Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", geibiSupplierName, , , , , geibiPatternCmd): Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCodeActual, shapeCmd, useWireEDMCmd, isDia10OrLessCmd, hasShapeProcessingCmd, hasCuttingEdgeCmd, useAfterMCCmd, useSmallStartHoleCmd, hasTsubaProcessingCmd, tsubaCountCmd, tsubaRoughMethodCmd, needsPolishingCmd, needsOutsourcingForCoatingCmd, coatingTypeKeyCmd, needsAdjustPCmd, kataboriChoosenByUserCmd, naraiKensakuChoosenByUserCmd, autoSgCountCmd, userSgCountCmd)
-        Case "荒加工のみ": Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCodeActual, noChamferCmd, hasLiftingScrewCmd): Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", geibiSupplierName, , , , , geibiPatternCmd): Call AddTapHole(ws, currentRow, initialTargetRow, hasSubZeroCmd): If Not (materialCodeActual = "NAK80" Or materialCodeActual = "FDAC" Or materialCodeActual = "SS400") Then Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialCodeActual, hasSubZeroCmd): Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCodeActual, shapeCmd, useWireEDMCmd, isDia10OrLessCmd, hasShapeProcessingCmd, hasCuttingEdgeCmd, useAfterMCCmd, useSmallStartHoleCmd, hasTsubaProcessingCmd, tsubaCountCmd, tsubaRoughMethodCmd, needsPolishingCmd, needsOutsourcingForCoatingCmd, coatingTypeKeyCmd, needsAdjustPCmd, kataboriChoosenByUserCmd, naraiKensakuChoosenByUserCmd, autoSgCountCmd, userSgCountCmd)
-        Case "荒～焼きまで": Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCodeActual, noChamferCmd, hasLiftingScrewCmd): Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", geibiSupplierName, , , , , geibiPatternCmd): Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCodeActual, shapeCmd, useWireEDMCmd, isDia10OrLessCmd, hasShapeProcessingCmd, hasCuttingEdgeCmd, useAfterMCCmd, useSmallStartHoleCmd, hasTsubaProcessingCmd, tsubaCountCmd, tsubaRoughMethodCmd, needsPolishingCmd, needsOutsourcingForCoatingCmd, coatingTypeKeyCmd, needsAdjustPCmd, kataboriChoosenByUserCmd, naraiKensakuChoosenByUserCmd, autoSgCountCmd, userSgCountCmd)
+        Case "材料～焼きまで"
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", geibiSupplierName, , , , , geibiPatternCmd)
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCodeActual, shapeCmd, useWireEDMCmd, isDia10OrLessCmd, hasShapeProcessingCmd, hasCuttingEdgeCmd, useAfterMCCmd, useSmallStartHoleCmd, hasTsubaProcessingCmd, tsubaCountCmd, tsubaRoughMethodCmd, needsPolishingCmd, needsOutsourcingForCoatingCmd, coatingTypeKeyCmd, needsAdjustPCmd, kataboriChoosenByUserCmd, naraiKensakuChoosenByUserCmd, autoSgCountCmd, userSgCountCmd)
+            
+        Case "荒加工のみ"
+            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCodeActual, noChamferCmd, hasLiftingScrewCmd)
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", geibiSupplierName, , , , , geibiPatternCmd)
+            Call AddTapHole(ws, currentRow, initialTargetRow, hasSubZeroCmd)
+            
+            Dim requiresHeatTreatmentGeibi As Boolean
+            requiresHeatTreatmentGeibi = True ' デフォルトは熱処理あり
+            If materialInfoDict.Exists(materialCodeActual) Then
+                Dim matData As Variant
+                matData = materialInfoDict(materialCodeActual)
+                If UBound(matData) >= 3 Then ' 配列にフラグ情報（インデックス3）があるか確認
+                    If CStr(matData(3)) = "SKIP_HEAT" Then ' LoadMaterialInfo で設定したスキップフラグ
+                        requiresHeatTreatmentGeibi = False
+                    End If
+                End If
+            End If
+            
+            If requiresHeatTreatmentGeibi Then
+                Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialCodeActual, hasSubZeroCmd)
+            End If
+            
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCodeActual, shapeCmd, useWireEDMCmd, isDia10OrLessCmd, hasShapeProcessingCmd, hasCuttingEdgeCmd, useAfterMCCmd, useSmallStartHoleCmd, hasTsubaProcessingCmd, tsubaCountCmd, tsubaRoughMethodCmd, needsPolishingCmd, needsOutsourcingForCoatingCmd, coatingTypeKeyCmd, needsAdjustPCmd, kataboriChoosenByUserCmd, naraiKensakuChoosenByUserCmd, autoSgCountCmd, userSgCountCmd)
+            
+        Case "荒～焼きまで"
+            Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCodeActual, noChamferCmd, hasLiftingScrewCmd)
+            Call AddProcessToSheet(ws, currentRow, initialTargetRow, "外注", geibiSupplierName, , , , , geibiPatternCmd)
+            Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCodeActual, shapeCmd, useWireEDMCmd, isDia10OrLessCmd, hasShapeProcessingCmd, hasCuttingEdgeCmd, useAfterMCCmd, useSmallStartHoleCmd, hasTsubaProcessingCmd, tsubaCountCmd, tsubaRoughMethodCmd, needsPolishingCmd, needsOutsourcingForCoatingCmd, coatingTypeKeyCmd, needsAdjustPCmd, kataboriChoosenByUserCmd, naraiKensakuChoosenByUserCmd, autoSgCountCmd, userSgCountCmd)
+            
     End Select
 End Sub
 Private Sub ProcessNormalRoute(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, materialCodeActual As String, hasSubZeroCmd As Boolean, shapeCmd As String, useWireEDMCmd As Boolean, isDia10OrLessCmd As Boolean, hasShapeProcessingCmd As Boolean, hasCuttingEdgeCmd As Boolean, useAfterMCCmd As Boolean, useSmallStartHoleCmd As Boolean, hasTsubaProcessingCmd As Boolean, tsubaCountCmd As Integer, tsubaRoughMethodCmd As String, needsPolishingCmd As Boolean, needsOutsourcingForCoatingCmd As Boolean, coatingTypeKeyCmd As String, needsAdjustPCmd As Boolean, noChamferCmd As Boolean, hasLiftingScrewCmd As Boolean, kataboriChoosenByUserCmd As Boolean, naraiKensakuChoosenByUserCmd As Boolean, autoSgCountCmd As Boolean, userSgCountCmd As Integer) ' isSingleMCPreHeatCmd, isTripleMCPreHeatCmd を引数リストから削除
     Call AddMaterialPurchase(ws, currentRow, initialTargetRow, materialCodeActual, noChamferCmd, hasLiftingScrewCmd)
     Call AddMCBeforeHeatTreatment(ws, currentRow, initialTargetRow, shapeCmd) ' 引数を修正
     Call AddTapHole(ws, currentRow, initialTargetRow, hasSubZeroCmd)
-    If Not (materialCodeActual = "NAK80" Or materialCodeActual = "FDAC" Or materialCodeActual = "SS400") Then Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialCodeActual, hasSubZeroCmd)
-    Call AddPostHeatTreatmentProcesses(ws, currentRow, initialTargetRow, materialCodeActual, shapeCmd, useWireEDMCmd, isDia10OrLessCmd, hasShapeProcessingCmd, hasCuttingEdgeCmd, useAfterMCCmd, useSmallStartHoleCmd, hasTsubaProcessingCmd, tsubaCountCmd, tsubaRoughMethodCmd, needsPolishingCmd, needsOutsourcingForCoatingCmd, coatingTypeKeyCmd, needsAdjustPCmd, kataboriChoosenByUserCmd, naraiKensakuChoosenByUserCmd, autoSgCountCmd, userSgCountCmd)
-End Sub
+Dim requiresHeatTreatmentOutput As Boolean
+requiresHeatTreatmentOutput = True ' デフォルトは熱処理あり
+If materialInfoDict.Exists(materialCodeActual) Then
+    Dim matData As Variant
+    matData = materialInfoDict(materialCodeActual)
+    If UBound(matData) >= 3 Then
+        If CStr(matData(3)) = "SKIP_HEAT" Then
+            requiresHeatTreatmentOutput = False
+        End If
+    End If
+End If
+
+If requiresHeatTreatmentOutput Then
+    Call AddHeatTreatment(ws, currentRow, initialTargetRow, materialCodeActual, hasSubZeroCmd)
+End If
 
 ' --- 元の Add... 系サブルーチン (AddProcessToSheetから呼び出されるもの) ---
 Private Sub AddAdjustPProcess(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, needsAdjustPCmd As Boolean)
