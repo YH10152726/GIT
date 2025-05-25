@@ -197,3 +197,4 @@ ErrorHandlerExecuteLastOutput:
            "エラー内容: " & Err.Description, vbCritical
     Resume FinallyExecuteLastOutput
 End Sub
+
