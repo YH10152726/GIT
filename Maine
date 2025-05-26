@@ -929,7 +929,7 @@ Private Sub UserForm_Initialize()
     With Me.ComboBox3
         .Clear
         .AddItem "平面研削 汎用": .AddItem "平面研削 NC": .AddItem "倣い研削": .AddItem "M/C（小）"
-        .AddItem "M/C（大）": .AddItem "ﾜｲﾔ放電加工": .AddItem "型彫り放電"
+        .AddItem "M/C(大)": .AddItem "ﾜｲﾔ放電加工": .AddItem "型彫り放電"
         If .ListCount > 0 Then .ListIndex = 0
     End With
 
@@ -941,7 +941,7 @@ Private Sub UserForm_Initialize()
     End With
     With Me.ComboBoxTsubaRough
         .Clear
-        .AddItem "MC（小）": .AddItem "ﾜｲﾔ放電加工"
+        .AddItem "M/C（小）": .AddItem "ﾜｲﾔ放電加工"
         If .ListCount > 0 Then .ListIndex = 0
     End With
 
@@ -1151,7 +1151,7 @@ Private Sub UpdatePreview()
     hasTsubaProcessing = Me.CheckBoxTsuba.Value
     If hasTsubaProcessing Then
         If Me.ComboBoxTsubaCount.ListIndex > -1 Then tsubaCount = Val(Me.ComboBoxTsubaCount.Value) Else tsubaCount = 1
-        If Me.ComboBoxTsubaRough.ListIndex > -1 Then tsubaRoughMethod = Me.ComboBoxTsubaRough.Value Else tsubaRoughMethod = "MC（小）"
+        If Me.ComboBoxTsubaRough.ListIndex > -1 Then tsubaRoughMethod = Me.ComboBoxTsubaRough.Value Else tsubaRoughMethod = "M/C（小）"
     End If
     noChamfer = Me.CheckBoxChamferなし.Value
     hasLiftingScrew = Me.CheckBoxTsurinejiあり.Value
@@ -1180,11 +1180,11 @@ Private Sub UpdatePreview()
     ElseIf isMisumiPurchase Then
         Dim misumiSupplier As String
         If m_bCheckBox7_IsAutoChecked Then
-            misumiSupplier = "ﾐｽﾐ"
+            misumiSupplier = "ミスミ"
         Else
             misumiSupplier = ""
         End If
-        Call AddItemToPreviewList("副材(購入品)", misumiSupplier, "", "", "", "", "")
+        Call AddItemToPreviewList("副材（購入品）", misumiSupplier, "", "", "", "", "")
         If hasAdditionalProcessing And additionalProcessName <> "" Then
             Dim timesPreview As Variant
             timesPreview = GetProcessTimes(additionalProcessName)
@@ -1363,7 +1363,7 @@ Private Sub PreviewAddMaterialPurchase(materialCodePreview As String, noChamferP
 End Sub
 
 Private Sub PreviewAddMCBeforeHeatTreatment(shapePreview As String)
-    Dim mcProcessName As String: mcProcessName = IIf(shapePreview = "プレート", "M/C（大）", "M/C（小）")
+    Dim mcProcessName As String: mcProcessName = IIf(shapePreview = "プレート", "M/C(大)", "M/C（小）")
     Dim i As Integer, times As Variant, maeDandori As String, yTime As String, mTime As String, sTimeBase As String, sTimeFinal As String
     Dim loopCount As Integer
     Dim remarksFromSheetF As String
@@ -1492,7 +1492,7 @@ Private Sub PreviewAddAfterMCFinish(shapePreview As String)
     Dim times As Variant
     Dim finalMemo As String
     
-    mcFinishName = IIf(shapePreview = "プレート", "M/C（大）", "M/C（小）")
+    mcFinishName = IIf(shapePreview = "プレート", "M/C(大)", "M/C（小）")
     times = GetProcessTimes(mcFinishName, "MC仕上げ")
     
     If IsArray(times) Then
@@ -1790,7 +1790,7 @@ Private Sub PreviewProcessLayoutAfterCut(needsPolishingP As Boolean, hasCuttingE
 
     If useAfterMCAsLayoutP Then
         Dim mcProcessNameLayout As String
-        mcProcessNameLayout = IIf(shapeForMCP = "プレート", "M/C（大）", "M/C（小）")
+        mcProcessNameLayout = IIf(shapeForMCP = "プレート", "M/C(大)", "M/C（小）")
         times = GetProcessTimes(mcProcessNameLayout, "レイアウト後MC")
         If IsArray(times) Then
             remarksFromSheetF = CStr(times(4))
@@ -2851,7 +2851,7 @@ End Sub
 
 Private Sub ProcessMisumiPurchase(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, _
                                   hasAdditionalProcessing As Boolean, additionalProcessName As String, needsAdjustP As Boolean)
-    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "副材(購入品)", "ﾐｽﾐ")
+    Call AddProcessToSheet(ws, currentRow, initialTargetRow, "副材（購入品）", "ミスミ")
     If hasAdditionalProcessing Then
         Dim times As Variant
         Dim remarksFromSheetF As String
@@ -2894,7 +2894,7 @@ Private Sub ProcessLayoutAfterCut(ws As Worksheet, ByRef currentRow As Long, ini
 
     If useAfterMCAsLayout Then
         Dim mcProcessNameLayout As String
-        mcProcessNameLayout = IIf(shapeForMC = "プレート", "M/C（大）", "M/C（小）")
+        mcProcessNameLayout = IIf(shapeForMC = "プレート", "M/C(大)", "M/C（小）")
         times = GetProcessTimes(mcProcessNameLayout, "レイアウト後MC")
         If IsArray(times) Then
             remarksFromSheetF = CStr(times(4))
@@ -3022,7 +3022,7 @@ Private Sub AddMaterialPurchase(ws As Worksheet, ByRef currentRow As Long, initi
 End Sub
 
 Private Sub AddMCBeforeHeatTreatment(ws As Worksheet, ByRef currentRow As Long, initialTargetRow As Long, shapeCmd As String)
-    Dim mcProcessName As String: mcProcessName = IIf(shapeCmd = "プレート", "M/C（大）", "M/C（小）")
+    Dim mcProcessName As String: mcProcessName = IIf(shapeCmd = "プレート", "M/C(大)", "M/C（小）")
     Dim i As Integer, times As Variant, maeDandori As String, yTime As String, mTime As String, sTimeBase As String, sTimeFinal As String, loopCount As Integer, specificMemo As String
     times = GetProcessTimes(mcProcessName, "熱処理前")
     If IsArray(times) Then
@@ -3213,7 +3213,7 @@ Private Sub AddAfterMCFinish(ws As Worksheet, ByRef currentRow As Long, initialT
     Dim times As Variant
     Dim finalMemo As String
 
-    mcFinishName = IIf(shape = "プレート", "M/C（大）", "M/C（小）")
+    mcFinishName = IIf(shape = "プレート", "M/C(大)", "M/C（小）")
     times = GetProcessTimes(mcFinishName, "MC仕上げ")
 
     If IsArray(times) Then
