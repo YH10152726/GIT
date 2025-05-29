@@ -714,6 +714,161 @@ End Sub
 
 Private Sub txtBikouEdit_Change()
 End Sub
+Public Sub RefreshPreviewForActiveCell(ByVal targetRowToLoad As Long)
+    Dim ws As Worksheet
+    Dim ctrl As Object
+    Dim txtBox As MSForms.TextBox
+    Dim zColumnValue As String
+    Dim sizeStr As String
+    Dim itemName As String
+    Dim remarksStr As String
+    Dim isPlateBySizeInitialize As Boolean
+    Dim containsPInitialize As Boolean
+    Dim containsLayoutInRemarks As Boolean
+    Dim containsDoujiInRemarks As Boolean
+    Dim containsMisumiInZ As Boolean
+    Dim previousShapeOption As String
+    Dim bProgrammaticChangeFlagState As Boolean
+
+    ' プログラムによる変更であることを示すフラグを一時的にTrueにする
+    ' これにより、テキストボックスやオプションボタンのChange/Clickイベント内での意図しない再帰呼び出しを防ぐ
+    bProgrammaticChangeFlagState = m_bIsProgrammaticChange
+    m_bIsProgrammaticChange = True
+
+    On Error GoTo ErrorHandlerRefreshPreview
+
+    Set ws = ThisWorkbook.Sheets(SHEET_KOUTEIHYO) ' [cite: 1]
+
+    If targetRowToLoad <= 0 Then
+        ' 無効な行番号の場合は、テキストボックスをクリアし、デフォルトの状態でプレビュー更新
+        If TypeName(Me.Controls("txtMaterialCodePreview")) = "TextBox" Then Me.txtMaterialCodePreview.Text = ""
+        If TypeName(Me.Controls("txtZValuePreview")) = "TextBox" Then Me.txtZValuePreview.Text = ""
+        If TypeName(Me.Controls("txtSizePreview")) = "TextBox" Then Me.txtSizePreview.Text = ""
+        If TypeName(Me.Controls("txtItemNamePreview")) = "TextBox" Then Me.txtItemNamePreview.Text = ""
+        If TypeName(Me.Controls("txtRemarksPreview")) = "TextBox" Then Me.txtRemarksPreview.Text = ""
+        zColumnValue = ""
+        sizeStr = ""
+        itemName = ""
+        remarksStr = ""
+        ' オプションボタンやチェックボックスもデフォルトに戻すなどの処理が必要ならここに追加
+        If TypeName(Me.Controls("OptionButton4")) = "OptionButton" Then Me.OptionButton4.Value = True
+        m_sPreviouslySelectedShapeOption = Me.OptionButton4.name
+        If TypeName(Me.Controls("CheckBoxLayout")) = "CheckBox" Then Me.CheckBoxLayout.Value = False
+        If TypeName(Me.Controls("CheckBox7")) = "CheckBox" Then Me.CheckBox7.Value = False
+         ' CheckBox7 の状態変更に伴う他のコントロールの更新
+        If TypeName(Me.Controls("CheckBox8")) = "CheckBox" Then
+            Me.CheckBox8.Visible = False
+            Me.CheckBox8.Enabled = False
+            Me.CheckBox8.Value = False
+        End If
+        If TypeName(Me.Controls("ComboBox3")) = "ComboBox" Then
+            Me.ComboBox3.Visible = False
+            Me.ComboBox3.Enabled = False
+        End If
+        GoTo UpdateAndExit ' プレビュー更新へ
+    End If
+
+    ' プレビュー用入力フィールドの更新
+    Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtMaterialCodePreview"): On Error GoTo ErrorHandlerRefreshPreview
+    If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(ws.Cells(targetRowToLoad, COL_AC_INPUT).Value)): Set txtBox = Nothing Else Debug.Print "txtMaterialCodePreview not found or not a TextBox"; [cite: 90]
+
+    Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtZValuePreview"): On Error GoTo ErrorHandlerRefreshPreview
+    If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then
+        Set txtBox = ctrl
+        zColumnValue = Trim(CStr(ws.Cells(targetRowToLoad, COL_Z_INPUT).Value)) ' [cite: 91, 92]
+        txtBox.Text = zColumnValue
+        Set txtBox = Nothing
+    Else
+        zColumnValue = Trim(CStr(ws.Cells(targetRowToLoad, COL_Z_INPUT).Value)) ' [cite: 93]
+        Debug.Print "txtZValuePreview not found or not a TextBox"
+    End If
+    Set ctrl = Nothing
+
+    Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtSizePreview"): On Error GoTo ErrorHandlerRefreshPreview
+    If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(ws.Cells(targetRowToLoad, COL_AD_SIZE_INPUT).Value)): Set txtBox = Nothing Else Debug.Print "txtSizePreview not found or not a TextBox"; [cite: 94]
+
+    Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtItemNamePreview"): On Error GoTo ErrorHandlerRefreshPreview
+    If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(ws.Cells(targetRowToLoad, COL_AH_ITEMNAME_INPUT).Value)): Set txtBox = Nothing Else Debug.Print "txtItemNamePreview not found or not a TextBox"; [cite: 95]
+
+    Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtRemarksPreview"): On Error GoTo ErrorHandlerRefreshPreview
+    If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(ws.Cells(targetRowToLoad, COL_Y_REMARKS_INPUT).Value)): Set txtBox = Nothing Else Debug.Print "txtRemarksPreview not found or not a TextBox"; [cite: 96]
+    Set ctrl = Nothing
+
+    ' テキストボックスから再度値を取得して関連オプションを更新
+    If TypeName(Me.Controls("txtSizePreview")) = "TextBox" Then sizeStr = Me.txtSizePreview.Text Else sizeStr = ""
+    If TypeName(Me.Controls("txtItemNamePreview")) = "TextBox" Then itemName = Me.txtItemNamePreview.Text Else itemName = ""
+    If TypeName(Me.Controls("txtRemarksPreview")) = "TextBox" Then remarksStr = Me.txtRemarksPreview.Text Else remarksStr = ""
+
+    ' 形状オプションボタンの更新ロジック (Initializeから移植・調整)
+    ' CheckBoxLayoutの状態をまず評価
+    containsDoujiInRemarks = (InStr(1, remarksStr, "同時", vbTextCompare) > 0)
+    If TypeName(Me.Controls("CheckBoxLayout")) = "CheckBox" Then
+        ' 確認ダイアログは出さずにシートの値に基づいて更新
+        Me.CheckBoxLayout.Value = containsDoujiInRemarks
+    End If
+
+    ' CheckBoxLayoutがOFFの場合、または特定の条件を満たさない場合にOptionButton4をデフォルトに
+    Dim defaultToOptionButton4 As Boolean
+    defaultToOptionButton4 = True
+
+    isPlateBySizeInitialize = (ClassifyPartBasedOnSizeString(sizeStr) = "+")
+    containsPInitialize = (InStr(1, UCase(itemName), "P", vbTextCompare) > 0)
+    If isPlateBySizeInitialize And containsPInitialize Then
+        If TypeName(Me.Controls("OptionButton5")) = "OptionButton" Then
+            Me.OptionButton5.Value = True
+            m_sPreviouslySelectedShapeOption = Me.OptionButton5.name ' [cite: 106]
+            defaultToOptionButton4 = False
+        End If
+    End If
+
+    containsLayoutInRemarks = (InStr(1, remarksStr, "ﾚｲｱｳﾄ", vbTextCompare) > 0 Or InStr(1, remarksStr, "レイアウト", vbTextCompare) > 0)
+    If containsLayoutInRemarks And defaultToOptionButton4 Then ' defaultToOptionButton4がTrueの場合のみ評価 (OptionButton5が優先)
+        If TypeName(Me.Controls("OptionButton6")) = "OptionButton" Then
+            Me.OptionButton6.Value = True
+            m_sPreviouslySelectedShapeOption = Me.OptionButton6.name ' [cite: 106]
+            defaultToOptionButton4 = False
+        End If
+    End If
+    
+    If defaultToOptionButton4 And Not Me.CheckBoxLayout.Value Then ' CheckBoxLayoutがONの場合は形状が「レイアウト切り離し後」になるので、OptionButtonの評価はそれに従う
+        If TypeName(Me.Controls("OptionButton4")) = "OptionButton" Then
+            Me.OptionButton4.Value = True
+            m_sPreviouslySelectedShapeOption = Me.OptionButton4.name ' [cite: 106]
+        End If
+    End If
+    ' CheckBoxLayoutがONの場合は、GetShapeFromOptionButtons() が「レイアウト切り離し後」を返すので、
+    ' m_sPreviouslySelectedShapeOption の設定は不要（または Clickイベントに任せる）
+
+    ' ミスミチェックボックスの更新
+    m_bCheckBox7_IsAutoChecked = False ' [cite: 101]
+    containsMisumiInZ = (InStr(1, zColumnValue, "ミスミ", vbTextCompare) > 0) ' [cite: 102]
+    If TypeName(Me.Controls("CheckBox7")) = "CheckBox" Then
+        Me.CheckBox7.Value = containsMisumiInZ ' [cite: 103, 104]
+        If containsMisumiInZ Then m_bCheckBox7_IsAutoChecked = True ' [cite: 103]
+
+        ' CheckBox7 の状態変更に伴う他のコントロールの更新
+        If TypeName(Me.Controls("CheckBox8")) = "CheckBox" Then
+            Me.CheckBox8.Visible = Me.CheckBox7.Value
+            Me.CheckBox8.Enabled = Me.CheckBox7.Value
+            If Not Me.CheckBox7.Value Then Me.CheckBox8.Value = False
+        End If
+        If TypeName(Me.Controls("ComboBox3")) = "ComboBox" Then
+            Me.ComboBox3.Visible = Me.CheckBox7.Value
+            Me.ComboBox3.Enabled = (Me.CheckBox7.Value And Me.CheckBox8.Value)
+        End If
+    End If
+
+UpdateAndExit:
+    ' 最後にプレビューリストを更新
+    Call UpdatePreview
+
+    m_bIsProgrammaticChange = bProgrammaticChangeFlagState ' フラグを元に戻す
+    Exit Sub
+
+ErrorHandlerRefreshPreview:
+    m_bIsProgrammaticChange = bProgrammaticChangeFlagState ' エラー時もフラグを元に戻す
+    MsgBox "プレビュー更新中にエラーが発生しました。" & vbCrLf & "行: " & targetRowToLoad & vbCrLf & Err.Description, vbCritical
+End Sub
 
 ' === ユーザーフォーム初期化 ===
 Private Sub UserForm_Initialize()
@@ -971,83 +1126,23 @@ Private Sub UserForm_Initialize()
         Me.FrameEditControls.Visible = False
     End If
 
-    ' プレビュー用入力フィールド初期設定
-    Dim wsInitialize As Worksheet, targetRowInitialize As Long
-    Dim ctrl As Object
-    Dim txtBox As MSForms.TextBox
-    Dim zColumnValueInitialize As String
-    zColumnValueInitialize = ""
-
-    On Error Resume Next
-    Set wsInitialize = Nothing
-    Set wsInitialize = ThisWorkbook.Sheets(SHEET_KOUTEIHYO)
-    On Error GoTo 0
-
-    If Not wsInitialize Is Nothing Then
-        If TypeName(ActiveSheet) = "Worksheet" Then
-            If ActiveSheet.name = wsInitialize.name Then
+' プレビュー用入力フィールド初期設定と最初のプレビュー更新
+    Dim initialRow As Long
+    initialRow = -1 ' 不正な行を表す値で初期化
+    On Error Resume Next ' ActiveSheetやSelectionが不正な場合のエラーをハンドル
+    If Not ActiveSheet Is Nothing Then
+        If ActiveSheet.name = SHEET_KOUTEIHYO Then
+            If Not Selection Is Nothing Then
                 If TypeName(Selection) = "Range" Then
                     If Selection.Cells.CountLarge = 1 Then
-                        targetRowInitialize = ActiveCell.Row
-                        If targetRowInitialize > 0 Then
-                            Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtMaterialCodePreview"): On Error GoTo 0
-                            If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_AC_INPUT).Value)): Set txtBox = Nothing
-
-                            Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtZValuePreview"): On Error GoTo 0
-                            If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then
-                                Set txtBox = ctrl
-                                zColumnValueInitialize = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_Z_INPUT).Value))
-                                txtBox.Text = zColumnValueInitialize
-                                Set txtBox = Nothing
-                            Else
-                                zColumnValueInitialize = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_Z_INPUT).Value))
-                            End If
-                            Set ctrl = Nothing
-
-                            Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtSizePreview"): On Error GoTo 0
-                            If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_AD_SIZE_INPUT).Value)): Set txtBox = Nothing
-
-                            Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtItemNamePreview"): On Error GoTo 0
-                            If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_AH_ITEMNAME_INPUT).Value)): Set txtBox = Nothing
-
-                            Set ctrl = Nothing: On Error Resume Next: Set ctrl = Me.Controls("txtRemarksPreview"): On Error GoTo 0
-                            If Not ctrl Is Nothing And TypeName(ctrl) = "TextBox" Then Set txtBox = ctrl: txtBox.Text = Trim(CStr(wsInitialize.Cells(targetRowInitialize, COL_Y_REMARKS_INPUT).Value)): Set txtBox = Nothing
-                            Set ctrl = Nothing
-
-                            If TypeName(Me.Controls("txtSizePreview")) = "TextBox" Then sizeStrInitialize = Me.txtSizePreview.Text
-                            If TypeName(Me.Controls("txtItemNamePreview")) = "TextBox" Then itemNameInitialize = Me.txtItemNamePreview.Text
-                            If TypeName(Me.Controls("txtRemarksPreview")) = "TextBox" Then remarksStrInitialize = Me.txtRemarksPreview.Text
-
-                            isPlateBySizeInitialize = (ClassifyPartBasedOnSizeString(sizeStrInitialize) = "+")
-                            containsPInitialize = (InStr(1, UCase(itemNameInitialize), "P", vbTextCompare) > 0)
-                            If isPlateBySizeInitialize And containsPInitialize Then If TypeName(Me.Controls("OptionButton5")) = "OptionButton" Then Me.OptionButton5.Value = True
-
-                            containsLayoutInRemarks = (InStr(1, remarksStrInitialize, "ﾚｲｱｳﾄ", vbTextCompare) > 0 Or InStr(1, remarksStrInitialize, "レイアウト", vbTextCompare) > 0)
-                            If containsLayoutInRemarks Then If TypeName(Me.Controls("OptionButton6")) = "OptionButton" Then Me.OptionButton6.Value = True
-
-                            containsDoujiInRemarks = (InStr(1, remarksStrInitialize, "同時", vbTextCompare) > 0)
-                            If TypeName(Me.Controls("CheckBoxLayout")) = "CheckBox" Then
-                                If containsDoujiInRemarks Then Me.CheckBoxLayout.Value = True
-                            End If
-
-                            Dim containsMisumiInZ As Boolean
-                            m_bCheckBox7_IsAutoChecked = False
-                            containsMisumiInZ = (InStr(1, zColumnValueInitialize, "ミスミ", vbTextCompare) > 0)
-                            If TypeName(Me.Controls("CheckBox7")) = "CheckBox" Then
-                                If containsMisumiInZ Then
-                                    Me.CheckBox7.Value = True
-                                    m_bCheckBox7_IsAutoChecked = True
-                                Else
-                                    Me.CheckBox7.Value = False
-                                End If
-                            End If
-                        End If
+                        initialRow = ActiveCell.Row
                     End If
                 End If
             End If
         End If
     End If
-    On Error GoTo 0
+    On Error GoTo 0 ' 標準エラーハンドリングに戻す
+    Call RefreshPreviewForActiveCell(initialRow) ' 新しいメソッドを呼び出し (無効な行ならRefreshPreviewForActiveCell内で対応)
 
     ' OptionButton初期選択状態保存
     If TypeName(Me.Controls("OptionButton4")) = "OptionButton" And Me.OptionButton4.Value Then
@@ -1094,7 +1189,7 @@ Private Sub UserForm_Initialize()
         End If
     End If
 
-    Call UpdatePreview
+
 End Sub
 
 Private Sub UpdatePreview()
@@ -2685,7 +2780,7 @@ Private Sub CommandButton1_Click()
                 .Cells(i + 1, 9).Value = m_arrPreviewProcesses(i).IsGoDandoriUserEdited
             End With
         Next i
-        MsgBox "工程作成が完了しました。", vbInformation
+       
     Else
         MsgBox "プレビューに表示されている工程がありません。出力処理を中断します。", vbExclamation
         GoTo Finally
@@ -2695,7 +2790,7 @@ Finally:
     Application.ScreenUpdating = True
     Set wsKouteihyo = Nothing
     Set wsLog = Nothing
-    Unload Me
+    'Unload Me
     Exit Sub
 
 ErrorHandler:
