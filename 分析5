@@ -1,88 +1,49 @@
-Sub 工程フィルター抽出_指定工程のみ_Y列対応()
+Public Sub DeleteInnerBlanks_AH_withAJKeep()
 
-    Dim srcSht As Worksheet
-    Dim dstSht As Worksheet
-    Dim i As Long, j As Long, k As Long
-    Dim 最終行 As Long
-    Dim 工程リスト As Object
-    Dim 工程名 As String
-    Dim ブロック開始 As Long, ブロック終了 As Long
-    Dim 出力行 As Long
-    Dim newSheetName As String
-
-    Set srcSht = ActiveSheet
-    最終行 = srcSht.Cells(srcSht.Rows.Count, "K").End(xlUp).Row
-    Set 工程リスト = CreateObject("Scripting.Dictionary")
-
-    ' Y列から工程フィルター条件を収集
-    i = 1
-    Do While Trim(srcSht.Cells(i, "Y").Value) <> ""
-        工程名 = NormalizeStr(srcSht.Cells(i, "Y").Value)
-        If Not 工程リスト.exists(工程名) Then
-            工程リスト.Add 工程名, True
-        End If
-        i = i + 1
-    Loop
-
-    ' 出力先シート作成
-    newSheetName = "抽出結果_" & Format(Now, "mmdd_HHMMSS")
-    Set dstSht = ThisWorkbook.Sheets.Add(After:=Sheets(Sheets.Count))
-    dstSht.Name = newSheetName
-    出力行 = 1
-
-    i = 3
-    Do While i <= 最終行
-        If Trim(srcSht.Cells(i, "K").Value) <> "" Then
-            If Trim(srcSht.Cells(i, "K").Value) = "END" Then Exit Do
-            ブロック開始 = i
-
-            ' ブロック終了を探す
-            For j = i + 1 To 最終行
-                If Trim(srcSht.Cells(j, "K").Value) <> "" Or Trim(srcSht.Cells(j, "K").Value) = "END" Then
-                    ブロック終了 = j - 1
-                    Exit For
-                End If
-            Next j
-
-            ' 工程チェック
-            Dim 工程すべて一致 As Boolean
-            工程すべて一致 = True
-
-            For k = ブロック開始 + 1 To ブロック終了
-                工程名 = NormalizeStr(srcSht.Cells(k, "M").Value)
-                If Len(工程名) > 0 Then
-                    If Not 工程リスト.exists(工程名) Then
-                        工程すべて一致 = False
-                        Exit For
-                    End If
-                End If
-            Next k
-
-            ' 条件を満たせばコピー
-            If 工程すべて一致 Then
-                srcSht.Range("A" & ブロック開始 & ":V" & ブロック終了).Copy
-                dstSht.Cells(出力行, 1).PasteSpecial xlPasteValues
-                出力行 = 出力行 + (ブロック終了 - ブロック開始 + 1)
+    Dim ws As Worksheet
+    Dim lastRowAH As Long
+    Dim lastRowAJ As Long
+    Dim lastDataRow As Long
+    Dim i As Long
+    
+    '--- 処理前の設定 ---
+    ' イベントの発生を一時的に停止する
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    
+    ' エラーが発生しても必ずイベントを有効に戻すための仕組み
+    On Error GoTo ErrorHandler
+    
+    Set ws = ActiveSheet ' 必要ならシート固定
+    
+    With ws
+        ' AH / AJ それぞれで “最後に値が入った行” を取得
+        lastRowAH = .Cells(.Rows.Count, "AH").End(xlUp).Row
+        lastRowAJ = .Cells(.Rows.Count, "AJ").End(xlUp).Row
+        
+        ' どちらか大きい方が “データ範囲の最終行”
+        lastDataRow = WorksheetFunction.Max(lastRowAH, lastRowAJ)
+        
+        ' 見出し 1 行目を除き、下→上ループで空白行だけ削除
+        For i = lastDataRow - 1 To 2 Step -1
+            If LenB(.Cells(i, "AH").Value) = 0 _
+               And LenB(.Cells(i, "AJ").Value) = 0 Then
+                    .Rows(i).Delete
             End If
+        Next i
+    End With
 
-            i = ブロック終了 + 1
-        Else
-            i = i + 1
-        End If
-    Loop
+'--- 処理後の設定復元 ---
+Finally:
+    ' ★追加点2：イベントの発生を必ず元に戻す
+    Application.EnableEvents = True
+    Application.ScreenUpdating = True
+    Exit Sub ' エラーがなければここで正常終了
 
-    MsgBox "指定工程のみのブロック抽出が完了しました。", vbInformation
+ErrorHandler:
+    ' エラーが発生した場合でも、必ずイベントを有効に戻してからメッセージを表示
+    MsgBox "エラーが発生しました。" & vbCrLf & Err.Description, vbCritical
+    Resume Finally ' Finallyブロックにジャンプして終了処理を行う
 
 End Sub
-
-Function NormalizeStr(s As String) As String
-    s = Trim(s)
-    s = Replace(s, "　", "") ' 全角スペース削除
-    s = Replace(s, " ", "")  ' 半角スペース削除
-    s = Replace(s, "/", "")  ' スラッシュ削除
-    s = Replace(s, "（", "(") ' 括弧統一（全角→半角）
-    s = Replace(s, "）", ")")
-    s = UCase(s)             ' 大文字小文字の統一
-    NormalizeStr = s
-End Function
 
