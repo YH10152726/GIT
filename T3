@@ -1,39 +1,118 @@
-Option Explicit
+' --- メイン処理 ---
+' このサブルーチンをボタンに登録します
+Public Sub AddNextProcessInterval()
+    ' --- 定数定義 ---
+    Const SHEET_NAME As String = "P000" ' 対象シート名
+    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
+    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
+    Const START_ROW As Long = 2 ' データ開始行
+    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
+    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
+    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
+    Const END_MARKER As String = "END" ' データ終了マーカー
 
-' ================================================================
-' 列 AH が空白 かつ 列 AJ も空白の “挟まった行” だけを削除して上に詰める
-' ・最後のデータ行より下（いわゆるフッター領域）は対象外
-' ・列 AJ に文字が入っている行は AH が空でも残す
-' ================================================================
-Public Sub DeleteInnerBlanks_AH_withAJKeep()
+    ' --- 変数定義 ---
+    Dim ws As Worksheet
+    Dim wsSettings As Worksheet
+    Dim lastRow As Long
+    Dim blockStartRow As Long
+    Dim blockEndRow As Long
+    Dim i As Long
+    Dim intervalValue As Long '
+    Dim valFromCell As Variant
 
-    Dim ws              As Worksheet
-    Dim lastRowAH       As Long
-    Dim lastRowAJ       As Long
-    Dim lastDataRow     As Long
-    Dim i               As Long
+    ' --- 初期設定 ---
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
+    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
+    On Error GoTo 0
     
-    Set ws = ActiveSheet                ' 必要ならシート固定
+    If ws Is Nothing Then
+        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+    If wsSettings Is Nothing Then
+        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+
+    ' シート2のZ2セルから値を取得
+    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
+
+    ' 値が有効か（正の数値か）をチェック
+    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
+        MsgBox "「" & SETTINGS_SHEET_NAME & "」の " & INTERVAL_CELL & " セルに、" & vbCrLf & _
+               "次工程間隔として有効な正の数値を入力してください。", vbCritical, "設定エラー"
+        Exit Sub
+    End If
     
+    ' Long型に変換して変数に格納
+    intervalValue = CLng(valFromCell)
+
+    ' --- 処理 ---
     Application.ScreenUpdating = False
-    
-    With ws
-        ' AH / AJ それぞれで “最後に値が入った行” を取得
-        lastRowAH = .Cells(.Rows.Count, "AH").End(xlUp).Row
-        lastRowAJ = .Cells(.Rows.Count, "AJ").End(xlUp).Row
-        
-        ' どちらか大きい方が “データ範囲の最終行”
-        lastDataRow = WorksheetFunction.Max(lastRowAH, lastRowAJ)
-        
-        ' 見出し 1 行目を除き、下→上ループで空白行だけ削除
-        For i = lastDataRow - 1 To 2 Step -1
-            If LenB(.Cells(i, "AH").Value) = 0 _
-               And LenB(.Cells(i, "AJ").Value) = 0 Then
-                   .Rows(i).Delete
+
+    ' 最終行を取得 (ENDマーカー基準)
+    lastRow = ws.Columns(COL_ITEM_NAME).Find(What:=END_MARKER, LookIn:=xlValues, LookAt:=xlWhole).Row
+
+    ' BK列をクリア
+    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
+
+    ' ブロックの開始行をセット
+    blockStartRow = START_ROW
+
+    ' 1行目から最終行までループ
+    For i = START_ROW To lastRow
+        ' AH列に「品名」または「END」があるかチェック
+        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
+            
+            ' 現在のブロックの終了行を設定 (品名/ENDの手前の行)
+            blockEndRow = i - 1
+            
+            ' 前のブロックが存在すれば処理を実行
+            If blockEndRow >= blockStartRow Then
+                ' ★変更点: 6の代わりに読み込んだ変数 intervalValue を渡す
+                Call ProcessSingleBlock(ws, blockStartRow, blockEndRow, COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue)
             End If
-        Next i
-    End With
+            
+            ' 次のブロックの開始行を更新
+            blockStartRow = i
+        End If
+    Next i
     
     Application.ScreenUpdating = True
+    MsgBox "次工程間隔（" & intervalValue & "）の入力を完了しました。", vbInformation
 End Sub
+
+
+' --- 1つのブロックを処理するサブルーチン ---
+Private Sub ProcessSingleBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
+                               ByVal processCol As String, ByVal outputCol As String, ByVal valueToSet As Long)
+    
+    Dim i As Long
+    Dim currentProcess As String
+    Dim nextProcess As String
+    
+    For i = startRow To endRow - 1
+        currentProcess = Trim(CStr(ws.Cells(i, processCol).Value))
+        nextProcess = Trim(CStr(ws.Cells(i + 1, processCol).Value))
+        
+        If currentProcess <> nextProcess Then
+            If Not IsExcludedProcess(currentProcess) Then
+                ws.Cells(i, outputCol).Value = valueToSet
+            End If
+        End If
+    Next i
+End Sub
+
+
+' --- 例外工程かどうかを判定する関数 ---
+Private Function IsExcludedProcess(ByVal processName As String) As Boolean
+    IsExcludedProcess = False
+    
+    Select Case Trim(processName)
+        Case "主材購入", "穴あけﾀｯﾌﾟ", "熱処理"
+            IsExcludedProcess = True
+    End Select
+End Function
 
