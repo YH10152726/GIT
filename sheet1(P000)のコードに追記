@@ -1,0 +1,82 @@
+
+'====================================================================================
+' 材質選択時に、焼き入れ方法と焼き硬度を自動入力する
+'====================================================================================
+Private Sub Worksheet_Change(ByVal Target As Range)
+    
+    ' --- 初期設定 ---
+    ' 対応表（マスターデータ）が保存されているシート名と列を指定
+    Const MASTER_SHEET_NAME As String = "シート2" ' ★要確認：対応表があるシート名
+    Const MASTER_COL_MATERIAL As String = "AC"   ' ★要確認：マスタシートの材質列
+    Const MASTER_COL_METHOD As String = "AD"     ' ★要確認：マスタシートの焼き入れ方法列
+    Const MASTER_COL_HARDNESS As String = "AE"   ' ★要確認：マスタシートの焼き硬度列
+    
+    Dim masterSheet As Worksheet
+    Dim changedCell As Range
+    Dim materialToFind As String
+    Dim foundMethod As Variant
+    Dim foundHardness As Variant
+    Dim searchRange As Range
+    
+    ' 変更されたセルがAC列以外なら、何もしないで処理を終了
+    If Intersect(Target, Me.Range("AC:AC")) Is Nothing Then
+        Exit Sub
+    End If
+    
+    ' 万が一、シートが存在しない場合のエラー回避
+    On Error Resume Next
+    Set masterSheet = ThisWorkbook.Sheets(MASTER_SHEET_NAME)
+    If masterSheet Is Nothing Then
+        MsgBox "シート「" & MASTER_SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+    On Error GoTo 0 ' エラーハンドリングを元に戻す
+    
+    ' マスタシートの検索範囲を設定（A列）
+    With masterSheet
+        Set searchRange = .Range(.Cells(1, MASTER_COL_MATERIAL), .Cells(.Rows.Count, MASTER_COL_MATERIAL).End(xlUp))
+    End With
+    
+    ' イベントの連鎖（無限ループ）を防止
+    Application.EnableEvents = False
+    
+    ' 貼り付けなどで複数セルが同時に変更された場合にも対応
+    For Each changedCell In Target
+        
+        ' AC列の変更されたセルでのみ処理を実行
+        If changedCell.Column = Me.Range("AC1").Column Then
+            
+            materialToFind = changedCell.Value
+            
+            ' 材質が入力された場合（空白でクリアされた場合は除く）
+            If materialToFind <> "" Then
+                
+                ' VLOOKUP関数を使ってマスタからデータを検索
+                ' 見つからない場合はエラー値が返るので、On Errorで回避
+                On Error Resume Next
+                foundMethod = Application.WorksheetFunction.VLookup(materialToFind, searchRange.Resize(, 3), 2, False)
+                foundHardness = Application.WorksheetFunction.VLookup(materialToFind, searchRange.Resize(, 3), 3, False)
+                On Error GoTo 0 ' エラーハンドリングを元に戻す
+
+                ' 見つかった値をセット
+                If IsError(foundMethod) Then
+                    ' 見つからなかった場合、空白にする
+                    Me.Cells(changedCell.Row, "Z").Value = ""  ' 焼き入れ方法 (Z列)
+                    Me.Cells(changedCell.Row, "AE").Value = "" ' 焼き硬度 (AE列)
+                Else
+                    Me.Cells(changedCell.Row, "Z").Value = foundMethod   ' 焼き入れ方法 (Z列)
+                    Me.Cells(changedCell.Row, "AE").Value = foundHardness ' 焼き硬度 (AE列)
+                End If
+                
+            Else
+                ' 材質欄がクリアされたら、関連するセルもクリアする
+                Me.Cells(changedCell.Row, "Z").Value = ""
+                Me.Cells(changedCell.Row, "AE").Value = ""
+            End If
+        End If
+    Next changedCell
+
+    ' イベントの発生を元に戻す
+    Application.EnableEvents = True
+    
+End Sub
