@@ -1,0 +1,16 @@
+Public Sub ExecuteMyFormButton()
+    Dim frm As Object
+
+    ' 開いているユーザーフォームのコレクションをループして、目的のフォームを探す
+    For Each frm In UserForms
+        ' UserForm1 の部分は、お使いのフォームの名前に合わせてください
+        If TypeName(frm) = "UserForm1" Then
+
+            ' 新しく作った公開用の窓口 "TriggerClickEvent" を呼び出すように変更
+            CallByName frm, "TriggerClickEvent", VbMethod
+
+            ' 処理が終わったらループを抜ける
+            Exit For
+        End If
+    Next frm
+End Sub
