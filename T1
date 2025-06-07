@@ -1,6 +1,6 @@
 Option Explicit
 
-Private Const SHEET_KOUTEIHYO_NAME As String = "工程表" ' 対象シート名
+Private Const SHEET_KOUTEIHYO_NAME As String = "P000" ' 対象シート名
 Private Const COL_Y_DOUJI As String = "Y" ' 「同時」情報がある列
 Private Const COL_AG_HINBAN As String = "AG" ' 品番がある列
 
