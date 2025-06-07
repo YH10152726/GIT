@@ -1,64 +1,226 @@
-工程キー	前段取	有人	機械	後段取	備考(AS列用)	詳細備考(G列確認用)	単品挿入対象 	編集用工程ボックス	材質コード	主材購入先	熱処理先(通常)	熱処理先(サブゼロ)		外注先キー	外注先名	外作リスト候補	プレビュー編集時の業者名選択用		キーワード (Z列で検索する文字列)	種別	内部管理キー (CoatingTypeKey)	要外注	要磨き
-主材購入						単品挿入用	〇	〇	SKH51	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理		COATING_ALCRN	和興産業		〇		ALCRN	コーティング	COATING_ALCRN	TRUE	TRUE
-平面研削 汎用		0.4		0.1		単品挿入用, ミスミ追加工用	〇	〇	DC53	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理		COATING_TICN	北熱		〇		TICN	コーティング	COATING_TICN	TRUE	TRUE
-平面研削 NC		0.3	0.3	0.1		単品挿入用, ミスミ追加工用	〇	〇	SLD-MAGIC	ﾒﾀﾙﾃｯｸ	ｴｼﾞｿﾝ熱処理	ｴｼﾞｿﾝ熱処理		COATING_DNF	和興産業		〇		DNF	コーティング	COATING_DNF	TRUE	TRUE
-M/C（小）		0.3	0.25	0.1		単品挿入用, ミスミ追加工用	〇	〇	S20C	小山鋼材				GEIBI	ｹﾞｲﾋﾞ鋼業		〇		SUB0	サブゼロ		FALSE	FALSE
-M/C（大）		0.4	0.25	0.1		単品挿入用, ミスミ追加工用	〇	〇	S45C	小山鋼材				HOSOI	細井工作所	〇	〇		ｻﾌﾞ0	サブゼロ		FALSE	FALSE
-M/C-1		0.3	0.25	0.1		単品挿入用	〇	〇	S50C	小山鋼材				PUNCH	ﾊﾟﾝﾁ工業	〇	〇		S0	サブゼロ		FALSE	FALSE
-M/C-2		0.3	0.25	0.1		単品挿入用	〇	〇	S50C相当	小山鋼材				SHIHEN	四変ﾃｯｸ	〇	〇		(新しいコーティング名)	コーティング	COATING_NEW	TRUE	TRUE
-M/C（大）-MC仕上げ		0.4	0.2	0.2	MC仕上げ	焼き後MC仕上げ (プレート)			SS400	深江特殊鋼	無			TOKAROI	ﾄｰｶﾛｲ	〇	〇		(新しいサブゼロの略称)	サブゼロ		FALSE	FALSE
-M/C（大）-レイアウト後MC		0.4	0.2	0.2		レイアウト切り離し後MC (プレート)			SS41	深江特殊鋼				HEAT_SUBZERO_DEFAULT	ｴｼﾞｿﾝ熱処理		〇						
-M/C（大）-熱処理前		0.25	0.1	0.1		熱処理前MC (プレート)			SK3	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理		HEAT_RIHITO	ﾘﾋﾄ精光		〇						
-M/C（小）-MC仕上げ		0.25	0.1	0.1	MC仕上げ	焼き後MC仕上げ (ブロック/他)			SK4	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理		HEAT_KOUONN	光陽産業 高温		〇						
-M/C（小）-レイアウト後MC		0.25	0.1	0.1		レイアウト切り離し後MC (ブロック/他)			SK4相当	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理		HEAT_KOUYOU	光陽産業		〇						
-M/C（小）-熱処理前		0.25	0.3	0.1		熱処理前MC (ブロック/他)			SKD11	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理		HEAT_EZISON	ｴｼﾞｿﾝ熱処理		〇						
-MC（小）-つば荒		0.6	0.1	0.1	つば荒	ツバ荒加工方法			SKD11相当	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理		MISUMI	ﾐｽﾐ		〇						
-M/C（電極）		0.3	0.8	0.1		単品挿入用	〇	〇	SKD51	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-ﾜｲﾔ放電加工		0.75	2	0.5		単品挿入用, ミスミ追加工用, ワイヤー(φ10以下or形状無)	〇	〇	SKD61	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-ﾜｲﾔ放電加工-荒加工		0.75	3		荒加工	ワイヤー(φ16超かつ形状有) - 1/2			SKD-MAGIC	ﾒﾀﾙﾃｯｸ	ｴｼﾞｿﾝ熱処理	ｴｼﾞｿﾝ熱処理											
-ﾜｲﾔ放電加工-ｶｽ取り・仕上げ		0.75	6	0.5	ｶｽ取り・仕上げ	ワイヤー(φ16超かつ形状有) - 2/2			SKD相当	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理											
-ﾜｲﾔ放電加工-つば荒		0.6	0.1	0.1		ツバ荒加工方法			SKH51相当	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-ワイヤ加工（電極）		0.5	1.5	0.2		単品挿入用	〇	〇	SKH52	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-型彫放電加工		0.5	1.5	0.5		単品挿入用, ミスミ追加工用(型彫り放電), ユーザー選択	〇	〇	SKS3	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理											
-型彫放電加工-レイアウト後		0.5	1.5	0.2		レイアウト切り離し後、ユーザー選択			SKS3相当	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理											
-穴あけﾀｯﾌﾟ		0.3				熱処理前、ゲイビ外注(荒加工のみ)後			HAP10	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-細穴放電加工		0.5	0.8	0.2		単品挿入用, スタート穴用	〇	〇	HAP40	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-平面研削 NC-SG		0.3	0.3	0.1		焼き入れ後SG			HAP40相当	ﾒﾀﾙﾜﾝ	ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-平面研削 NC-つば仕上げ		0.3	0.1	0.1	つば仕上げ	ツバ仕上げ加工			FDAC	小山鋼材	無												
-平面研削 NC-ファミリー後ヘソ上面		0.2	0.3	0.1	ﾍｿ・上面	ワイヤー後研削 (ファミリー, 磨き無, 刃物有, etc.)			DEX40														
-平面研削 NC-ファミリー後ヘソ取り		0.2	0.3	0.1	ﾍｿ取り	ワイヤー後研削 (ファミリー, 磨き無)			DH2F相当														
-平面研削 NC-レイアウト後上面		0.2	0.2	0.1	上面	レイアウト後、型彫り後上面研削			ASP23		ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-平面研削 NC-上面後		0.2	0.2	0.1	上面	ワイヤー後研削(ブロック/プレート, 刃物有, etc.), 磨き/型彫り後			粉末ハイス		ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-平面研削 汎用（M調整）		0.4		0.1	ﾍｿ取り・上面	単品挿入用	〇		粉末ハイス鋼		ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-平面研削 汎用-ファミリー後ヘソ取り		0.2		0.1	ﾍｿ取り	ワイヤー後研削 (ファミリー, 磨き有)			粉末ハイス相当		ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-平面研削 汎用-レイアウト後ヘソ上面		0.1		0.2	上面	レイアウト切り離し後ヘソ取り (上面含む)			遊休材DC53	深江特殊鋼	光陽産業 高温	ｴｼﾞｿﾝ熱処理											
-平面研削 汎用-レイアウト後ヘソ取り		0.1		0.2		レイアウト切り離し後ヘソ取り			SUS														
-平面研削 汎用-上面後		0.2		0.1		ワイヤー後研削(ブロック, 刃物有, etc.)			SUS304														
-平面研削-1		0.3	0.3	0.1		単品挿入用	〇		SUS304相当														
-平面研削-2		0.3	0.3	0.1		単品挿入用	〇		ステンシム														
-平面研削-3		0.3	0.3	0.1		単品挿入用	〇		ステンシム（SUS304）														
-倣い研削		1		0.2		単品挿入用, ミスミ追加工用, ユーザー選択	〇	〇	ステンシムSUS304														
-倣い研削-レイアウト後		1		0.2		レイアウト切り離し後、ユーザー選択			A7075P														
-調整 面取		0.3				単品挿入用	〇	〇	BC6														
-調整（P）		0.1				単品挿入用, 最終調整用	〇	〇	QCM8														
-磨き		0.4				単品挿入用, Z列指定/ユーザー選択	〇	〇	GTI20														
-洗浄		0.5				単品挿入用	〇	〇	V30														
-溶接		1				単品挿入用	〇	〇	VC-50														
-電極設計		0.5				単品挿入用	〇	〇	VM-30（超硬）														
-電極リスト作成		0.3				単品挿入用	〇	〇	VM40														
-確認測定M		0.5				単品挿入用	〇		VM-40														
-確認測定P		0.5				単品挿入用	〇		VM50														
-社内TRY		2				単品挿入用	〇	〇	VM-50														
-熱処理						単品挿入用	〇	〇	VW-50														
-外注						単品挿入用	〇	〇	YXR3		ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-副材（購入品）						単品挿入用	〇	〇	YXR33		ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-									YXR 7		ﾘﾋﾄ精光	ｴｼﾞｿﾝ熱処理											
-									超硬														
-									超硬VM40														
-									HPM38	小山鋼材	光陽産業	ｴｼﾞｿﾝ熱処理											
-									NAK80	小山鋼材	無												
-																							
-																							
-																							
-																							
-																							
+Option Explicit
+
+' ====================================================================================
+'
+' ■■■ 全ての処理を行う、単独のマクロ (メッセージボックス削除版) ■■■
+'
+'       ボタンにはこの「OrganizeProcessSheet」を登録してください。
+'
+' ====================================================================================
+Sub OrganizeProcessSheet()
+    ' --- 処理開始時の設定 ---
+    Dim startTime As Double
+    startTime = Timer
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    On Error GoTo ErrorHandler
+
+    ' --- 定数 ---
+    Const SHEET_NAME As String = "工程表"
+    Const COL_Y As String = "Y"
+    Const COL_AG As String = "AG"
+    Const HEADER_ROWS As Long = 1 ' ヘッダーの行数
+
+    ' --- 変数 ---
+    Dim ws As Worksheet
+    Dim sourceData As Variant
+    Dim parentItems As Object
+    Dim orphanData As Object
+    Dim lastRow As Long, lastCol As Long
+    Dim dataStartRow As Long
+    Dim i As Long, j As Long
+    Dim pKey As Variant, cKey As Variant, item As Variant
+
+    ' --- 1. データの読み込み ---
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
+    If ws Is Nothing Then
+        ' エラーメッセージは残す
+        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
+        GoTo Finally
+    End If
+    On Error GoTo ErrorHandler
+
+    If ws.UsedRange.Rows.Count <= HEADER_ROWS Then GoTo Finally ' データがなければ終了
+    
+    lastRow = ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
+    lastCol = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
+    dataStartRow = HEADER_ROWS + 1 ' データは2行目から
+    
+    sourceData = ws.Range(ws.Cells(dataStartRow, "A"), ws.Cells(lastRow, lastCol)).Value
+    
+    ' --- 2. メモリ上でデータのグループ分けと親子関係の整理 ---
+    Set parentItems = CreateObject("Scripting.Dictionary")
+    Set orphanData = CreateObject("Scripting.Dictionary")
+    
+    Dim regExY As Object, regExAG As Object
+    Set regExY = CreateObject("VBScript.RegExp")
+    regExY.pattern = "(\d+)と?同時|同時(\d+)"
+    Set regExAG = CreateObject("VBScript.RegExp")
+    regExAG.pattern = "^(\d+)"
+
+    Dim yColNum As Long, agColNum As Long
+    yColNum = ws.Range(COL_Y & "1").Column
+    agColNum = ws.Range(COL_AG & "1").Column
+    
+    Dim currentBlockOwnerKey As String
+    currentBlockOwnerKey = ""
+
+    For i = 1 To UBound(sourceData, 1)
+        Dim yVal As String, agVal As String
+        yVal = Trim(CStr(sourceData(i, yColNum - (ws.UsedRange.Column - 1))))
+        agVal = Trim(CStr(sourceData(i, agColNum - (ws.UsedRange.Column - 1))))
+        
+        Dim isParent As Boolean, isChild As Boolean, parentKeyStr As String
+        isParent = regExAG.Test(agVal) And Not regExY.Test(yVal)
+        isChild = regExAG.Test(agVal) And regExY.Test(yVal)
+        
+        Dim rowData() As Variant
+        ReDim rowData(1 To UBound(sourceData, 2))
+        For j = 1 To UBound(sourceData, 2)
+            rowData(j) = sourceData(i, j)
+        Next j
+
+        If isParent Then
+            parentKeyStr = regExAG.Execute(agVal)(0).SubMatches(0)
+            currentBlockOwnerKey = parentKeyStr
+            
+            If Not parentItems.Exists(parentKeyStr) Then
+                Set parentItems(parentKeyStr) = CreateObject("Scripting.Dictionary")
+                Set parentItems(parentKeyStr)("rows") = CreateObject("Scripting.Dictionary")
+                Set parentItems(parentKeyStr)("children") = CreateObject("Scripting.Dictionary")
+            End If
+            parentItems(parentKeyStr)("rows").Add parentItems(parentKeyStr)("rows").Count, rowData
+
+        ElseIf isChild Then
+            Dim matches As Object
+            Set matches = regExY.Execute(yVal)
+            If matches.Count > 0 Then
+                parentKeyStr = IIf(matches(0).SubMatches(0) <> "", matches(0).SubMatches(0), matches(0).SubMatches(1))
+            Else
+                parentKeyStr = ""
+            End If
+            
+            currentBlockOwnerKey = regExAG.Execute(agVal)(0).SubMatches(0)
+
+            If parentKeyStr <> "" And parentItems.Exists(parentKeyStr) Then
+                Dim childKeyAsLong As Long
+                childKeyAsLong = CLng(currentBlockOwnerKey)
+                
+                Dim childrenDict As Object
+                Set childrenDict = parentItems(parentKeyStr)("children")
+
+                If Not childrenDict.Exists(childKeyAsLong) Then
+                     Set childrenDict(childKeyAsLong) = CreateObject("Scripting.Dictionary")
+                     childrenDict(childKeyAsLong).Add "key", childKeyAsLong
+                     Set childrenDict(childKeyAsLong)("rows") = CreateObject("Scripting.Dictionary")
+                End If
+                childrenDict(childKeyAsLong)("rows").Add childrenDict(childKeyAsLong)("rows").Count, rowData
+            Else
+                orphanData.Add orphanData.Count, rowData
+            End If
+            
+        Else ' ヘッダーではない行
+            If currentBlockOwnerKey <> "" Then
+                 Dim found As Boolean: found = False
+                 For Each pKey In parentItems.Keys
+                    If CStr(pKey) = currentBlockOwnerKey Then
+                        parentItems(pKey)("rows").Add parentItems(pKey)("rows").Count, rowData
+                        found = True: Exit For
+                    Else
+                        On Error Resume Next
+       
+                        childKeyAsLong = 0
+                        childKeyAsLong = CLng(currentBlockOwnerKey)
+                        If Err.Number = 0 Then
+                            If parentItems(pKey)("children").Exists(childKeyAsLong) Then
+                                parentItems(pKey)("children")(childKeyAsLong)("rows").Add parentItems(pKey)("children")(childKeyAsLong)("rows").Count, rowData
+                                found = True: Exit For
+                            End If
+                        End If
+                        On Error GoTo ErrorHandler
+                    End If
+                 Next pKey
+                 If Not found Then orphanData.Add orphanData.Count, rowData
+            Else
+                 orphanData.Add orphanData.Count, rowData
+            End If
+        End If
+    Next i
+    
+    ' --- 3. メモリ上で子部品を品番順に並べ替え ---
+    ' (Dictionaryのキーでソートするため、このセクションでの明示的な処理は不要)
+    
+    ' --- 4. 整理・並べ替え済みのデータをシートに書き戻す ---
+    ws.Range(ws.Cells(dataStartRow, "A"), ws.Cells(lastRow, lastCol)).ClearContents
+    
+    Dim outputRow As Long
+    outputRow = dataStartRow
+    
+    Dim parentKeys As Variant, childKeys As Variant
+    parentKeys = parentItems.Keys
+    Call BubbleSort(parentKeys)
+
+    For Each pKey In parentKeys
+        For Each item In parentItems(pKey)("rows").Items
+            ws.Range(ws.Cells(outputRow, 1), ws.Cells(outputRow, UBound(item, 1))).Value = Application.Transpose(Application.Transpose(item))
+            outputRow = outputRow + 1
+        Next item
+        
+        childKeys = parentItems(pKey)("children").Keys
+        Call BubbleSort(childKeys)
+        
+        For Each cKey In childKeys
+            Dim childRows As Object
+            Set childRows = parentItems(pKey)("children")(cKey)("rows")
+            For Each item In childRows.Items
+                 ws.Range(ws.Cells(outputRow, 1), ws.Cells(outputRow, UBound(item, 1))).Value = Application.Transpose(Application.Transpose(item))
+                 outputRow = outputRow + 1
+            Next item
+        Next cKey
+    Next pKey
+    
+    For Each item In orphanData.Items
+        ws.Range(ws.Cells(outputRow, 1), ws.Cells(outputRow, UBound(item, 1))).Value = Application.Transpose(Application.Transpose(item))
+        outputRow = outputRow + 1
+    Next item
+
+    ' --- 完了メッセージを削除 ---
+    ' MsgBox "全ての整頓処理が完了しました。", vbInformation
+
+Finally:
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Debug.Print "全処理時間: " & Format(Timer - startTime, "0.00") & "秒"
+    Set ws = Nothing
+    Set parentItems = Nothing
+    Set orphanData = Nothing
+    Set regExAG = Nothing
+    Set regExY = Nothing
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "処理中にエラーが発生しました。" & vbCrLf & _
+           "エラー番号: " & Err.Number & vbCrLf & _
+           "エラー内容: " & Err.Description, vbCritical
+    Resume Finally
+End Sub
+
+' --- 配列をソートするための補助プロシージャ ---
+Private Sub BubbleSort(ByRef arr As Variant)
+    Dim i As Long, j As Long
+    Dim temp As Variant
+    If Not IsArray(arr) Then Exit Sub
+    If UBound(arr) < LBound(arr) Then Exit Sub
+
+    For i = LBound(arr) To UBound(arr) - 1
+        For j = i + 1 To UBound(arr)
+            If CVar(arr(i)) > CVar(arr(j)) Then
+                temp = arr(j)
+                arr(j) = arr(i)
+                arr(i) = temp
+            End If
+        Next j
+    Next i
+End Sub
+
