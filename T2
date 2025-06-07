@@ -16,7 +16,7 @@ Sub OrganizeProcessSheet()
     On Error GoTo ErrorHandler
 
     ' --- 定数 ---
-    Const SHEET_NAME As String = "工程表"
+    Const SHEET_NAME As String = "P000"
     Const COL_Y As String = "Y"
     Const COL_AG As String = "AG"
     Const HEADER_ROWS As Long = 1 ' ヘッダーの行数
