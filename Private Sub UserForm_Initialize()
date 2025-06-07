@@ -1,0 +1,12 @@
+
+
+    Application.OnKey "{F5}", "ExecuteMyFormButton"
+
+End Sub
+Private Sub UserForm_Terminate()
+    Application.OnKey "{F5}"
+
+End Sub
+Public Sub TriggerClickEvent()
+    Me.CommandButton1.Value = True
+End Sub
