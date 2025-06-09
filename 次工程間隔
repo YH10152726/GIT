@@ -1,0 +1,135 @@
+' --- メイン処理 ---
+' このサブルーチンをボタンに登録します
+Public Sub AddNextProcessInterval()
+    ' --- 定数定義 ---
+    Const SHEET_NAME As String = "P000" ' 対象シート名
+    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
+    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
+    Const START_ROW As Long = 3 ' データ開始行
+    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
+    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
+    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
+
+    ' --- 変数定義 ---
+    Dim ws As Worksheet
+    Dim wsSettings As Worksheet
+    Dim lastRow As Long
+    Dim blockStartRow As Long
+    Dim blockEndRow As Long
+    Dim i As Long
+    Dim intervalValue As Long
+    Dim valFromCell As Variant
+
+    ' --- 初期設定 ---
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
+    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
+    On Error GoTo 0
+    
+    If ws Is Nothing Then
+        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+    If wsSettings Is Nothing Then
+        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+
+    ' シート2のZ2セルから値を取得
+    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
+
+    ' 値が有効か（正の数値か）をチェック
+    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
+        MsgBox "「" & SETTINGS_SHEET_NAME & "」の " & INTERVAL_CELL & " セルに、" & vbCrLf & _
+               "次工程間隔として有効な正の数値を入力してください。", vbCritical, "設定エラー"
+        Exit Sub
+    End If
+    
+    ' Long型に変換して変数に格納
+    intervalValue = CLng(valFromCell)
+
+    ' --- 処理 ---
+    Application.ScreenUpdating = False
+
+    ' 最終行を取得 (AJ列のデータ最終行を基準)
+    lastRow = ws.Cells(ws.Rows.Count, COL_PROCESS_NAME).End(xlUp).Row
+
+    ' データが存在するかチェック
+    If lastRow < START_ROW Then
+        MsgBox "処理対象のデータが " & COL_PROCESS_NAME & " 列に見つかりません。", vbInformation
+        Application.ScreenUpdating = True
+        Exit Sub
+    End If
+
+    ' BK列をクリア
+    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
+
+    ' ブロックの開始行をセット
+    blockStartRow = START_ROW
+
+    ' 2行目から最終行までループ
+    For i = START_ROW To lastRow
+        ' AH列に「品名」があるか、または最終行かをチェックしてブロックを区切る
+        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
+            
+            ' 現在のブロックの終了行を設定
+            Dim currentBlockEndRow As Long
+            If i = lastRow And ws.Cells(i, COL_ITEM_NAME).Value = "" Then
+                 currentBlockEndRow = i
+            Else
+                 currentBlockEndRow = i - 1
+            End If
+
+            ' 前のブロックが存在すれば処理を実行
+            If currentBlockEndRow >= blockStartRow Then
+                Call ProcessSingleBlock(ws, blockStartRow, currentBlockEndRow, COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue)
+            End If
+            
+            ' 次のブロックの開始行を更新
+            blockStartRow = i
+        End If
+    Next i
+    
+    Application.ScreenUpdating = True
+    MsgBox "次工程間隔（" & intervalValue & "）の入力を完了しました。", vbInformation
+End Sub
+
+
+' --- 1つのブロックを処理するサブルーチン ---
+' ★★★ このサブルーチンを修正しました ★★★
+Private Sub ProcessSingleBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
+                               ByVal processCol As String, ByVal outputCol As String, ByVal valueToSet As Long)
+    
+    Dim i As Long
+    Dim currentProcess As String
+    Dim nextProcess As String
+    
+    ' ブロックの開始行から、最終行の1つ手前の行までをループ
+    For i = startRow To endRow - 1
+        currentProcess = Trim(CStr(ws.Cells(i, processCol).Value))
+        nextProcess = Trim(CStr(ws.Cells(i + 1, processCol).Value))
+        
+        ' 現在の工程と次の工程が異なる場合、今の工程の区切りと判断
+        If currentProcess <> nextProcess Then
+            ' 例外工程でなければ値を設定
+            If Not IsExcludedProcess(currentProcess) Then
+                ws.Cells(i, outputCol).Value = valueToSet
+            End If
+        End If
+    Next i
+    
+    ' ブロックの最終行(endRow)には値を入力しないため、ループ後の処理は不要
+    
+End Sub
+
+
+' --- 例外工程かどうかを判定する関数 ---
+Private Function IsExcludedProcess(ByVal processName As String) As Boolean
+    IsExcludedProcess = False
+    
+    Select Case Trim(processName)
+        Case "", "", ""
+            IsExcludedProcess = True
+    End Select
+End Function
+
