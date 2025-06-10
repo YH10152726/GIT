@@ -1,135 +1,249 @@
-' --- メイン処理 ---
-' このサブルーチンをボタンに登録します
-Public Sub AddNextProcessInterval()
-    ' --- 定数定義 ---
-    Const SHEET_NAME As String = "P000" ' 対象シート名
-    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
-    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
-    Const START_ROW As Long = 3 ' データ開始行
-    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
-    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
-    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
+1. 工程生成の主要な分岐ルール
+条件: ユーザーフォーム上のオプション選択や、シートから読み込まれたデータの内容。
+処理内容: 以下の優先順位に従って、生成される工程の全体的なパターン（ルート）が決定されます。
 
-    ' --- 変数定義 ---
-    Dim ws As Worksheet
-    Dim wsSettings As Worksheet
-    Dim lastRow As Long
-    Dim blockStartRow As Long
-    Dim blockEndRow As Long
-    Dim i As Long
-    Dim intervalValue As Long
-    Dim valFromCell As Variant
+【ルート1】 外作購入品: 「外作購入品」オプションがチェックされている場合。
 
-    ' --- 初期設定 ---
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
-    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
-    On Error GoTo 0
-    
-    If ws Is Nothing Then
-        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
-    If wsSettings Is Nothing Then
-        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
+【ルート2】 ミスミ購入: 「ミスミから購入」オプションがチェックされている場合。
 
-    ' シート2のZ2セルから値を取得
-    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
+【ルート3】 レイアウト切り離し後: 部品形状が「レイアウト切り離し後」と判断された場合。
 
-    ' 値が有効か（正の数値か）をチェック
-    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の " & INTERVAL_CELL & " セルに、" & vbCrLf & _
-               "次工程間隔として有効な正の数値を入力してください。", vbCritical, "設定エラー"
-        Exit Sub
-    End If
-    
-    ' Long型に変換して変数に格納
-    intervalValue = CLng(valFromCell)
+【ルート4】 ゲイビ外注: 「ゲイビ鋼業に外注する」オプションがチェックされている場合。
 
-    ' --- 処理 ---
-    Application.ScreenUpdating = False
+【ルート5】 通常ルート: 上記のいずれにも当てはまらない、標準的な工程生成ルート。
 
-    ' 最終行を取得 (AJ列のデータ最終行を基準)
-    lastRow = ws.Cells(ws.Rows.Count, COL_PROCESS_NAME).End(xlUp).Row
+2. 「外作購入品」の場合
+条件: ユーザーフォーム上の「外作購入品」(CheckBox9) がチェックされていること。
+処理内容:
 
-    ' データが存在するかチェック
-    If lastRow < START_ROW Then
-        MsgBox "処理対象のデータが " & COL_PROCESS_NAME & " 列に見つかりません。", vbInformation
-        Application.ScreenUpdating = True
-        Exit Sub
-    End If
+基本工程: 「外注」という工程が1つ追加されます。業者は「外作購入品業者」ドロップダウンリスト (ComboBox2) で選択されたものが設定されます。
 
-    ' BK列をクリア
-    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
+追加条件:
 
-    ' ブロックの開始行をセット
-    blockStartRow = START_ROW
+Z列のキーワード解析でコーティングが必要と判断された場合、コーティングのための「外注」工程が追加されます。
 
-    ' 2行目から最終行までループ
-    For i = START_ROW To lastRow
-        ' AH列に「品名」があるか、または最終行かをチェックしてブロックを区切る
-        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
-            
-            ' 現在のブロックの終了行を設定
-            Dim currentBlockEndRow As Long
-            If i = lastRow And ws.Cells(i, COL_ITEM_NAME).Value = "" Then
-                 currentBlockEndRow = i
-            Else
-                 currentBlockEndRow = i - 1
-            End If
+「調整(P)」(CheckBoxAdjustP) がチェックされていれば、最後に「調整（P）」工程が追加されます。
 
-            ' 前のブロックが存在すれば処理を実行
-            If currentBlockEndRow >= blockStartRow Then
-                Call ProcessSingleBlock(ws, blockStartRow, currentBlockEndRow, COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue)
-            End If
-            
-            ' 次のブロックの開始行を更新
-            blockStartRow = i
-        End If
-    Next i
-    
-    Application.ScreenUpdating = True
-    MsgBox "次工程間隔（" & intervalValue & "）の入力を完了しました。", vbInformation
-End Sub
+3. 「ミスミ購入」の場合
+条件: ユーザーフォーム上の「ミスミから購入」(CheckBox7) がチェックされていること。
+処理内容:
 
+基本工程: 「副材（購入品）」という工程が追加され、業者は「ミスミ」に設定されます。
 
-' --- 1つのブロックを処理するサブルーチン ---
-' ★★★ このサブルーチンを修正しました ★★★
-Private Sub ProcessSingleBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
-                               ByVal processCol As String, ByVal outputCol As String, ByVal valueToSet As Long)
-    
-    Dim i As Long
-    Dim currentProcess As String
-    Dim nextProcess As String
-    
-    ' ブロックの開始行から、最終行の1つ手前の行までをループ
-    For i = startRow To endRow - 1
-        currentProcess = Trim(CStr(ws.Cells(i, processCol).Value))
-        nextProcess = Trim(CStr(ws.Cells(i + 1, processCol).Value))
-        
-        ' 現在の工程と次の工程が異なる場合、今の工程の区切りと判断
-        If currentProcess <> nextProcess Then
-            ' 例外工程でなければ値を設定
-            If Not IsExcludedProcess(currentProcess) Then
-                ws.Cells(i, outputCol).Value = valueToSet
-            End If
-        End If
-    Next i
-    
-    ' ブロックの最終行(endRow)には値を入力しないため、ループ後の処理は不要
-    
-End Sub
+追加条件:
 
+「追加工あり」(CheckBox8) がチェックされている場合、ドロップダウンリスト (ComboBox3) で選択された追加工の工程が追加されます。
 
-' --- 例外工程かどうかを判定する関数 ---
-Private Function IsExcludedProcess(ByVal processName As String) As Boolean
-    IsExcludedProcess = False
-    
-    Select Case Trim(processName)
-        Case "", "", ""
-            IsExcludedProcess = True
-    End Select
-End Function
+最後に「調整(P)」(CheckBoxAdjustP) がチェックされていれば、「調整（P）」工程が追加されます。
 
+4. 「レイアウト切り離し後」の場合
+条件: Y列の「同時」という記述などから、形状が「レイアウト切り離し後」と判断されること。
+処理内容: このルート専用の処理（PreviewProcessLayoutAfterCut）が呼び出されます。
+
+必須工程: 最初に「平面研削 汎用」が「ﾍｿ取り」の備考付きで追加されます。「刃付けあり」かつ「磨きなし」などの条件を満たすと、備考が「ﾍｿ取り・上面」に変わります。
+
+追加条件（オプション選択に応じて）:
+
+ワイヤ放電加工: オプションが有効な場合、ワイヤ加工と、その後の研削工程が追加されます。
+
+MC加工: 「レイアウト後MC」オプションが有効な場合、MC工程が追加されます。
+
+つば加工: オプションが有効な場合、「つば荒」「つば仕上げ」の工程が追加されます。
+
+その他: 「倣い研削」「型彫放電加工」「磨き」「コーティング」「調整(P)」なども、各オプションが有効であれば追加されます。
+
+5. 「ゲイビ外注」の場合
+条件: 「ゲイビ鋼業に外注する」(CheckBoxGeibi) がチェックされていること。
+処理内容: 外注パターンのドロップダウンリスト (ComboBoxGeibiType) の選択肢に応じて工程が分岐します。
+
+パターン「材料～焼きまで」:
+
+「外注」（業者: ゲイビ鋼業）が追加されます。
+
+熱処理後の全工程（研削、ワイヤ、刃付けなど）が追加されます。
+
+パターン「材料～荒」:
+
+「外注」（業者: ゲイビ鋼業、備考: 材料～荒加工）が追加されます。
+
+「穴あけタップ」が追加されます。
+
+「熱処理」が追加されます。
+
+熱処理後の全工程が追加されます。
+
+パターン「荒加工のみ」:
+
+「主材購入」が追加されます。
+
+「外注」（業者: ゲイビ鋼業、備考: 荒加工のみ）が追加されます。
+
+「穴あけタップ」、「熱処理」、熱処理後の全工程が追加されます。
+
+パターン「荒～焼きまで」:
+
+「主材購入」が追加されます。
+
+「外注」（業者: ゲイビ鋼業、備考: 荒～焼きまで）が追加されます。
+
+熱処理後の全工程が追加されます。
+
+6. 「通常ルート」の場合
+条件: 上記1〜4のいずれにも当てはまらない、標準的な工程生成ルートであること。
+処理内容: 以下の基本工程が順に積み上げられます。
+
+主材購入: PreviewAddMaterialPurchaseが呼ばれます。
+
+熱処理前M/C: PreviewAddMCBeforeHeatTreatmentが呼ばれます。
+
+穴あけタップ: PreviewAddTapHoleが呼ばれます。
+
+熱処理: PreviewAddHeatTreatmentが呼ばれます。
+
+熱処理後工程: PreviewAddPostHeatTreatmentProcessesが呼ばれ、研削、ワイヤ、各種仕上げ加工などがオプションに応じて追加されます。
+
+7. Z列キーワードの解析と反映ルール
+条件: Z列に入力された文字列。
+処理内容:
+
+キーワードの正規化: Z列の文字列は、内部的に「半角カタカナ・大文字」に統一して処理されます。
+
+マスターデータとの照合: シート2に定義された「Z列キーワード」リストと照合されます。
+
+ルールの適用:
+
+コーティング: キーワードが「コーティング」タイプとしてマスターに登録されている場合（例: "TICN"）、needsPolishing（磨き要否）やneedsOutsourcingForCoating（コーティング外注要否）といった内部的なフラグがONになり、後工程で「磨き」や「外注」が追加される原因となります。
+
+サブゼロ処理: キーワードが「サブゼロ」タイプの場合、outHasSubZeroフラグがONになります。これにより、「穴あけタップ」工程の備考に「ｻﾌﾞｾﾞﾛ注意」と追記されたり、熱処理業者がサブゼロ対応の業者に変わったりします。
+
+8. 部品形状の自動判定ルール
+条件: 「工程表」シートのセル選択時に読み込まれる品名、サイズ、備考の各データ。
+処理内容: ユーザーが手動で形状を選択するだけでなく、データに基づいて形状が自動で初期設定されます。
+
+プレートの自動判定: 以下の両方を満たす場合、形状が「プレート」に自動設定されます。
+
+サイズ文字列が、特定の寸法比率や体積の計算式（ClassifyPartBasedOnSizeString関数）によって「プレート」と判断される。
+
+品名（AH列）に "P" の文字が含まれている。
+
+ファミリー加工の自動判定: Y列の備考に「ﾚｲｱｳﾄ」または「レイアウト」の文字列が含まれている場合、「ファミリー加工」に自動設定されます。
+
+レイアウト切り離し後の自動判定: Y列の備考に「同時」という文字列が含まれている場合、「レイアウト切り離し後」(CheckBoxLayout)が自動でチェックされます。
+
+デフォルト: 上記のいずれでもない場合、形状は「ブロック」として扱われます。
+
+9. SG（平面研削）の回数決定ルール
+条件: 熱処理後に追加される「平面研削 NC」工程の回数。
+処理内容: 自動または手動で制御されます。
+
+自動決定の場合 (CheckBoxAutoSgCountがON):
+
+ブロック形状: 6回。
+
+ファミリー加工形状: 2回。
+
+プレート形状: 条件により変動します。
+
+ワイヤ加工なし ＋ MC後仕上げあり → 4回。
+
+ワイヤ加工なし → 2回。
+
+MC後仕上げあり → 4回。
+
+上記以外（プレートのデフォルト） → 3回。
+
+手動指定の場合 (CheckBoxAutoSgCountがOFF):
+
+ドロップダウンリスト (ComboBoxSgCount) で指定された回数が適用されます。
+
+10. ワイヤ放電加工の分岐ルール
+条件: 「ワイヤ・形状加工」(CheckBox1)がONの場合、さらに細かい条件で工程内容が変わります。
+処理内容:
+
+「ファミリー加工」形状の場合:
+
+「形状加工あり」(CheckBox5)もON → 「荒加工」と「ｶｽ取り・仕上げ」の2工程が追加されます。
+
+「形状加工あり」がOFF → 標準の「ﾜｲﾔ放電加工」1工程が追加されます。
+
+その他の形状の場合:
+
+「φ10以下」(CheckBox4) かつ 「形状加工あり」(CheckBox5)がON → 「荒加工」と「ｶｽ取り・仕上げ」の2工程が追加されます。
+
+「φ10以下」がON または 「形状加工あり」がOFF → 標準の1工程が追加されます。
+
+11. 各種加工オプションと工程の対応（詳細版）
+刃付け加工 (CheckBox6)
+
+条件: このチェックボックスをONにすると、hasCuttingEdgeという内部フラグが有効になります。このフラグは、それ単体で工程を追加するのではなく、他の工程を追加・変更するための重要な判断材料として機能します。
+
+処理内容: ワイヤ放電加工後の研削工程を追加するかの判断、つば加工や型彫放電加工の後に上面を仕上げる研削工程を追加するかの判断、「磨き」工程の後にさらに上面を研削する工程を追加するかの判断など、複数の場面で影響を与えます。
+
+MC後仕上げ (CheckBoxAfterMC)
+
+条件: このチェックボックスがONになっていること。
+
+処理内容: 熱処理後の研削工程群の後に、「MC仕上げ」という備考を持つM/C工程が追加されます。部品形状が「プレート」の場合は「M/C(大)」、それ以外の場合は「M/C（小）」が追加されます。
+
+吊りネジあり (CheckBoxTsurinejiあり)
+
+条件: このチェックボックスがONになっていること。
+
+処理内容: 工程リストの最初に追加される「主材購入」工程の備考欄に、「Cあり」または「Cなし」の文字列の後ろに「,吊り」というテキストが追記されます。
+
+Cなし (CheckBoxChamferなし)
+
+条件: このチェックボックスがONになっていること。
+
+処理内容: 「主材購入」工程の備考欄が、デフォルトの「Cあり」から「Cなし」に変更されます。もし「吊りネジあり」もONなら、備考は「Cなし,吊り」となります。
+
+細穴 (CheckBoxStartHoleSmall)
+
+条件: 「ワイヤ・形状加工」(CheckBox1)と「細穴」(CheckBoxStartHoleSmall) の両方がONになっていること。
+
+処理内容: 「ワイヤ放電加工」工程が追加される直前に、「細穴放電加工」の工程が1つ追加されます。ワイヤ加工のオプションがOFFの場合は、このチェックボックスをONにしても工程は追加されません。
+
+12. 「プレート」形状に特化したルール
+条件: 部品形状が「プレート」と判断された場合。
+処理内容: 以下の点で「ブロック」形状などと異なる工程が生成されます。
+
+M/C工程の選択: 熱処理の前 (PreviewAddMCBeforeHeatTreatment) と後 (PreviewAddAfterMCFinish) に追加されるM/C工程が、標準の「M/C（小）」ではなく**「M/C(大)」**に変更されます。
+
+ワイヤ放電加工後の研削: ワイヤ放電加工の後に追加される上面の研削工程が、「平面研削 汎用」ではなく**「平面研削 NC」**になります。
+
+13. 「ファミリー加工」に特化したルール
+条件: 形状が「ファミリー加工」と判断された場合。
+処理内容: 独自のルールが適用されます。
+
+ワイヤ放電加工の強制適用: ユーザーフォーム上で「ワイヤ・形状加工」(CheckBox1)がOFFになっていても、強制的にONとして扱われ、必ずワイヤ放電加工の工程が工程リストに含まれます。
+
+ワイヤ放電加工後の研削: ワイヤ放電加工の後、「ファミリー加工」特有の「ヘソ取り」という備考がついた研削工程が追加されます。さらに「刃付けあり」などの条件を満たすと、備考は「ヘソ・上面」に変わります。
+
+14. 手動編集の保持に関するルール
+条件: ユーザーが自動生成された工程を手動で編集した場合。
+処理内容: ツールは、ユーザーの編集内容を保護する仕組みを備えています。
+
+編集状態の記録: ユーザーが「更新」(cmdUpdateEdit_Click) ボタンを押すと、その工程の内部データに「編集済み」(IsEdited = True) というフラグが立てられ、プレビューリスト上で太字で表示されます。
+
+後段取り時間の個別保存: 後段取り時間がユーザーによって編集されると、専用のフラグ (IsGoDandoriUserEdited = True) が立ち、入力された値は別の場所に保持されます。これにより、全体の自動計算が実行されても、ユーザーが編集した値が上書きされることはありません。
+
+上書き前の確認: 編集済みの工程がある状態で、プレビュー全体が更新される操作を行うと、「この操作を行うと、それらの編集内容はリセットされます。続行しますか？」という確認メッセージが表示されます。ここで「いいえ」を選択すると操作はキャンセルされ、手動編集した内容は保護されます。
+
+15. 基盤となる処理ロジック
+マスターデータの読み込みと活用方法
+
+条件: ユーザーフォームが起動する時。
+
+処理内容: シート2に定義された工程別工数、材質情報、外注先情報、Z列キーワードが、メモリ上の「Dictionary」というデータ構造に一括で読み込まれます。これにより、VBAコードを修正することなく、シート2の値を編集するだけでツールの動作を柔軟に変更できます。
+
+親子関係の整頓ロジック
+
+条件: 「工程表」シート上のデータを整理する補助機能として実行された場合。
+
+処理内容: Y列の「(親品番)と同時」という記述を基に、「子」の工程ブロック全体を「親」の工程ブロックの直下へ移動させます。その後、グループ化された子部品たちを、それぞれの子部品自身の品番（AG列）の番号順に並べ替えます。
+
+次工程間隔の設定ロジック
+
+条件: 一つの品名ブロックの中で、工程名が変わる行を検出した場合。
+
+処理内容: シート2のZ2セルから読み取った間隔値を、工程グループの最終行のBK列に自動で入力します。ただし、その工程が「主材購入」「穴あけﾀｯﾌﾟ」「熱処理」の場合は、間隔値は入力されません。
