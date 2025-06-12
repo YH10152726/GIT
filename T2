@@ -1,226 +1,66 @@
-Option Explicit
+2. 定量的効果の算出
+2.1. 作業時間の大幅な短縮効果（詳細分析版）
+【課題：潜在的な「思考時間」の定量化】
+効果をより正確に算出するため、PCの「操作時間」に加えて、「思考・計画時間」も考慮します。特に複雑な案件では、どの工程をどう組むべきかという思考時間が大きな割合を占めますが、ツールが最適な工程パターンを瞬時に提示することで、この時間が大幅に短縮されます。この効果を反映させるため、ツールの処理ルートに基づき作成パターンを4段階に分類し、それぞれに手動作成時間（操作＋思考）と年間発生割合を割り当て、効果を算出します。
 
-' ====================================================================================
-'
-' ■■■ 全ての処理を行う、単独のマクロ (メッセージボックス削除版) ■■■
-'
-'       ボタンにはこの「OrganizeProcessSheet」を登録してください。
-'
-' ====================================================================================
-Sub OrganizeProcessSheet()
-    ' --- 処理開始時の設定 ---
-    Dim startTime As Double
-    startTime = Timer
-    Application.ScreenUpdating = False
-    Application.Calculation = xlCalculationManual
-    On Error GoTo ErrorHandler
+【改善案：処理ルートと思考時間に基づく4段階分類での効果算出】
+24年度総作成件数2430件
 
-    ' --- 定数 ---
-    Const SHEET_NAME As String = "P000"
-    Const COL_Y As String = "Y"
-    Const COL_AG As String = "AG"
-    Const HEADER_ROWS As Long = 1 ' ヘッダーの行数
+A. 高負荷工程（ツール効果：最大）
 
-    ' --- 変数 ---
-    Dim ws As Worksheet
-    Dim sourceData As Variant
-    Dim parentItems As Object
-    Dim orphanData As Object
-    Dim lastRow As Long, lastCol As Long
-    Dim dataStartRow As Long
-    Dim i As Long, j As Long
-    Dim pKey As Variant, cKey As Variant, item As Variant
+根拠: ツールの**【ルート5: 通常ルート】**に該当。熱処理、研削回数、各種加工オプションなど、多数のルールを組み合わせる最も複雑なパターン。工程数13行以上。
 
-    ' --- 1. データの読み込み ---
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
-    If ws Is Nothing Then
-        ' エラーメッセージは残す
-        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
-        GoTo Finally
-    End If
-    On Error GoTo ErrorHandler
+手動時間（操作＋思考）: 5分40秒(操作) + 2分(思考) = 7分40秒 (460秒)
 
-    If ws.UsedRange.Rows.Count <= HEADER_ROWS Then GoTo Finally ' データがなければ終了
-    
-    lastRow = ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
-    lastCol = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
-    dataStartRow = HEADER_ROWS + 1 ' データは2行目から
-    
-    sourceData = ws.Range(ws.Cells(dataStartRow, "A"), ws.Cells(lastRow, lastCol)).Value
-    
-    ' --- 2. メモリ上でデータのグループ分けと親子関係の整理 ---
-    Set parentItems = CreateObject("Scripting.Dictionary")
-    Set orphanData = CreateObject("Scripting.Dictionary")
-    
-    Dim regExY As Object, regExAG As Object
-    Set regExY = CreateObject("VBScript.RegExp")
-    regExY.pattern = "(\d+)と?同時|同時(\d+)"
-    Set regExAG = CreateObject("VBScript.RegExp")
-    regExAG.pattern = "^(\d+)"
+ツール時間: 30秒
 
-    Dim yColNum As Long, agColNum As Long
-    yColNum = ws.Range(COL_Y & "1").Column
-    agColNum = ws.Range(COL_AG & "1").Column
-    
-    Dim currentBlockOwnerKey As String
-    currentBlockOwnerKey = ""
+実績件数: 369件 (約15.2%)
 
-    For i = 1 To UBound(sourceData, 1)
-        Dim yVal As String, agVal As String
-        yVal = Trim(CStr(sourceData(i, yColNum - (ws.UsedRange.Column - 1))))
-        agVal = Trim(CStr(sourceData(i, agColNum - (ws.UsedRange.Column - 1))))
-        
-        Dim isParent As Boolean, isChild As Boolean, parentKeyStr As String
-        isParent = regExAG.Test(agVal) And Not regExY.Test(yVal)
-        isChild = regExAG.Test(agVal) And regExY.Test(yVal)
-        
-        Dim rowData() As Variant
-        ReDim rowData(1 To UBound(sourceData, 2))
-        For j = 1 To UBound(sourceData, 2)
-            rowData(j) = sourceData(i, j)
-        Next j
+B. 中負荷工程（ツール効果：大）
 
-        If isParent Then
-            parentKeyStr = regExAG.Execute(agVal)(0).SubMatches(0)
-            currentBlockOwnerKey = parentKeyStr
-            
-            If Not parentItems.Exists(parentKeyStr) Then
-                Set parentItems(parentKeyStr) = CreateObject("Scripting.Dictionary")
-                Set parentItems(parentKeyStr)("rows") = CreateObject("Scripting.Dictionary")
-                Set parentItems(parentKeyStr)("children") = CreateObject("Scripting.Dictionary")
-            End If
-            parentItems(parentKeyStr)("rows").Add parentItems(parentKeyStr)("rows").Count, rowData
+根拠: 【ルート5: 通常ルート】に該当するが工程数12行以下の定型的な工程パターン。
 
-        ElseIf isChild Then
-            Dim matches As Object
-            Set matches = regExY.Execute(yVal)
-            If matches.Count > 0 Then
-                parentKeyStr = IIf(matches(0).SubMatches(0) <> "", matches(0).SubMatches(0), matches(0).SubMatches(1))
-            Else
-                parentKeyStr = ""
-            End If
-            
-            currentBlockOwnerKey = regExAG.Execute(agVal)(0).SubMatches(0)
+手動時間（操作＋思考）: 4分00秒(操作) + 1分(思考) = 5分00秒 (300秒)
 
-            If parentKeyStr <> "" And parentItems.Exists(parentKeyStr) Then
-                Dim childKeyAsLong As Long
-                childKeyAsLong = CLng(currentBlockOwnerKey)
-                
-                Dim childrenDict As Object
-                Set childrenDict = parentItems(parentKeyStr)("children")
+ツール時間: 20秒
 
-                If Not childrenDict.Exists(childKeyAsLong) Then
-                     Set childrenDict(childKeyAsLong) = CreateObject("Scripting.Dictionary")
-                     childrenDict(childKeyAsLong).Add "key", childKeyAsLong
-                     Set childrenDict(childKeyAsLong)("rows") = CreateObject("Scripting.Dictionary")
-                End If
-                childrenDict(childKeyAsLong)("rows").Add childrenDict(childKeyAsLong)("rows").Count, rowData
-            Else
-                orphanData.Add orphanData.Count, rowData
-            End If
-            
-        Else ' ヘッダーではない行
-            If currentBlockOwnerKey <> "" Then
-                 Dim found As Boolean: found = False
-                 For Each pKey In parentItems.Keys
-                    If CStr(pKey) = currentBlockOwnerKey Then
-                        parentItems(pKey)("rows").Add parentItems(pKey)("rows").Count, rowData
-                        found = True: Exit For
-                    Else
-                        On Error Resume Next
-       
-                        childKeyAsLong = 0
-                        childKeyAsLong = CLng(currentBlockOwnerKey)
-                        If Err.Number = 0 Then
-                            If parentItems(pKey)("children").Exists(childKeyAsLong) Then
-                                parentItems(pKey)("children")(childKeyAsLong)("rows").Add parentItems(pKey)("children")(childKeyAsLong)("rows").Count, rowData
-                                found = True: Exit For
-                            End If
-                        End If
-                        On Error GoTo ErrorHandler
-                    End If
-                 Next pKey
-                 If Not found Then orphanData.Add orphanData.Count, rowData
-            Else
-                 orphanData.Add orphanData.Count, rowData
-            End If
-        End If
-    Next i
-    
-    ' --- 3. メモリ上で子部品を品番順に並べ替え ---
-    ' (Dictionaryのキーでソートするため、このセクションでの明示的な処理は不要)
-    
-    ' --- 4. 整理・並べ替え済みのデータをシートに書き戻す ---
-    ws.Range(ws.Cells(dataStartRow, "A"), ws.Cells(lastRow, lastCol)).ClearContents
-    
-    Dim outputRow As Long
-    outputRow = dataStartRow
-    
-    Dim parentKeys As Variant, childKeys As Variant
-    parentKeys = parentItems.Keys
-    Call BubbleSort(parentKeys)
+実績件数: 976件 (約40.2%)
 
-    For Each pKey In parentKeys
-        For Each item In parentItems(pKey)("rows").Items
-            ws.Range(ws.Cells(outputRow, 1), ws.Cells(outputRow, UBound(item, 1))).Value = Application.Transpose(Application.Transpose(item))
-            outputRow = outputRow + 1
-        Next item
-        
-        childKeys = parentItems(pKey)("children").Keys
-        Call BubbleSort(childKeys)
-        
-        For Each cKey In childKeys
-            Dim childRows As Object
-            Set childRows = parentItems(pKey)("children")(cKey)("rows")
-            For Each item In childRows.Items
-                 ws.Range(ws.Cells(outputRow, 1), ws.Cells(outputRow, UBound(item, 1))).Value = Application.Transpose(Application.Transpose(item))
-                 outputRow = outputRow + 1
-            Next item
-        Next cKey
-    Next pKey
-    
-    For Each item In orphanData.Items
-        ws.Range(ws.Cells(outputRow, 1), ws.Cells(outputRow, UBound(item, 1))).Value = Application.Transpose(Application.Transpose(item))
-        outputRow = outputRow + 1
-    Next item
+C. 低負荷工程（ツール効果：中）
 
-    ' --- 完了メッセージを削除 ---
-    ' MsgBox "全ての整頓処理が完了しました。", vbInformation
+根拠: ツールの**【ルート3: レイアウト切り離し後(同時加工)】【ルート2: ミスミ購入（追加工あり）】に該当。特に「同時加工」は、手動作成時は親子関係の整理・並べ替えに時間を要するが、ツールではこれも補助機能で自動化**されるため、その改善時間も含まれる。
 
-Finally:
-    Application.ScreenUpdating = True
-    Application.Calculation = xlCalculationAutomatic
-    Debug.Print "全処理時間: " & Format(Timer - startTime, "0.00") & "秒"
-    Set ws = Nothing
-    Set parentItems = Nothing
-    Set orphanData = Nothing
-    Set regExAG = Nothing
-    Set regExY = Nothing
-    Exit Sub
+手動時間: 1分(60秒)～2分20秒(140秒)
 
-ErrorHandler:
-    MsgBox "処理中にエラーが発生しました。" & vbCrLf & _
-           "エラー番号: " & Err.Number & vbCrLf & _
-           "エラー内容: " & Err.Description, vbCritical
-    Resume Finally
-End Sub
+ツール時間: 10秒～25秒
 
-' --- 配列をソートするための補助プロシージャ ---
-Private Sub BubbleSort(ByRef arr As Variant)
-    Dim i As Long, j As Long
-    Dim temp As Variant
-    If Not IsArray(arr) Then Exit Sub
-    If UBound(arr) < LBound(arr) Then Exit Sub
+実績件数: 251件 (約10.3%) ※同時工程179件、追加工あり72件
 
-    For i = LBound(arr) To UBound(arr) - 1
-        For j = i + 1 To UBound(arr)
-            If CVar(arr(i)) > CVar(arr(j)) Then
-                temp = arr(j)
-                arr(j) = arr(i)
-                arr(i) = temp
-            End If
-        Next j
-    Next i
-End Sub
+D. 定型工程（ツール効果：小）
 
+根拠: ツールの**【ルート1: 外作購入品】および【ルート2: ミスミ購入（追加工なし）】**に該当。思考不要で、最も単純なパターン。
+
+手動時間: 30秒
+
+ツール時間: 10秒
+
+実績件数: 834件 (約34.3%) ※外注677件、追加工なしミスミ購入157件
+
+【効果算出】
+各パターンの年間削減時間は以下の通りです。
+
+A（高負荷）: (460秒 - 30秒) × 369件 = 158,670秒
+
+B（中負荷）: (300秒 - 20秒) × 976件 = 273,280秒
+
+C（低負荷）: (140秒 - 25秒)×179件 + (60秒 - 10秒)×72件 = 20,585 + 3,600 = 24,185秒
+
+D（定型）: (30秒 - 10秒) × 834件 = 16,680秒
+
+合計年間削減時間:
+158,670 + 273,280 + 24,185 + 16,680 = 472,815秒
+7,880.3分
+約131.3時間
+
+【結論】
+案件の複雑さに応じた「操作時間」と、「思考時間」の両方を考慮した結果、年間で約131.3時間もの工数削減効果が見込まれます。これは、1人の作業者が**約16.4営業日（1日8時間換算）**の労働時間を、別の付加価値の高い業務に充てられることを意味します。
