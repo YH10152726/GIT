@@ -45,7 +45,22 @@ Sub test()
                 j = j + 1
                 ReDim Preserve LST_str(10, j)
 
-                LST_str(0, j) = StrConv(Trim(MST_str(l, 1)), vbNarrow)
+                ' ▼▼▼ここから修正▼▼▼
+                Dim valB As String
+                Dim valC As String
+                valB = Trim(CStr(MST_str(l, 1))) 'B列の値
+                valC = Trim(CStr(MST_str(l, 2))) 'C列の値
+
+                ' B列の値が「A」で始まり、2文字目以降が数値かチェック
+                If UCase(Left(valB, 1)) = "A" And Len(valB) > 1 And IsNumeric(Mid(valB, 2)) Then
+                    ' 条件が真の場合(A○形式)は、C列の値を転記
+                    LST_str(0, j) = StrConv(valC, vbNarrow)
+                Else
+                    ' 条件が偽の場合は、従来通りB列の値を転記
+                    LST_str(0, j) = StrConv(valB, vbNarrow)
+                End If
+                ' ▲▲▲ここまで修正▲▲▲
+                
                 LST_str(1, j) = StrConv(Trim(MST_str(l, 10)), vbNarrow)
                 LST_str(2, j) = StrConv(Trim(MST_str(l, 8)), vbNarrow)
                 LST_str(3, j) = StrConv(Trim(MST_str(l, 7)), vbNarrow)
@@ -60,7 +75,7 @@ Sub test()
         Next l
     Next i
 
-    With Workbooks(ThisWorkbook.Name).Sheets("P000")
+    With Workbooks(ThisWorkbook.name).Sheets("工程表")
         .Activate
         .Range(.Cells(3, 24), .Cells(500, 34)).Clear
         
