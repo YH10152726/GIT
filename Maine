@@ -75,7 +75,7 @@ Sub test()
         Next l
     Next i
 
-    With Workbooks(ThisWorkbook.name).Sheets("工程表")
+    With Workbooks(ThisWorkbook.name).Sheets("P000")
         .Activate
         .Range(.Cells(3, 24), .Cells(500, 34)).Clear
         
