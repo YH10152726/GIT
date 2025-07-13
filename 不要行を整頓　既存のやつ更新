@@ -1,49 +1,14 @@
-Public Sub DeleteInnerBlanks_AH_withAJKeep()
-
-    Dim ws As Worksheet
-    Dim lastRowAH As Long
-    Dim lastRowAJ As Long
-    Dim lastDataRow As Long
-    Dim i As Long
-    
-    '--- 処理前の設定 ---
-    ' イベントの発生を一時的に停止する
-    Application.EnableEvents = False
-    Application.ScreenUpdating = False
-    
-    ' エラーが発生しても必ずイベントを有効に戻すための仕組み
-    On Error GoTo ErrorHandler
-    
-    Set ws = ActiveSheet ' 必要ならシート固定
-    
-    With ws
-        ' AH / AJ それぞれで “最後に値が入った行” を取得
-        lastRowAH = .Cells(.Rows.Count, "AH").End(xlUp).Row
-        lastRowAJ = .Cells(.Rows.Count, "AJ").End(xlUp).Row
-        
-        ' どちらか大きい方が “データ範囲の最終行”
-        lastDataRow = WorksheetFunction.Max(lastRowAH, lastRowAJ)
-        
-        ' 見出し 1 行目を除き、下→上ループで空白行だけ削除
-        For i = lastDataRow - 1 To 2 Step -1
-            If LenB(.Cells(i, "AH").Value) = 0 _
-               And LenB(.Cells(i, "AJ").Value) = 0 Then
-                    .Rows(i).Delete
-            End If
-        Next i
-    End With
-
-'--- 処理後の設定復元 ---
-Finally:
-    ' ★追加点2：イベントの発生を必ず元に戻す
-    Application.EnableEvents = True
-    Application.ScreenUpdating = True
-    Exit Sub ' エラーがなければここで正常終了
-
-ErrorHandler:
-    ' エラーが発生した場合でも、必ずイベントを有効に戻してからメッセージを表示
-    MsgBox "エラーが発生しました。" & vbCrLf & Err.Description, vbCritical
-    Resume Finally ' Finallyブロックにジャンプして終了処理を行う
-
-End Sub
-
+✅品目標読込みが重くなる問題を修正
+✅品目標読込み時、葉番を読み込む様に変更
+✅依頼番号から自動入力に対応しました
+✅プレビュー画面上下移動バグ修正
+✅ プレビュー画面に削除操作を戻るボタン設置 
+✅ 表記変更
+      * 吊り→吊
+      * Cなし→C無
+　   * Cあり→C1
+✅デフォルトで出力をC1→C無に変更
+ * ブロック形状の場合Cの有無のチェックボックスを操作不可に変更。
+✅ ツバ加工方法にED工程を追加
+✅ 次工程日数を追加(次工程間隔のコードに追加)
+ * 列ALの熱処理先が光陽産業の場合、穴タップの工程の列BF(次工程日数)へ 2 を出力する。
