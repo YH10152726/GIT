@@ -10,31 +10,12 @@ Private Sub PreviewAddMaterialPurchase(materialCodePreview As String, noChamferP
         supplier = CStr(materialData(0))
     End If
     
-    Dim specificMemo As String: specificMemo = IIf(noChamferPreview, "C無", "C1")
-    If hasLiftingScrewPreview Then specificMemo = specificMemo & ",吊"
-
-    Call AddItemToPreviewList("主材購入", supplier, "", "", "", "", specificMemo)
-End Sub
-
-ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
-コード貼り替え
-
-Private Sub PreviewAddMaterialPurchase(materialCodePreview As String, noChamferPreview As Boolean, hasLiftingScrewPreview As Boolean)
-    Dim supplier As String, materialData As Variant, normalizedMaterialCode As String
-    normalizedMaterialCode = UCase(Trim(materialCodePreview))
-    If materialInfoDict Is Nothing Or Not materialInfoDict.Exists(normalizedMaterialCode) Then
-        supplier = "(仕入先不明)"
-    Else
-        materialData = materialInfoDict(normalizedMaterialCode)
-        supplier = CStr(materialData(0))
-    End If
-    
     Dim specificMemo As String: specificMemo = IIf(noChamferPreview, "C1", "C無")
     If hasLiftingScrewPreview Then specificMemo = specificMemo & ",吊"
+
     
     Call AddItemToPreviewList("主材購入", supplier, "", "", "", "", specificMemo)
 End Sub
-
 
 ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 コード追加推奨
