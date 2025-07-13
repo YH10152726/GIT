@@ -1,14 +1,12 @@
-        End If
-    End If
+シート2に追加
+型彫放電加工-つば荒		0.5	1	0.1		つば荒
 
+コード貼り替え
 
-    Application.OnKey "{F5}", "ExecuteMyFormButton"
-
-End Sub
-Private Sub UserForm_Terminate()
-    Application.OnKey "{F5}"
-
-End Sub
-Public Sub TriggerClickEvent()
-    Me.CommandButton1.Value = True
-End Sub
+With Me.ComboBoxTsubaRough
+        .Clear
+        .AddItem "M/C（小）"
+        .AddItem "ﾜｲﾔ放電加工"
+        .AddItem "型彫放電加工" ' ★ この行を追加
+        If .ListCount > 0 Then .ListIndex = 0
+    End With
