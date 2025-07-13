@@ -81,7 +81,13 @@ Private Sub cmdDeletePreviewItem_Click()
 End Sub
 
 ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+ボタンのプロパティを以下のように設定。
+(Name): cmdUndoDelete
+Caption: 元に戻す
+Enabled: False (初期状態では押せないようにします)
+
 ボタンのコード新規追加
+
 Private Sub cmdUndoDelete_Click()
     Dim i As Long
     Dim lRestoredIndex As Long
