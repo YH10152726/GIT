@@ -23,5 +23,71 @@ End Sub
 If TypeName(Me.Controls("CheckBoxKatabori")) = "CheckBox" Then Me.CheckBoxKatabori.Value = False
 If TypeName(Me.Controls("CheckBoxNaraiKensaku")) = "CheckBox" Then Me.CheckBoxNaraiKensaku.Value = False
 
-' ★★★ この1行を追加 ★★★
 If TypeName(Me.Controls("CheckBoxChamferなし")) = "CheckBox" Then Me.CheckBoxChamferなし.Caption = "C1（C面取りあり）"
+
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+操作不可設定
+コード一番下に新規作成
+
+Private Sub UpdateChamferCheckboxState()
+    Dim currentShape As String
+    currentShape = GetShapeFromOptionButtons()
+    
+    If TypeName(Me.Controls("CheckBoxChamferなし")) = "CheckBox" Then
+        ' イベントの再帰呼び出しを防ぐためにフラグを立てる
+        m_bIsProgrammaticChange = True
+        
+        If currentShape = "ブロック" Then
+            ' 形状が「ブロック」の場合
+            Me.CheckBoxChamferなし.Enabled = False ' チェックボックスを無効化
+            Me.CheckBoxChamferなし.Value = False   ' チェックも外す
+        Else
+            ' 形状が「ブロック」以外の場合
+            Me.CheckBoxChamferなし.Enabled = True  ' チェックボックスを有効化
+        End If
+        
+        ' フラグを元に戻す
+        m_bIsProgrammaticChange = False
+    End If
+End Sub
+
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+コードの下の方に一行追加
+
+Private Sub UserForm_Initialize()
+    ' ...(既存の処理)...
+
+    Application.OnKey "{F5}", "ExecuteMyFormButton"
+
+    ' ★★★ この1行を追加 ★★★
+    Call UpdateChamferCheckboxState
+
+End Sub
+
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+コード貼り替え
+
+Private Sub HandleShapeOptionChange(ByVal newlyClickedOptionButtonName As String)
+    If m_bIsProgrammaticChange Then Exit Sub
+
+    If Not Me.Controls(newlyClickedOptionButtonName).Value Then
+        Exit Sub
+    End If
+
+    If Not ConfirmAndUpdatePreviewIfEdited() Then
+        m_bIsProgrammaticChange = True
+        If m_sPreviouslySelectedShapeOption <> "" And m_sPreviouslySelectedShapeOption <> newlyClickedOptionButtonName Then
+            On Error Resume Next
+            Me.Controls(m_sPreviouslySelectedShapeOption).Value = True
+            On Error GoTo 0
+        End If
+        m_bIsProgrammaticChange = False
+        Exit Sub
+    End If
+
+    m_sPreviouslySelectedShapeOption = newlyClickedOptionButtonName
+
+    Call UpdateChamferCheckboxState ' プレビュー更新前にチェックボックスの状態を更新
+
+    Call UpdatePreview
+End Sub
