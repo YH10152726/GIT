@@ -41,11 +41,24 @@ Sub test()
 
         For l = 1 To UBound(MST_str, 1)
 
-            If Not MST_str(l, 3) = "" Then  '品番未入力なら空行とみなして飛ばす
+            If Not MST_str(l, 3) = "" Then '品番未入力なら空行とみなして飛ばす
                 j = j + 1
                 ReDim Preserve LST_str(10, j)
 
-                LST_str(0, j) = StrConv(Trim(MST_str(l, 1)), vbNarrow)
+                Dim valB As String
+                Dim valC As String
+                valB = Trim(CStr(MST_str(l, 1))) 'B列の値
+                valC = Trim(CStr(MST_str(l, 2))) 'C列の値
+
+                ' B列の値が「A」で始まり、2文字目以降が数値かチェック
+                If UCase(Left(valB, 1)) = "A" And Len(valB) > 1 And IsNumeric(Mid(valB, 2)) Then
+                    ' 条件が真の場合(A○形式)は、C列の値を転記
+                    LST_str(0, j) = StrConv(valC, vbNarrow)
+                Else
+                    ' 条件が偽の場合は、従来通りB列の値を転記
+                    LST_str(0, j) = StrConv(valB, vbNarrow)
+                End If
+                
                 LST_str(1, j) = StrConv(Trim(MST_str(l, 10)), vbNarrow)
                 LST_str(2, j) = StrConv(Trim(MST_str(l, 8)), vbNarrow)
                 LST_str(3, j) = StrConv(Trim(MST_str(l, 7)), vbNarrow)
@@ -59,14 +72,6 @@ Sub test()
             End If
         Next l
     Next i
-
-    ' ★★★ここから追加★★★
-    ' イベントの発生を一時的に停止
-    Application.EnableEvents = False
-    
-    ' エラーが発生してもイベントを必ず有効に戻すための準備
-    On Error GoTo ErrorHandler
-    ' ★★★ここまで追加★★★
 
     With Workbooks(ThisWorkbook.name).Sheets("工程表")
         .Activate
@@ -89,19 +94,10 @@ Sub test()
 
     End With
 
+    ' データ取得元のファイルを閉じる（変更は保存しない）
+    ZMN_Ob.Close SaveChanges:=False
+
     MsgBox "オワタ", vbInformation
-
-' ★★★ここから追加★★★
-ExitHere:
-    ' イベントの発生を元に戻す
-    Application.EnableEvents = True
-    Exit Sub ' 正常終了
-
-ErrorHandler:
-    ' エラーが発生した場合の処理
-    MsgBox "エラーが発生しました: " & vbCrLf & Err.Description, vbCritical
-    GoTo ExitHere ' イベントを有効に戻して終了
-' ★★★ここまで追加★★★
 
 End Sub
 
