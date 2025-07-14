@@ -22,6 +22,9 @@ Sub test()
     Dim i As Long, j As Long, l As Long
     Dim tDest As Range
 
+    On Error GoTo ErrorHandler
+    Application.EnableEvents = False
+
     'BUHファイル指定ダイアログを表示
     FILE_N = Application.GetOpenFilename("図面,*")
 
@@ -34,7 +37,7 @@ Sub test()
     j = -1
 
     For i = 1 To 3
-        WS_str = "入力用(" & i & ")"
+        WS_str = "入力用 (" & i & ")"
 
         'BUHファイルの入力用シートに入力されたデータを配列にコピーする
         MST_str = ZMN_Ob.Sheets(WS_str).Range(strBUHStrGRange)
@@ -47,15 +50,11 @@ Sub test()
 
                 Dim valB As String
                 Dim valC As String
-                valB = Trim(CStr(MST_str(l, 1))) 'B列の値
-                valC = Trim(CStr(MST_str(l, 2))) 'C列の値
-
-                ' B列の値が「A」で始まり、2文字目以降が数値かチェック
+                valB = Trim(CStr(MST_str(l, 1)))
+                valC = Trim(CStr(MST_str(l, 2)))
                 If UCase(Left(valB, 1)) = "A" And Len(valB) > 1 And IsNumeric(Mid(valB, 2)) Then
-                    ' 条件が真の場合(A○形式)は、C列の値を転記
                     LST_str(0, j) = StrConv(valC, vbNarrow)
                 Else
-                    ' 条件が偽の場合は、従来通りB列の値を転記
                     LST_str(0, j) = StrConv(valB, vbNarrow)
                 End If
                 
@@ -98,6 +97,15 @@ Sub test()
     ZMN_Ob.Close SaveChanges:=False
 
     MsgBox "オワタ", vbInformation
+
+ExitSub_Handler:
+    
+    Application.EnableEvents = True
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "エラーが発生しました: " & vbCrLf & Err.Description, vbCritical
+    Resume ExitSub_Handler
 
 End Sub
 
