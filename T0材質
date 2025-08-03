@@ -1,0 +1,122 @@
+'====================================================================================
+' AC列の材質を再読み込みし、焼き入れ方法（追記）と焼き硬度（上書き）を更新する
+'====================================================================================
+Sub UpdateHardeningInfo()
+
+    ' --- 初期設定 ---
+    ' 対応表（マスターデータ）が保存されているシート名と列を指定
+    Const MASTER_SHEET_NAME As String = "シート2"
+    Const MASTER_COL_MATERIAL As String = "AC"
+    Const MASTER_COL_METHOD As String = "AD"
+    Const MASTER_COL_HARDNESS As String = "AE"
+
+    Dim activeSheet As Worksheet
+    Dim masterSheet As Worksheet
+    Dim processRange As Range
+    Dim cell As Range
+    Dim materialToFind As String
+    Dim foundMethod As Variant
+    Dim foundHardness As Variant
+    Dim searchRange As Range
+    Dim lastRow As Long
+    Dim currentQuenchMethod As String
+    
+    Dim methods() As String
+    Dim method As Variant
+    Dim alreadyExists As Boolean
+
+    ' --- 処理対象シートとマスターシートの設定 ---
+    Set activeSheet = ThisWorkbook.activeSheet
+
+    ' マスターシートが存在しない場合のエラー回避
+    On Error Resume Next
+    Set masterSheet = ThisWorkbook.Sheets(MASTER_SHEET_NAME)
+    On Error GoTo 0
+
+    If masterSheet Is Nothing Then
+        MsgBox "マスターシート「" & MASTER_SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+
+    ' --- 画面更新とイベントを一時停止して処理を高速化 ---
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+
+    ' --- マスターシートの検索範囲を設定 ---
+    With masterSheet
+        ' VLOOKUP用の検索範囲を動的に設定（材質列から焼き硬度列まで）
+        Set searchRange = .Range( _
+            .Cells(1, .Range(MASTER_COL_MATERIAL & "1").Column), _
+            .Cells(.Rows.Count, .Range(MASTER_COL_HARDNESS & "1").Column) _
+        )
+    End With
+
+    ' --- アクティブシートのAC列を最終行まで処理 ---
+    With activeSheet
+        ' AC列の最終行を取得
+        lastRow = .Cells(.Rows.Count, "AC").End(xlUp).Row
+        ' 処理対象範囲を設定（AC列の2行目から最終行までを想定）
+        Set processRange = .Range("AC2:AC" & lastRow)
+    End With
+
+    ' AC列の各セルをループ処理
+    For Each cell In processRange
+        materialToFind = cell.Value
+
+        ' 材質が入力されているセルのみを対象とする
+        If materialToFind <> "" Then
+
+            ' VLOOKUP関数でマスターからデータを検索
+            On Error Resume Next ' VLOOKUPで見つからない場合のエラーを回避
+            foundMethod = Application.WorksheetFunction.VLookup(materialToFind, searchRange, 2, False)
+            foundHardness = Application.WorksheetFunction.VLookup(materialToFind, searchRange, 3, False)
+            On Error GoTo 0 ' エラーハンドリングを元に戻す
+
+            ' データが見つかった場合のみ更新処理を実行
+            If Not IsError(foundMethod) Then
+                
+                ' --- Z列（焼き入れ方法）の更新 ---
+                currentQuenchMethod = activeSheet.Cells(cell.Row, "Z").Value
+                alreadyExists = False ' チェック前にフラグをリセット
+                
+                If currentQuenchMethod <> "" Then
+                    ' 既存の文字列をスペースで分割して配列に格納
+                    methods = Split(currentQuenchMethod, " ")
+                    ' 分割した各単語と、追加したい単語を比較
+                    For Each method In methods
+                        ' 大文字・小文字を区別せずに比較
+                        If UCase(Trim(method)) = UCase(Trim(foundMethod)) Then
+                            alreadyExists = True ' 同じものが見つかった
+                            Exit For ' ループを抜ける
+                        End If
+                    Next method
+                End If
+                
+                If Not alreadyExists Then
+                    If currentQuenchMethod <> "" Then
+                        ' 既に文字がある場合はスペースを付けて追記
+                        activeSheet.Cells(cell.Row, "Z").Value = currentQuenchMethod & " " & foundMethod
+                    Else
+                        ' 空白の場合はそのまま入力
+                        activeSheet.Cells(cell.Row, "Z").Value = foundMethod
+                    End If
+                End If
+
+                ' --- AE列（焼き硬度）の更新（上書き）---
+                activeSheet.Cells(cell.Row, "AE").Value = foundHardness
+            End If
+
+            ' 次のループのために変数をリセット
+            foundMethod = Empty
+            foundHardness = Empty
+        End If
+    Next cell
+
+    ' --- 停止していた画面更新とイベントを元に戻す ---
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+
+    MsgBox "処理が完了しました。", vbInformation
+
+End Sub
+
