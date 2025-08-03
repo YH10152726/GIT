@@ -1,0 +1,12 @@
+isPlateBySizeInitialize = (ClassifyPartBasedOnSizeString(sizeStr) = "+")
+
+    If isPlateBySizeInitialize And _
+       ((InStr(1, itemName, "P", vbTextCompare) > 0) Or _
+        (InStr(1, itemName, "プレート", vbTextCompare) > 0) Or _
+        (InStr(1, itemName, "ﾌﾟﾚｰﾄ", vbTextCompare) > 0)) Then
+        If TypeName(Me.Controls("OptionButton5")) = "OptionButton" Then
+            Me.OptionButton5.Value = True
+             m_sPreviouslySelectedShapeOption = Me.OptionButton5.name
+            defaultToOptionButton4 = False
+        End If
+    End If
