@@ -1,0 +1,199 @@
+
+Option Explicit
+
+' メインの処理：テンプレートを生成します
+Public Sub Build_Template_v3i()
+    Dim ws As Worksheet
+
+    ' --- Controlシートの作成 ---
+    Set ws = SheetCreate("Control")
+    ws.Range("A1:B11").Clear
+    
+    Dim controlData As Variant
+    controlData = Array( _
+        Array("表示モード", "簡易"), _
+        Array("想定ホールド時間[s]", 6#), _
+        Array("目標サイクルタイム[s]", 25#), _
+        Array("AutoCal 使用", "はい"), _
+        Array("ベースライン使用", "いいえ"), _
+        Array("ベースライン・フォルダ", ""), _
+        Array("使用マシン", "Sample-IM-220"), _
+        Array("使用材料グレード", "PC-ABS-GF10"), _
+        Array("材料ファミリ", "PC/ABS"), _
+        Array("ランナー方式", "コールド"), _
+        Array("求める品質クラス", "外観") _
+    )
+    ' 1行ずつデータを書き込み
+    Dim i As Long
+    For i = LBound(controlData) To UBound(controlData)
+        ws.Cells(i + 1, 1).value = controlData(i)(0)
+        ws.Cells(i + 1, 2).value = controlData(i)(1)
+    Next i
+    ws.Columns("A").ColumnWidth = 22
+    ws.Columns("B").ColumnWidth = 40
+
+    ' --- Criteriaシートの作成 ---
+    Set ws = SheetCreate("Criteria")
+    ws.Range("A1:H1").value = Array("KPI（A列一致）", "判定方向（>=OK/<=OK/範囲）", "下限（OK）", "上限（OK）", "注意下限", "注意上限", "単位", "備考")
+
+    ' --- Playbookシートの作成 ---
+    Set ws = SheetCreate("Playbook")
+    ws.Range("A1:C1").value = Array("KPI（A列一致）", "Severity（OK/ATTN/NG）", "推奨対策（複数案は改行区切り）")
+
+    ' --- Machine_Libraryシートの作成 ---
+    Set ws = SheetCreate("Machine_Library")
+    ws.Range("A1:E1").value = Array("Machine", "Max_Clamp_kN", "Max_InjPressure_MPa", "ShotSize_cm3", "ScrewDia_mm")
+    Dim machineData As Variant
+    machineData = Array( _
+        Array("Sample-IM-220", 2200, 200, 400, 45), _
+        Array("Sample-IM-350", 3500, 220, 700, 60) _
+    )
+    ws.Range("A2").Resize(UBound(machineData) + 1, 5).value = ConvertTo2DArray(machineData)
+
+    ' --- Material_Libraryシートの作成 ---
+    Set ws = SheetCreate("Material_Library")
+    ws.Range("A1:G1").value = Array("Grade", "Family", "MeltT_min", "MeltT_max", "MoldT_min", "MoldT_max", "Note")
+    Dim materialData As Variant
+    materialData = Array( _
+        Array("PC-ABS-GF10", "PC/ABS", 250, 280, 70, 100, "例"), _
+        Array("PP-H", "PP", 210, 240, 30, 60, "例") _
+    )
+    ws.Range("A2").Resize(UBound(materialData) + 1, 7).value = ConvertTo2DArray(materialData)
+
+    ' --- Baselineシートの作成 ---
+    Set ws = SheetCreate("Baseline")
+    ws.Range("A1:G1").value = Array("Key（MaterialFamily|Runner|Class）", "KPI", "P50", "P80", "P90", "方向（small_better/big_better）", "学習数")
+
+    ' --- Result_Mapシートの作成 ---
+    Set ws = SheetCreate("Result_Map")
+    ws.Range("A1:I1").value = Array("Enabled", "Excel KPI label (A列一致)", "Target sheet", "Source type", "File pattern / Result hint", "Aggregator", "Mode Level（1=簡易,2=詳細,3=全て）", "Signature keywords", "方向（small/big）")
+    Dim rmData As Variant
+    rmData = Array( _
+        Array(True, "Confidence of fill 最小[%]", "2_FillPack_MULTI", "XML", "*confidence*", "MIN", 1, "confidence;fill;probability", "big"), _
+        Array(True, "Quality prediction 最小[%]", "2_FillPack_MULTI", "XML", "*quality*", "MIN", 1, "quality;prediction;grade", "big"), _
+        Array(True, "Flow-front 温度低下ΔT 最大[℃]", "2_FillPack_MULTI", "XML", "*flow*front*temperature*", "DELTA", 1, "temperature;flow front;delta", "small"), _
+        Array(True, "Pressure drop 最大[MPa]", "2_FillPack_MULTI", "XML", "*pressure*drop*", "MAX", 1, "pressure;drop", "small"), _
+        Array(True, "Shear stress at wall 最大", "2_FillPack_MULTI", "XML", "*shear*stress*wall*", "MAX", 1, "shear;wall;stress", "small"), _
+        Array(True, "Viscosity 最大[Pa・s]", "2_FillPack_MULTI", "XML", "*viscosity*", "MAX", 1, "viscosity", "small"), _
+        Array(True, "Sink marks index 最大", "2_FillPack_MULTI", "XML", "*sink*index*", "MAX", 1, "sink;index", "small"), _
+        Array(True, "Gate seal time [s]", "2_FillPack_MULTI", "XML", "*total*part*weight*", "PLATEAU_TIME", 1, "total part weight;gate seal;plateau", "small"), _
+        Array(True, "Clamp force 最大[kN]", "2_FillPack_MULTI", "XML", "*clamp*force*xy*", "MAX", 2, "clamp;force;xy", "small"), _
+        Array(True, "Injection pressure 最大[MPa]", "2_FillPack_MULTI", "XML", "*pressure*injection*xy*", "MAX", 2, "pressure;injection;xy", "small"), _
+        Array(True, "Volumetric shrinkage 最大[%]", "2_FillPack_MULTI", "XML", "*volumetric*shrinkage*", "MAX", 2, "volumetric;shrinkage", "small"), _
+        Array(True, "Frozen layer fraction 最大", "2_FillPack_MULTI", "XML", "*frozen*layer*fraction*", "MAX", 2, "frozen;layer;fraction", "small"), _
+        Array(True, "Residual stress 最大[MPa]", "2_FillPack_MULTI", "XML", "*residual*stress*", "MAX", 3, "residual;stress", "small"), _
+        Array(True, "Orientation index 最大[-]", "2_FillPack_MULTI", "XML", "*orientation*index*", "MAX", 3, "orientation;index", "small"), _
+        Array(True, "Birefringence 最大[nm]", "2_FillPack_MULTI", "XML", "*birefringence*", "MAX", 3, "birefringence;optical", "small"), _
+        Array(True, "Cooling time variance 最大[s]", "3_Cool_MULTI", "XML", "*cooling*time*variance*", "MAX", 1, "cooling;time;variance", "small"), _
+        Array(True, "Time to freeze 最小/平均[s]", "3_Cool_MULTI", "XML", "*time*to*freeze*", "MIN", 1, "time to freeze;freeze", "small"), _
+        Array(True, "Deflection total 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*total*", "MAX", 2, "deflection;total;warp", "small"), _
+        Array(True, "Deflection X 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*x*", "MAX", 3, "deflection;x-component;warp", "small"), _
+        Array(True, "Deflection Y 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*y*", "MAX", 3, "deflection;y-component;warp", "small"), _
+        Array(True, "Deflection Z 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*z*", "MAX", 3, "deflection;z-component;warp", "small") _
+    )
+    ws.Range("A2").Resize(UBound(rmData) + 1, 9).value = ConvertTo2DArray(rmData)
+
+    ' --- 各種結果シートの作成 ---
+    Dim fillPackLabels, coolLabels, warpLabels
+    fillPackLabels = Array("Confidence of fill 最小[%]", "Quality prediction 最小[%]", "Flow-front 温度低下ΔT 最大[℃]", _
+                 "Pressure drop 最大[MPa]", "Shear stress at wall 最大", "Viscosity 最大[Pa・s]", _
+                 "Sink marks index 最大", "Gate seal time [s]", _
+                 "Clamp force 最大[kN]", "Injection pressure 最大[MPa]", "Volumetric shrinkage 最大[%]", "Frozen layer fraction 最大", _
+                 "Residual stress 最大[MPa]", "Orientation index 最大[-]", "Birefringence 最大[nm]")
+    BuildTarget "2_FillPack_MULTI", fillPackLabels
+
+    coolLabels = Array("Cooling time variance 最大[s]", "Time to freeze 最小/平均[s]")
+    BuildTarget "3_Cool_MULTI", coolLabels
+
+    warpLabels = Array("Deflection total 最大[mm]", "Deflection X 最大[mm]", "Deflection Y 最大[mm]", "Deflection Z 最大[mm]")
+    BuildTarget "4_Warp_MULTI", warpLabels
+
+    ' --- Import_Logシートの作成 ---
+    Set ws = SheetCreate("Import_Log")
+    ws.Range("A1:G1").value = Array("Timestamp", "KPI", "Matched file", "Match score", "Aggregator", "Value", "Notes")
+
+    MsgBox "テンプレv3iを生成しました。", vbInformation
+End Sub
+
+
+' ----------------------------------------------------------------
+' 補助的な関数・サブルーチン
+' ----------------------------------------------------------------
+
+' 指定した名前のシートを安全に作成する（既存の場合は削除してから作成）
+Private Function SheetCreate(name As String) As Worksheet
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    ThisWorkbook.Worksheets(name).Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
+    
+    Set SheetCreate = ThisWorkbook.Worksheets.Add
+    SheetCreate.name = name
+End Function
+
+' 結果シートの雛形を作成する
+Private Sub BuildTarget(title As String, labels As Variant)
+    Dim ws As Worksheet
+    Set ws = SheetCreate(title)
+    
+    ws.Range("A1:M1").value = Array("項目（A列一致）", _
+        "Gate1 値", "Gate1 合否", "Gate1 対策", _
+        "Gate2 値", "Gate2 合否", "Gate2 対策", _
+        "Gate3 値", "Gate3 合否", "Gate3 対策", _
+        "Gate4 値", "Gate4 合否", "Gate4 対策")
+    
+    Dim i As Long
+    For i = LBound(labels) To UBound(labels)
+        ws.Cells(i + 2, 1).value = labels(i)
+    Next i
+    
+    ' ▼▼▼ ここから修正 ▼▼▼
+    ws.Columns("A").ColumnWidth = 30
+    
+    ' Gate1
+    ws.Columns("B").ColumnWidth = 12
+    ws.Columns("C").ColumnWidth = 10
+    ws.Columns("D").ColumnWidth = 36
+    
+    ' Gate2
+    ws.Columns("E").ColumnWidth = 12
+    ws.Columns("F").ColumnWidth = 10
+    ws.Columns("G").ColumnWidth = 36
+    
+    ' Gate3
+    ws.Columns("H").ColumnWidth = 12
+    ws.Columns("I").ColumnWidth = 10
+    ws.Columns("J").ColumnWidth = 36
+    
+    ' Gate4
+    ws.Columns("K").ColumnWidth = 12
+    ws.Columns("L").ColumnWidth = 10
+    ws.Columns("M").ColumnWidth = 36
+    ' ▲▲▲ ここまで修正 ▲▲▲
+End Sub
+
+' Arrayの入れ子（ジャグ配列）を、Rangeに書き込める2次元配列に変換する
+Private Function ConvertTo2DArray(jaggedArray As Variant) As Variant
+    Dim i As Long, j As Long
+    Dim rows As Long, cols As Long
+    Dim twoDArray() As Variant
+
+    rows = UBound(jaggedArray) - LBound(jaggedArray) + 1
+    If rows = 0 Then Exit Function ' 配列が空の場合は終了
+    
+    cols = UBound(jaggedArray(LBound(jaggedArray))) - LBound(jaggedArray(LBound(jaggedArray))) + 1
+    
+    ReDim twoDArray(1 To rows, 1 To cols)
+
+    For i = LBound(jaggedArray) To UBound(jaggedArray)
+        For j = LBound(jaggedArray(i)) To UBound(jaggedArray(i))
+            twoDArray(i - LBound(jaggedArray) + 1, j - LBound(jaggedArray) + 1) = jaggedArray(i)(j)
+        Next j
+    Next i
+    
+    ConvertTo2DArray = twoDArray
+End Function
+
+
+
