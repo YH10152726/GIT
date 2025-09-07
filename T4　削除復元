@@ -1,153 +1,109 @@
-' === モジュールレベル変数 ===
-Private m_arrPreviewProcesses() As PreviewProcessItem
-Private m_lPreviewProcessCount As Long
-Private m_lEditingArrayIndex As Long
-Private m_lastDeletedItem As PreviewProcessItem
-Private m_lastDeletedItemIndex As Long
-Private processTimesDict As Object
-Private materialInfoDict As Object
-Private outsourcingInfoDict As Object
-Private zKeywordsDict As Object
-Private m_bCheckBox7_IsAutoChecked As Boolean
-Private m_bIsProgrammaticTextBoxChange As Boolean
-Private m_bIsProgrammaticChange As Boolean
+@echo off
+setlocal
 
-ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
-コード貼り替え
-Private Sub cmdDeletePreviewItem_Click()
-    Dim selectedItem As MSComctlLib.ListItem
-    Dim lSelectedIndexInView As Long
-    Dim lArrayIndexToDelete As Long
-    Dim i As Long
+:: =================================================================
+:: Moldflow解析結果 XML一括出力バッチ for Excel評価ツール
+:: 使用方法:
+:: 1. このバッチファイルをMoldflowのスタディファイル(.sdy)と同じフォルダに置くか、
+::    .sdyファイルをこのバッチファイルにドラッグ＆ドロップしてください。
+:: 2. 実行すると「XML_Export」フォルダが作成され、その中にXMLファイルが出力されます。
+:: =================================================================
 
-    Set selectedItem = Me.ListViewPreview.selectedItem
+:: --- 初期設定 ---
+echo #################################################################
+echo # Moldflow XML Exporter
+echo #################################################################
+echo.
 
-    If selectedItem Is Nothing Then
-        MsgBox "削除する工程をプレビューリストから選択してください。", vbInformation
-        Exit Sub
-    End If
+if "%~1"=="" (
+    echo ERROR: スタディファイル(.sdy)をこのバッチファイルにドラッグ＆ドロップしてください。
+    echo.
+    pause
+    exit /b
+)
 
-    lSelectedIndexInView = selectedItem.Index
-    lArrayIndexToDelete = lSelectedIndexInView - 1
+set "SDY_FILE=%~1"
+set "STUDY_NAME=%~n1"
+set "OUTPUT_DIR=%~dp1XML_Export"
 
-    If lArrayIndexToDelete < 0 Or lArrayIndexToDelete >= m_lPreviewProcessCount Then
-        MsgBox "内部エラー: 選択されたインデックスが配列の範囲外です。処理を中断します。", vbCritical
-        Exit Sub
-    End If
+if not exist "%SDY_FILE%" (
+    echo ERROR: 指定されたファイルが見つかりません。
+    echo %SDY_FILE%
+    echo.
+    pause
+    exit /b
+)
 
+echo 対象スタディファイル: %SDY_FILE%
+echo 出力先フォルダ: %OUTPUT_DIR%
+echo.
 
-    ' 削除する項目を一時的に保存
-    m_lastDeletedItem = m_arrPreviewProcesses(lArrayIndexToDelete)
-    m_lastDeletedItemIndex = lArrayIndexToDelete
+if not exist "%OUTPUT_DIR%" (
+    echo "%OUTPUT_DIR%" を作成します...
+    mkdir "%OUTPUT_DIR%"
+)
 
-
-    If m_lPreviewProcessCount > 0 Then
-        For i = lArrayIndexToDelete To m_lPreviewProcessCount - 2
-            m_arrPreviewProcesses(i) = m_arrPreviewProcesses(i + 1)
-        Next i
-
-        m_lPreviewProcessCount = m_lPreviewProcessCount - 1
-
-        If m_lPreviewProcessCount >= 0 And m_lPreviewProcessCount <= UBound(m_arrPreviewProcesses) Then
-            m_arrPreviewProcesses(m_lPreviewProcessCount).processName = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).supplier = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).MaeDandoriTime = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).YujinTime = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).MachineTime = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).GoDandoriTime = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).bikou = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).IsEdited = False
-            m_arrPreviewProcesses(m_lPreviewProcessCount).UserEditedGoDandori = ""
-            m_arrPreviewProcesses(m_lPreviewProcessCount).IsGoDandoriUserEdited = False
-        End If
-    End If
-
-    Call RefreshListBoxFromInternalArray
+:: --- studyrltコマンドのパス設定 ---
+:: 環境変数にパスが通っていない場合、以下のパスをご自身の環境に合わせて変更してください。
+set "STUDYRLT_PATH=studyrlt.exe"
+:: 例: set "STUDYRLT_PATH=C:\Program Files\Autodesk\Moldflow Insight 2024\bin\studyrlt.exe"
 
 
-    Me.cmdUndoDelete.Enabled = True ' 「元に戻す」ボタンを有効化
+:: --- XML出力処理 ---
+echo --- XMLエクスポートを開始します ---
 
-    If Me.ListViewPreview.ListItems.Count > 0 Then
-        Dim newSelectionIndex As Long
-        If lSelectedIndexInView <= Me.ListViewPreview.ListItems.Count Then
-            newSelectionIndex = lSelectedIndexInView
-        Else
-            newSelectionIndex = Me.ListViewPreview.ListItems.Count
-        End If
-        Me.ListViewPreview.ListItems(newSelectionIndex).Selected = True
-        Me.ListViewPreview.ListItems(newSelectionIndex).EnsureVisible
-        Me.ListViewPreview.SetFocus
-    End If
-End Sub
+:: studyrltは出力ファイル名を指定できないため、一度デフォルト名で出力し、リネームします。
+set "DEFAULT_XML_OUTPUT=%~dp1%STUDY_NAME%.xml"
 
-ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
-ボタンのプロパティを以下のように設定。
-(Name): cmdUndoDelete
-Caption: 元に戻す
-Enabled: False (初期状態では押せないようにします)
+:: --- 充填+保圧 (Fill+Pack) 結果 ---
+call :ExportResult 1660 "confidence_of_fill" "充填の信頼性"
+call :ExportResult 12220 "quality_prediction" "品質予測"
+call :ExportResult 1540 "flow_front_temperature" "フローフロント温度"
+call :ExportResult 10000 "pressure" "圧力"
+call :ExportResult 4320 "shear_stress_at_wall" "壁面せん断応力"
+call :ExportResult 4330 "viscosity" "粘度"
+call :ExportResult 12330 "sink_marks_index" "ヒケ マーク インデックス"
+call :ExportResult 1440 "total_part_weight" "部品重量 (XYプロット)"
+call :ExportResult 8000 "clamp_force_xy" "型締力 (XYプロット)"
+call :ExportResult 7000 "injection_pressure_xy" "射出圧力 (XYプロット)"
+call :ExportResult 6230 "volumetric_shrinkage" "体積収縮"
+call :ExportResult 1620 "frozen_layer_fraction" "スキン層の比率"
+call :ExportResult 5010 "residual_stress" "残留応力"
+call :ExportResult 4060 "orientation_index" "繊維配向"
+call :ExportResult 12430 "birefringence" "複屈折"
 
-ボタンのコード新規追加
+:: --- 冷却 (Cool) 結果 ---
+call :ExportResult 9340 "cooling_time_variance" "冷却時間のばらつき"
+call :ExportResult 9280 "time_to_freeze" "凍結時間"
 
-Private Sub cmdUndoDelete_Click()
-    Dim i As Long
-    Dim lRestoredIndex As Long
+:: --- そり (Warp) 結果 ---
+call :ExportResult 13220 "deflection_total" "変位(全体)"
+call :ExportResult 13230 "deflection_x" "変位(X)"
+call :ExportResult 13240 "deflection_y" "変位(Y)"
+call :ExportResult 13250 "deflection_z" "変位(Z)"
 
-    ' 保存されているアイテムがなければ何もしない
-    If m_lastDeletedItem.processName = "" Then
-        MsgBox "元に戻すデータがありません。", vbInformation
-        Exit Sub
-    End If
+
+echo.
+echo --- 全ての処理が完了しました ---
+echo.
+pause
+goto :eof
+
+
+:: --- 結果をエクスポートしてリネームするサブルーチン ---
+:ExportResult
+    set "RESULT_ID=%1"
+    set "FILE_KEYWORD=%2"
+    set "RESULT_NAME=%3"
+
+    echo.
+    echo %RESULT_NAME% (ID: %RESULT_ID%) をエクスポート中...
+    "%STUDYRLT_PATH%" "%SDY_FILE%" -xml %RESULT_ID%
     
-
-    lRestoredIndex = m_lastDeletedItemIndex
-    
-    ' 配列のサイズが足りなければ拡張
-    If m_lPreviewProcessCount > UBound(m_arrPreviewProcesses) Then
-        ReDim Preserve m_arrPreviewProcesses(0 To m_lPreviewProcessCount + 9)
-    End If
-
-    ' リストが空でない場合のみ、既存の項目をずらす
-    If m_lPreviewProcessCount > 0 Then
-        ' 元の位置にデータを挿入するため、配列の要素を一つずつ後ろにずらす
-        For i = m_lPreviewProcessCount To lRestoredIndex Step -1
-            m_arrPreviewProcesses(i) = m_arrPreviewProcesses(i - 1)
-        Next i
-    End If
-
-    
-    ' 保存しておいたアイテムを元の位置に戻す
-    m_arrPreviewProcesses(lRestoredIndex) = m_lastDeletedItem
-    m_lPreviewProcessCount = m_lPreviewProcessCount + 1
-    
-    ' リストを更新
-    Call RefreshListBoxFromInternalArray
-    
-    ' 「元に戻す」ボタンを無効化
-    Me.cmdUndoDelete.Enabled = False
-    
-    ' 元に戻した項目を選択状態にする
-    If lRestoredIndex >= 0 And lRestoredIndex < m_lPreviewProcessCount Then
-        ' 0から始まる配列インデックスを、1から始まるリストインデックスに変換するため「+1」する
-        Me.ListViewPreview.ListItems(lRestoredIndex + 1).Selected = True
-        Me.ListViewPreview.ListItems(lRestoredIndex + 1).EnsureVisible
-        Me.ListViewPreview.SetFocus
-    End If
-
-    ' 一時変数をクリア
-    m_lastDeletedItem.processName = ""
-    m_lastDeletedItemIndex = -1
-End Sub
-ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
-一行だけ追加
-Private Sub cmdDuplicatePreviewItem_Click()
-    ' ★★★ この行を追加 ★★★
-    Me.cmdUndoDelete.Enabled = False
-
-    ' ...(既存の処理が続く)
-End Sub
-
-Private Sub CommandButton単品挿入_Click()
-    ' ★★★ この行を追加 ★★★
-    Me.cmdUndoDelete.Enabled = False
-
-
+    if exist "%DEFAULT_XML_OUTPUT%" (
+        echo   -> %FILE_KEYWORD%.xml にリネームします。
+        move /Y "%DEFAULT_XML_OUTPUT%" "%OUTPUT_DIR%\%FILE_KEYWORD%.xml" > nul
+    ) else (
+        echo   WARN: XMLファイルの出力に失敗しました。結果IDが正しいか確認してください。
+    )
+    goto :eof
