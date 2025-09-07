@@ -2,7 +2,7 @@
 setlocal
 
 :: =================================================================
-:: Moldflow解析結果 XML一括出力バッチ for Excel評価ツール
+:: Moldflow解析結果 XML一括出力バッチ for Excel評価ツール (複合ルール対応版)
 :: 使用方法:
 :: 1. このバッチファイルをMoldflowのスタディファイル(.sdy)と同じフォルダに置くか、
 ::    .sdyファイルをこのバッチファイルにドラッグ＆ドロップしてください。
@@ -11,10 +11,9 @@ setlocal
 
 :: --- 初期設定 ---
 echo #################################################################
-echo # Moldflow XML Exporter
+echo # Moldflow XML Exporter (Complex Rule Version)
 echo #################################################################
 echo.
-
 if "%~1"=="" (
     echo ERROR: スタディファイル(.sdy)をこのバッチファイルにドラッグ＆ドロップしてください。
     echo.
@@ -37,7 +36,6 @@ if not exist "%SDY_FILE%" (
 echo 対象スタディファイル: %SDY_FILE%
 echo 出力先フォルダ: %OUTPUT_DIR%
 echo.
-
 if not exist "%OUTPUT_DIR%" (
     echo "%OUTPUT_DIR%" を作成します...
     mkdir "%OUTPUT_DIR%"
@@ -71,6 +69,13 @@ call :ExportResult 1620 "frozen_layer_fraction" "スキン層の比率"
 call :ExportResult 5010 "residual_stress" "残留応力"
 call :ExportResult 4060 "orientation_index" "繊維配向"
 call :ExportResult 12430 "birefringence" "複屈折"
+call :ExportResult 10100 "pressure_at_vp_switch" "V/P切替時の圧力"
+
+:: ★★★ ここから新規追加 (複合ルール用) ★★★
+call :ExportResult 1640 "weld_lines" "ウェルドライン"
+call :ExportResult 1670 "air_traps" "エアトラップ"
+call :ExportResult 4310 "shear_rate_wall" "壁面せん断速度"
+call :ExportResult 9260 "time_to_reach_ejection_temperature" "突き出し可能時間"
 
 :: --- 冷却 (Cool) 結果 ---
 call :ExportResult 9340 "cooling_time_variance" "冷却時間のばらつき"
