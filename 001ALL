@@ -1,0 +1,651 @@
+
+Option Explicit
+
+'====================================================================================
+' ■■■ メイン実行プロシージャ ■■■
+' ユーザーが直接実行する処理です。
+'====================================================================================
+
+'【推奨】取込 → 自動キャリブレーション → 判定 → 表示 の全工程を実行
+Public Sub Run_All_Auto()
+    ImportMoldflowXMLs_FromFolder_v3
+    AutoCalibrate_Criteria
+    Evaluate_All_KPIs
+    Apply_Display_Mode
+    MsgBox "取り込み→自動キャリブレーション→判定→表示切替まで完了しました。", vbInformation
+End Sub
+
+'【基本】取込 → 判定 → 表示 を実行（基準は手動でCriteriaシートに設定）
+Public Sub Run_Import_Judge_Display()
+    ImportMoldflowXMLs_FromFolder_v3
+    Evaluate_All_KPIs
+    Apply_Display_Mode
+    MsgBox "取り込み・判定・表示モード適用が完了しました。", vbInformation
+End Sub
+
+'【学習】良品データから評価基準のベースラインを学習
+Public Sub Learn_Baseline_FromFolder()
+    Dim wsCtrl As Worksheet: Set wsCtrl = ThisWorkbook.Worksheets("Control")
+    Dim fam As String, runner As String, qclass As String
+    fam = CStr(wsCtrl.Range("B9").value)
+    runner = CStr(wsCtrl.Range("B10").value)
+    qclass = CStr(wsCtrl.Range("B11").value)
+
+    Dim folder As String: folder = PickFolder("承認済み（良品）スタディのXML親フォルダを選択")
+    If folder = "" Then Exit Sub
+
+    Dim wsMap As Worksheet: Set wsMap = ThisWorkbook.Worksheets("Result_Map")
+    Dim wsBase As Worksheet: Set wsBase = ThisWorkbook.Worksheets("Baseline")
+    Dim files As Collection: Set files = ListAllXML(folder)
+    If files Is Nothing Or files.Count = 0 Then MsgBox "XMLなし": Exit Sub
+
+    Dim key As String: key = fam & "|" & runner & "|" & qclass
+
+    Dim pools As Object: Set pools = CreateObject("Scripting.Dictionary")
+    Dim dirs As Object: Set dirs = CreateObject("Scripting.Dictionary")
+
+    Dim lastMap As Long: lastMap = wsMap.Cells(wsMap.rows.Count, 1).End(xlUp).Row
+    Dim r As Long
+    For r = 2 To lastMap
+        If ToBool(wsMap.Cells(r, 1).value) Then
+            Dim kpi As String, patt As String, sig As String, dir As String
+            kpi = CStr(wsMap.Cells(r, 2).value)
+            patt = CStr(wsMap.Cells(r, 5).value)
+            sig = CStr(wsMap.Cells(r, 8).value)
+            dir = CStr(wsMap.Cells(r, 9).value)
+            dirs(kpi) = IIf(InStr(dir, "big") > 0, "big_better", "small_better")
+
+            Dim vals As Object: Set vals = CreateObject("System.Collections.ArrayList")
+            Dim i As Long
+            For i = 1 To files.Count
+                Dim f As String: f = files(i)
+                If InStr(LCase$(f), Replace(LCase$(Replace(patt, "*", "")), ";", "")) > 0 Then
+                    Dim v As Variant: v = ExtractNumericFromXML(f)
+                    If Not IsError(v) Then vals.Add v
+                End If
+            Next i
+            pools(kpi) = vals
+        End If
+    Next r
+
+    Dim rowOut As Long: rowOut = wsBase.Cells(wsBase.rows.Count, 1).End(xlUp).Row + 1
+    Dim k As Variant
+    For Each k In pools.Keys
+        Dim arr As Object: Set arr = pools(k)
+        If arr.Count >= 5 Then
+            arr.Sort
+            Dim p50 As Double, p80 As Double, p90 As Double
+            p50 = Percentile(arr, 0.5)
+            p80 = Percentile(arr, 0.8)
+            p90 = Percentile(arr, 0.9)
+            wsBase.Cells(rowOut, 1).value = key
+            wsBase.Cells(rowOut, 2).value = CStr(k)
+            wsBase.Cells(rowOut, 3).value = p50
+            wsBase.Cells(rowOut, 4).value = p80
+            wsBase.Cells(rowOut, 5).value = p90
+            wsBase.Cells(rowOut, 6).value = CStr(dirs(k))
+            wsBase.Cells(rowOut, 7).value = arr.Count
+            rowOut = rowOut + 1
+        End If
+    Next k
+
+    MsgBox "Baselineを学習しました。", vbInformation
+End Sub
+
+
+'====================================================================================
+' ■■■ コア機能 STEP 1：XML一括取り込み ■■■
+'====================================================================================
+Private Sub ImportMoldflowXMLs_FromFolder_v3()
+    Dim folder As String
+    folder = PickFolder("XMLの親フォルダを選択してください（studyrlt -xml の出力先）")
+    If folder = "" Then Exit Sub
+
+    Dim wsMap As Worksheet: Set wsMap = ThisWorkbook.Worksheets("Result_Map")
+    Dim wsLog As Worksheet: Set wsLog = ThisWorkbook.Worksheets("Import_Log")
+    Dim logRow As Long: logRow = wsLog.Cells(wsLog.rows.Count, 1).End(xlUp).Row + 1
+
+    Dim files As Collection: Set files = ListAllXML(folder)
+    If files Is Nothing Or files.Count = 0 Then
+        MsgBox "XMLが見つかりません。", vbExclamation: Exit Sub
+    End If
+
+    Dim idx As Object: Set idx = CreateObject("Scripting.Dictionary")
+    BuildContentIndex files, idx
+
+    Dim lastRow As Long: lastRow = wsMap.Cells(wsMap.rows.Count, 1).End(xlUp).Row
+    Dim r As Long
+    For r = 2 To lastRow
+        If ToBool(wsMap.Cells(r, 1).value) And UCase$(Trim$(CStr(wsMap.Cells(r, 4).value))) = "XML" Then
+            Dim kpi As String, tgt As String, patt As String, agg As String, sig As String
+            kpi = CStr(wsMap.Cells(r, 2).value)
+            tgt = CStr(wsMap.Cells(r, 3).value)
+            patt = CStr(wsMap.Cells(r, 5).value)
+            agg = UCase$(Trim$(CStr(wsMap.Cells(r, 6).value)))
+            sig = CStr(wsMap.Cells(r, 8).value)
+
+            Dim best As String, score As Double
+            best = "": score = -1
+            Dim i As Long
+            For i = 1 To files.Count
+                Dim f As String: f = files(i)
+                Dim s As Double: s = ScoreFile(f, patt, sig, idx(f))
+                If s > score Then score = s: best = f
+            Next i
+
+            If score > 0 And best <> "" Then
+                Dim val As Variant: val = AggregateXml(best, agg)
+                If Not IsError(val) Then
+                    WriteValueByLabel tgt, kpi, val
+                    wsLog.Cells(logRow, 1).value = Now
+                    wsLog.Cells(logRow, 2).value = kpi
+                    wsLog.Cells(logRow, 3).value = best
+                    wsLog.Cells(logRow, 4).value = score
+                    wsLog.Cells(logRow, 5).value = agg
+                    wsLog.Cells(logRow, 6).value = val
+                    wsLog.Cells(logRow, 7).value = "OK"
+                    logRow = logRow + 1
+                Else
+                    wsLog.Cells(logRow, 1).value = Now
+                    wsLog.Cells(logRow, 2).value = kpi
+                    wsLog.Cells(logRow, 3).value = best
+                    wsLog.Cells(logRow, 4).value = score
+                    wsLog.Cells(logRow, 5).value = agg
+                    wsLog.Cells(logRow, 6).value = ""
+                    wsLog.Cells(logRow, 7).value = "集計不可"
+                    logRow = logRow + 1
+                End If
+            Else
+                wsLog.Cells(logRow, 1).value = Now
+                wsLog.Cells(logRow, 2).value = kpi
+                wsLog.Cells(logRow, 3).value = ""
+                wsLog.Cells(logRow, 4).value = 0
+                wsLog.Cells(logRow, 5).value = ""
+                wsLog.Cells(logRow, 6).value = ""
+                wsLog.Cells(logRow, 7).value = "該当XMLなし"
+                logRow = logRow + 1
+            End If
+        End If
+    Next r
+End Sub
+
+
+'====================================================================================
+' ■■■ コア機能 STEP 2：評価基準の自動キャリブレーション ■■■
+'====================================================================================
+Private Sub AutoCalibrate_Criteria()
+    Dim wsCtrl As Worksheet: Set wsCtrl = ThisWorkbook.Worksheets("Control")
+    Dim useAC As Boolean: useAC = (UCase$(CStr(wsCtrl.Range("B4").value)) Like "*YES*" Or UCase$(CStr(wsCtrl.Range("B4").value)) Like "*はい*")
+    Dim useBL As Boolean: useBL = (UCase$(CStr(wsCtrl.Range("B5").value)) Like "*YES*" Or UCase$(CStr(wsCtrl.Range("B5").value)) Like "*はい*")
+    If Not useAC And Not useBL Then Exit Sub
+
+    Dim fam As String, runner As String, qclass As String, mach As String
+    Dim cycle As Double, hold As Double
+    fam = CStr(wsCtrl.Range("B9").value)
+    runner = CStr(wsCtrl.Range("B10").value)
+    qclass = CStr(wsCtrl.Range("B11").value)
+    mach = CStr(wsCtrl.Range("B7").value)
+    hold = NzD(wsCtrl.Range("B2").value, 0#)
+    cycle = NzD(wsCtrl.Range("B3").value, 0#)
+
+    Dim wsCrit As Worksheet: Set wsCrit = ThisWorkbook.Worksheets("Criteria")
+    Clear_Criteria wsCrit
+
+    If useBL Then Apply_Baseline_To_Criteria fam, runner, qclass, wsCrit
+    If useAC Then Apply_Machine_Material_Rules mach, fam, hold, cycle, wsCrit
+End Sub
+
+
+'====================================================================================
+' ■■■ コア機能 STEP 3：判定＋対策案提示 ■■■
+'====================================================================================
+Private Sub Evaluate_All_KPIs()
+    Dim wsCrit As Worksheet: Set wsCrit = ThisWorkbook.Worksheets("Criteria")
+    Dim wsPB As Worksheet: Set wsPB = ThisWorkbook.Worksheets("Playbook")
+    Dim wsCtrl As Worksheet: Set wsCtrl = ThisWorkbook.Worksheets("Control")
+
+    Dim holdTime As Double, cycleTime As Double
+    holdTime = NzD(wsCtrl.Range("B2").value, 0#)   ' 想定ホールド
+    cycleTime = NzD(wsCtrl.Range("B3").value, 0#)  ' 目標サイクル
+
+    Evaluate_Sheet "2_FillPack_MULTI", wsCrit, wsPB, holdTime, cycleTime
+    Evaluate_Sheet "3_Cool_MULTI", wsCrit, wsPB, holdTime, cycleTime
+    If SheetExists("4_Warp_MULTI") Then Evaluate_Sheet "4_Warp_MULTI", wsCrit, wsPB, holdTime, cycleTime
+End Sub
+
+
+'====================================================================================
+' ■■■ コア機能 STEP 4：表示モード（簡易/詳細/全て）の適用 ■■■
+'====================================================================================
+Private Sub Apply_Display_Mode()
+    Dim wsCtrl As Worksheet: Set wsCtrl = ThisWorkbook.Worksheets("Control")
+    Dim modeStr As String: modeStr = CStr(wsCtrl.Range("B1").value)
+    Dim modeLvl As Long
+    Select Case modeStr
+        Case "簡易": modeLvl = 1
+        Case "詳細": modeLvl = 2
+        Case Else:   modeLvl = 3
+    End Select
+
+    Dim wsMap As Worksheet: Set wsMap = ThisWorkbook.Worksheets("Result_Map")
+    Apply_Mode_To_Sheet "2_FillPack_MULTI", wsMap, modeLvl
+    Apply_Mode_To_Sheet "3_Cool_MULTI", wsMap, modeLvl
+    If SheetExists("4_Warp_MULTI") Then Apply_Mode_To_Sheet "4_Warp_MULTI", wsMap, modeLvl
+End Sub
+
+
+'====================================================================================
+' ■■■ 補助プロシージャ群（上記コア機能から呼び出されるサブルーチン）■■■
+'====================================================================================
+
+' --- AutoCalibrate関連 ---
+Private Sub Clear_Criteria(wsCrit As Worksheet)
+    Dim last As Long: last = wsCrit.Cells(wsCrit.rows.Count, 1).End(xlUp).Row
+    If last >= 2 Then wsCrit.rows("2:" & last).Delete
+End Sub
+
+Private Sub Apply_Baseline_To_Criteria(fam As String, runner As String, qclass As String, wsCrit As Worksheet)
+    Dim wsBase As Worksheet: Set wsBase = ThisWorkbook.Worksheets("Baseline")
+    Dim key As String: key = fam & "|" & runner & "|" & qclass
+    Dim last As Long: last = wsBase.Cells(wsBase.rows.Count, 1).End(xlUp).Row
+    Dim r As Long
+    For r = 2 To last
+        If CStr(wsBase.Cells(r, 1).value) = key Then
+            Dim kpi As String, dir As String
+            Dim p80 As Variant, p90 As Variant
+            kpi = CStr(wsBase.Cells(r, 2).value)
+            p80 = NzD(wsBase.Cells(r, 4).value, Empty)
+            p90 = NzD(wsBase.Cells(r, 5).value, Empty)
+            dir = CStr(wsBase.Cells(r, 6).value)
+
+            Dim rowOut As Long: rowOut = wsCrit.Cells(wsCrit.rows.Count, 1).End(xlUp).Row + 1
+            Dim mode As String: mode = IIf(dir = "big_better", ">=OK", "<=OK")
+            Dim loOk As Variant, hiOk As Variant, loAttn As Variant, hiAttn As Variant
+            If dir = "big_better" Then
+                loOk = p80: loAttn = p90: hiOk = Empty: hiAttn = Empty
+            Else
+                hiOk = p80: hiAttn = p90: loOk = Empty: loAttn = Empty
+            End If
+            wsCrit.Cells(rowOut, 1).value = kpi
+            wsCrit.Cells(rowOut, 2).value = mode
+            wsCrit.Cells(rowOut, 3).value = loOk
+            wsCrit.Cells(rowOut, 4).value = hiOk
+            wsCrit.Cells(rowOut, 5).value = loAttn
+            wsCrit.Cells(rowOut, 6).value = hiAttn
+        End If
+    Next r
+End Sub
+
+Private Sub Apply_Machine_Material_Rules(mach As String, fam As String, hold As Double, cycle As Double, wsCrit As Worksheet)
+    Dim wsMach As Worksheet: Set wsMach = ThisWorkbook.Worksheets("Machine_Library")
+    Dim maxClamp As Double, maxP As Double
+    Dim r As Long, last As Long: last = wsMach.Cells(wsMach.rows.Count, 1).End(xlUp).Row
+    For r = 2 To last
+        If CStr(wsMach.Cells(r, 1).value) = mach Then
+            maxClamp = NzD(wsMach.Cells(r, 2).value, 0#)
+            maxP = NzD(wsMach.Cells(r, 3).value, 0#)
+            Exit For
+        End If
+    Next r
+
+    Add_Crit wsCrit, "Injection pressure 最大[MPa]", "<=OK", Empty, maxP * 0.8, Empty, maxP * 0.9, "MPa", "AutoCal-機械上限の80/90%"
+    Add_Crit wsCrit, "Pressure drop 最大[MPa]", "<=OK", Empty, maxP * 0.6, Empty, maxP * 0.75, "MPa", "AutoCal-圧損の目安"
+    Add_Crit wsCrit, "Clamp force 最大[kN]", "<=OK", Empty, maxClamp * 0.8, Empty, maxClamp * 0.9, "kN", "AutoCal-型締80/90%"
+    If hold > 0 Then Add_Crit wsCrit, "Gate seal time [s]", "<=OK", Empty, hold - 0.5, Empty, hold, "s", "AutoCal-Control基準"
+    If cycle > 0 Then Add_Crit wsCrit, "Time to freeze 最小/平均[s]", "<=OK", Empty, cycle - 1, Empty, cycle, "s", "AutoCal-Control基準"
+End Sub
+
+Private Sub Add_Crit(ws As Worksheet, kpi As String, mode As String, loOk As Variant, hiOk As Variant, loAttn As Variant, hiAttn As Variant, unit As String, note As String)
+    Dim rowOut As Long: rowOut = ws.Cells(ws.rows.Count, 1).End(xlUp).Row + 1
+    ws.Cells(rowOut, 1).value = kpi
+    ws.Cells(rowOut, 2).value = mode
+    ws.Cells(rowOut, 3).value = loOk
+    ws.Cells(rowOut, 4).value = hiOk
+    ws.Cells(rowOut, 5).value = loAttn
+    ws.Cells(rowOut, 6).value = hiAttn
+    ws.Cells(rowOut, 7).value = unit
+    ws.Cells(rowOut, 8).value = note
+End Sub
+
+' --- Evaluate関連 ---
+Private Sub Evaluate_Sheet(sheetName As String, wsCrit As Worksheet, wsPB As Worksheet, holdTime As Double, cycleTime As Double)
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(sheetName)
+    Dim last As Long: last = ws.Cells(ws.rows.Count, 1).End(xlUp).Row
+    Dim r As Long, c As Long
+
+    For r = 2 To last
+        Dim kpi As String: kpi = CStr(ws.Cells(r, 1).value)
+        If Len(kpi) = 0 Then GoTo NextR
+
+        For c = 0 To 3
+            Dim colVal As Long, colJudge As Long, colAct As Long
+            colVal = 2 + c * 3: colJudge = colVal + 1: colAct = colVal + 2
+            If Len(Trim$(CStr(ws.Cells(r, colVal).value))) = 0 Then GoTo NextC
+
+            Dim v As Double: v = NzD(ws.Cells(r, colVal).value, 0#)
+            Dim verdict As String, severity As String
+            verdict = Judge_Value(kpi, v, wsCrit, holdTime, cycleTime, severity)
+
+            ws.Cells(r, colJudge).value = verdict
+            ws.Cells(r, colAct).value = Suggest_Action(kpi, severity, wsPB)
+NextC:
+        Next c
+NextR:
+    Next r
+End Sub
+
+Private Function Judge_Value(kpi As String, v As Double, wsCrit As Worksheet, holdTime As Double, cycleTime As Double, ByRef severity As String) As String
+    Dim r As Long, last As Long: last = wsCrit.Cells(wsCrit.rows.Count, 1).End(xlUp).Row
+    For r = 2 To last
+        If CStr(wsCrit.Cells(r, 1).value) = kpi Then
+            Dim mode As String: mode = CStr(wsCrit.Cells(r, 2).value)
+            Dim loOk As Variant, hiOk As Variant, loAttn As Variant, hiAttn As Variant
+            loOk = NzD(wsCrit.Cells(r, 3).value, Empty)
+            hiOk = NzD(wsCrit.Cells(r, 4).value, Empty)
+            loAttn = NzD(wsCrit.Cells(r, 5).value, Empty)
+            hiAttn = NzD(wsCrit.Cells(r, 6).value, Empty)
+
+            ' 特例1：Gate seal
+            If kpi = "Gate seal time [s]" And holdTime > 0 Then
+                If v <= holdTime - 0.5 Then severity = "OK": Judge_Value = "OK": Exit Function
+                If v <= holdTime Then severity = "ATTN": Judge_Value = "要注意": Exit Function
+                severity = "NG": Judge_Value = "NG": Exit Function
+            End If
+            ' 特例2：Freeze vs Cycle
+            If kpi = "Time to freeze 最小/平均[s]" And cycleTime > 0 Then
+                If v <= cycleTime - 1# Then severity = "OK": Judge_Value = "OK": Exit Function
+                If v <= cycleTime Then severity = "ATTN": Judge_Value = "要注意": Exit Function
+                severity = "NG": Judge_Value = "NG": Exit Function
+            End If
+
+            Select Case mode
+                Case ">=OK"
+                    If Not IsEmpty(loOk) And v >= loOk Then severity = "OK": Judge_Value = "OK": Exit Function
+                    If Not IsEmpty(loAttn) And v >= loAttn Then severity = "ATTN": Judge_Value = "要注意": Exit Function
+                    severity = "NG": Judge_Value = "NG": Exit Function
+                Case "<=OK"
+                    If Not IsEmpty(hiOk) And v <= hiOk Then severity = "OK": Judge_Value = "OK": Exit Function
+                    If Not IsEmpty(hiAttn) And v <= hiAttn Then severity = "ATTN": Judge_Value = "要注意": Exit Function
+                    severity = "NG": Judge_Value = "NG": Exit Function
+                Case "範囲"
+                    If Not IsEmpty(loOk) And Not IsEmpty(hiOk) And v >= loOk And v <= hiOk Then severity = "OK": Judge_Value = "OK": Exit Function
+                    If Not IsEmpty(loAttn) And Not IsEmpty(hiAttn) And v >= loAttn And v <= hiAttn Then severity = "ATTN": Judge_Value = "要注意": Exit Function
+                    severity = "NG": Judge_Value = "NG": Exit Function
+                Case Else
+                    severity = "ATTN": Judge_Value = "要注意": Exit Function
+            End Select
+        End If
+    Next r
+    severity = "ATTN": Judge_Value = "要注意"
+End Function
+
+Private Function Suggest_Action(kpi As String, severity As String, wsPB As Worksheet) As String
+    Dim last As Long: last = wsPB.Cells(wsPB.rows.Count, 1).End(xlUp).Row
+    Dim r As Long
+    For r = 2 To last
+        If CStr(wsPB.Cells(r, 1).value) = kpi And CStr(wsPB.Cells(r, 2).value) = severity Then
+            Suggest_Action = CStr(wsPB.Cells(r, 3).value)
+            Exit Function
+        End If
+    Next r
+    Suggest_Action = ""
+End Function
+
+
+' --- DisplayMode関連 ---
+Private Sub Apply_Mode_To_Sheet(sheetName As String, wsMap As Worksheet, modeLvl As Long)
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(sheetName)
+    Dim last As Long: last = ws.Cells(ws.rows.Count, 1).End(xlUp).Row
+    Dim r As Long
+    For r = 2 To last
+        Dim kpi As String: kpi = CStr(ws.Cells(r, 1).value)
+        Dim lvl As Long: lvl = Get_Mode_Level(kpi, wsMap)
+        ws.rows(r).Hidden = (lvl > modeLvl And modeLvl > 0)
+    Next r
+End Sub
+
+Private Function Get_Mode_Level(kpi As String, wsMap As Worksheet) As Long
+    Dim last As Long: last = wsMap.Cells(wsMap.rows.Count, 1).End(xlUp).Row
+    Dim r As Long
+    For r = 2 To last
+        If CStr(wsMap.Cells(r, 2).value) = kpi Then
+            Get_Mode_Level = CLng(NzD(wsMap.Cells(r, 7).value, 3))
+            Exit Function
+        End If
+    Next r
+    Get_Mode_Level = 3
+End Function
+
+
+'====================================================================================
+' ■■■ 汎用ユーティリティ関数群 ■■■
+'====================================================================================
+
+' --- ファイル/フォルダ操作 ---
+Public Function PickFolder(prompt As String) As String
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .title = prompt
+        If .Show = -1 Then PickFolder = .SelectedItems(1)
+    End With
+End Function
+
+Public Function ListAllXML(root As String) As Collection
+    Dim col As New Collection
+    Dim stack As New Collection: stack.Add root
+    Do While stack.Count > 0
+        Dim path As String: path = stack(1): stack.Remove 1
+        Dim f As String: f = dir(path & "\*.xml")
+        Do While f <> ""
+            col.Add path & "\" & f
+            f = dir()
+        Loop
+        Dim subF As String: subF = dir(path & "\*", vbDirectory)
+        Do While subF <> ""
+            If subF <> "." And subF <> ".." Then
+                If (GetAttr(path & "\" & subF) And vbDirectory) = vbDirectory Then stack.Add path & "\" & subF
+            End If
+            subF = dir()
+        Loop
+    Loop
+    Set ListAllXML = col
+End Function
+
+
+' --- XML処理/解析 ---
+Private Sub BuildContentIndex(files As Collection, ByRef dict As Object)
+    Dim xm As Object: Set xm = CreateObject("MSXML2.DOMDocument.6.0")
+    xm.async = False: xm.validateOnParse = False
+    Dim i As Long
+    For i = 1 To files.Count
+        Dim p As String: p = files(i)
+        On Error Resume Next
+        If xm.Load(p) Then
+            dict.Add p, LCase$(Left$(xm.Text, 4000))
+        Else
+            dict.Add p, ""
+        End If
+        On Error GoTo 0
+    Next i
+End Sub
+
+Private Function ScoreFile(path As String, pattern As String, sig As String, cachedText As String) As Double
+    Dim score As Double: score = 0
+    Dim p As String: p = LCase$(path)
+    Dim pat As String: pat = LCase$(pattern)
+    If pat <> "" Then
+        Dim pcs() As String: pcs = Split(Replace(pat, "*", ""), ";")
+        Dim i As Long
+        For i = LBound(pcs) To UBound(pcs)
+            If Len(pcs(i)) > 0 And InStr(p, LCase$(pcs(i))) > 0 Then score = score + 1
+        Next i
+    End If
+    If Len(sig) > 0 And InStr(cachedText, LCase$(Trim$(sig))) > 0 Then score = score + 2
+    ScoreFile = score
+End Function
+
+Private Function AggregateXml(xmlPath As String, agg As String) As Variant
+    Dim xm As Object: Set xm = CreateObject("MSXML2.DOMDocument.6.0")
+    xm.async = False: xm.validateOnParse = False
+    If Not xm.Load(xmlPath) Then AggregateXml = CVErr(xlErrNA): Exit Function
+
+    Select Case agg
+        Case "MIN", "MAX", "AVG", "DELTA"
+            AggregateXml = AggregateXmlNumbers(xm, agg)
+        Case "PLATEAU_TIME"
+            AggregateXml = PlateauTimeFromXml(xm)
+        Case Else
+            AggregateXml = CVErr(xlErrNA)
+    End Select
+End Function
+
+Private Function AggregateXmlNumbers(xm As Object, agg As String) As Variant
+    Dim re As Object: Set re = CreateObject("VBScript.RegExp")
+    re.pattern = "[-+]?\d+(\.\d+)?([eE][-+]?\d+)?"
+    re.Global = True
+
+    Dim txt As String: txt = xm.Text
+    Dim m As Object: Set m = re.Execute(txt)
+    If m.Count = 0 Then AggregateXmlNumbers = CVErr(xlErrNA): Exit Function
+
+    Dim i As Long, v As Double, vmin As Double, vmax As Double, s As Double
+    vmin = CDbl(m(0).value): vmax = vmin: s = 0#
+    For i = 0 To m.Count - 1
+        v = CDbl(m(i).value)
+        If v < vmin Then vmin = v
+        If v > vmax Then vmax = v
+        s = s + v
+    Next i
+    Select Case agg
+        Case "MIN":   AggregateXmlNumbers = vmin
+        Case "MAX":   AggregateXmlNumbers = vmax
+        Case "AVG":   AggregateXmlNumbers = s / m.Count
+        Case "DELTA": AggregateXmlNumbers = vmax - vmin
+    End Select
+End Function
+
+Private Function PlateauTimeFromXml(xm As Object) As Variant
+    Dim slopeLim As Double: slopeLim = 0.005 ' 変化率しきい
+    Dim needN As Long: needN = 5             ' 連続点数
+
+    Dim t() As Double, y() As Double, n As Long
+    ExtractTimeSeries xm, t, y, n
+    If n < 2 Then PlateauTimeFromXml = CVErr(xlErrNA): Exit Function
+
+    Dim i As Long, ok As Long: ok = 0
+    For i = 1 To n - 1
+        Dim dt As Double, dy As Double
+        dt = t(i + 1) - t(i)
+        If dt <= 0 Then GoTo cont
+        dy = y(i + 1) - y(i)
+        If Abs(dy / dt) <= slopeLim Then
+            ok = ok + 1
+        Else
+            ok = 0
+        End If
+        If ok >= needN Then PlateauTimeFromXml = t(i + 1): Exit Function
+cont:
+    Next i
+    PlateauTimeFromXml = CVErr(xlErrNA)
+End Function
+
+Private Sub ExtractTimeSeries(xm As Object, ByRef times() As Double, ByRef vals() As Double, ByRef n As Long)
+    Dim re As Object: Set re = CreateObject("VBScript.RegExp")
+    re.pattern = "[-+]?\d+(\.\d+)?([eE][-+]?\d+)?"
+    re.Global = True
+    Dim txt As String: txt = xm.Text
+    Dim lines() As String: lines = Split(txt, vbLf)
+
+    Dim t() As Double, v() As Double, cap As Long, i As Long
+    cap = 0: n = 0
+    For i = 0 To UBound(lines)
+        Dim line As String: line = Trim$(lines(i))
+        If Len(line) = 0 Then GoTo nexti
+        Dim ms As Object: Set ms = re.Execute(line)
+        If ms.Count >= 2 Then
+            If n = cap Then
+                cap = IIf(cap = 0, 256, cap * 2)
+                ReDim Preserve t(1 To cap)
+                ReDim Preserve v(1 To cap)
+            End If
+            n = n + 1
+            t(n) = CDbl(ms(0).value)
+            v(n) = CDbl(ms(1).value)
+        End If
+nexti:
+    Next i
+    If n > 0 Then
+        ReDim Preserve t(1 To n)
+        ReDim Preserve v(1 To n)
+        times = t: vals = v
+    End If
+End Sub
+
+Private Function ExtractNumericFromXML(path As String) As Variant
+    Dim xm As Object: Set xm = CreateObject("MSXML2.DOMDocument.6.0")
+    xm.async = False: xm.validateOnParse = False
+    If Not xm.Load(path) Then ExtractNumericFromXML = CVErr(xlErrNA): Exit Function
+    Dim re As Object: Set re = CreateObject("VBScript.RegExp")
+    re.pattern = "[-+]?\d+(\.\d+)?([eE][-+]?\d+)?"
+    re.Global = True
+    Dim ms As Object: Set ms = re.Execute(xm.Text)
+    If ms.Count = 0 Then ExtractNumericFromXML = CVErr(xlErrNA) Else ExtractNumericFromXML = CDbl(ms(0).value)
+End Function
+
+
+' --- データ書き込み/統計 ---
+Private Sub WriteValueByLabel(sheetName As String, labelText As String, value As Variant)
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(sheetName)
+    Dim last As Long: last = ws.Cells(ws.rows.Count, 1).End(xlUp).Row
+    Dim r As Long
+    For r = 1 To last
+        If CStr(ws.Cells(r, 1).value) = labelText Then
+            Dim gi As Long
+            For gi = 0 To 3
+                Dim colVal As Long: colVal = 2 + gi * 3
+                If Trim$(CStr(ws.Cells(r, colVal).value)) = "" Then
+                    ws.Cells(r, colVal).value = value
+                    Exit Sub
+                End If
+            Next gi
+            Exit Sub
+        End If
+    Next r
+End Sub
+
+Private Function Percentile(arr As Object, p As Double) As Double
+    ' ArrayListを引数にとり、線形補間法でパーセンタイルを計算
+    Dim n As Long, idx As Double
+    n = arr.Count
+    If n = 0 Then Percentile = 0: Exit Function
+    If n = 1 Then Percentile = arr(0): Exit Function
+    
+    idx = (n - 1) * p
+    Dim lo As Long: lo = Int(idx)
+    Dim hi As Long: hi = lo + 1
+    Dim frac As Double: frac = idx - lo
+    
+    Percentile = arr(lo) * (1 - frac) + arr(hi) * frac
+End Function
+
+
+' --- その他 汎用ヘルパー ---
+Public Function SheetExists(name As String) As Boolean
+    On Error Resume Next
+    SheetExists = Not ThisWorkbook.Worksheets(name) Is Nothing
+    On Error GoTo 0
+End Function
+
+Public Function ToBool(v As Variant) As Boolean
+    If IsEmpty(v) Or IsNull(v) Then ToBool = False: Exit Function
+    If VarType(v) = vbBoolean Then ToBool = v: Exit Function
+    Select Case UCase$(Trim$(CStr(v)))
+        Case "TRUE", "はい", "-1", "1"
+            ToBool = True
+        Case Else
+            ToBool = False
+    End Select
+End Function
+
+Public Function NzD(v As Variant, d As Variant) As Variant
+    If IsError(v) Or IsNull(v) Or v = "" Then NzD = d Else NzD = v
+End Function
