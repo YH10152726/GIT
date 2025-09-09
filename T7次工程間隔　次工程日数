@@ -1,6 +1,6 @@
 Attribute VB_Name = "modImport"
 Option Explicit
-
+　
 ' DB header sheet
 Private Const DB_SHEET As String = "DB"
 Private Const LOG_SHEET As String = "ImportLog"
