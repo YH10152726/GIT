@@ -36,19 +36,20 @@ Public Sub RankSimilar()
     End Select
     
     ' ---- Target ----
+    ' ---- Target ----
     Dim tPoly$, tFillType$
     Dim tFillPct As Double, tRho As Double, tVI As Double, tCTE As Double, tE As Double
     Dim tMeltMid As Double, tMoldMid As Double
     
-    tPoly = NormalizeBasePolymer(wsT.Range("B1").Value)
-    tFillType = NormalizeFillerType(wsT.Range("B2").Value)
-    tFillPct = SafeDbl(wsT.Range("B3").Value)
-    tRho = SafeDbl(wsT.Range("B4").Value)
-    tVI = SafeDbl(wsT.Range("B5").Value)
-    tCTE = SafeDbl(wsT.Range("B6").Value)
-    tE = SafeDbl(wsT.Range("B7").Value)
-    tMeltMid = SafeDbl(wsT.Range("B8").Value)
-    tMoldMid = SafeDbl(wsT.Range("B9").Value)
+    tPoly = NormalizeBasePolymer(wsT.Range("B2").Value)      ' B1→B2に修正
+    tFillType = NormalizeFillerType(wsT.Range("B3").Value)   ' B2→B3に修正
+    tFillPct = SafeDbl(wsT.Range("B4").Value)                ' B3→B4に修正
+    tRho = SafeDbl(wsT.Range("B5").Value)                    ' B4→B5に修正
+    tVI = SafeDbl(wsT.Range("B6").Value)                     ' B5→B6に修正
+    tCTE = SafeDbl(wsT.Range("B7").Value)                    ' B6→B7に修正
+    tE = SafeDbl(wsT.Range("B8").Value)                      ' B7→B8に修正
+    tMeltMid = SafeDbl(wsT.Range("B9").Value)                ' B8→B9に修正
+    tMoldMid = SafeDbl(wsT.Range("B10").Value)               ' B9→B10に修正
     
     ' ---- Weights ----
     Dim wPoly As Double, wFillType As Double, wFillPct As Double, wRho As Double
