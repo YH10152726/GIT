@@ -1,156 +1,185 @@
-' --- メイン処理 ---
-' このサブルーチンをボタンに登録します
-Public Sub AddNextProcessInterval()
-    ' --- 定数定義 ---
-    Const SHEET_NAME As String = "工程表" ' 対象シート名
-    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
-    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
-    Const START_ROW As Long = 2 ' データ開始行
-    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
-    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
-    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
-    Const END_MARKER As String = "END" ' データ終了マーカー
+Attribute VB_Name = "modImport"
+Option Explicit
 
-    ' --- 光陽産業向け処理の定数 ---
-    Const COL_HEAT_SUPPLIER As String = "AL"      ' 熱処理先が入力されている列
-    Const COL_TAP_OUTPUT As String = "BF"         ' 「2」を出力する列
-    Const VAL_KOUYOU As String = "光陽産業"      ' 条件となる業者名
-    Const PROC_TAP As String = "穴あけﾀｯﾌﾟ"     ' 条件となる工程名
-    Const VAL_TAP_OUTPUT As Long = 2              ' 出力する値
+' DB header sheet
+Private Const DB_SHEET As String = "DB"
+Private Const LOG_SHEET As String = "ImportLog"
 
-    ' --- 変数定義 ---
-    Dim ws As Worksheet
-    Dim wsSettings As Worksheet
-    Dim lastRow As Long
-    Dim blockStartRow As Long
-    Dim blockEndRow As Long
-    Dim i As Long
-    Dim intervalValue As Long
-    Dim valFromCell As Variant
+Public Sub ClearDB()
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(DB_SHEET)
+    ws.Rows("2:" & ws.Rows.Count).ClearContents
+End Sub
 
-    ' --- 初期設定 ---
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
-    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
-    On Error GoTo 0
+' Moldflowの Compare / Report から保存した txt を複数読み込む
+Public Sub ImportReports()
+    Dim files As Variant
+    files = Application.GetOpenFilename( _
+        FileFilter:="Text Files (*.txt),*.txt,All Files (*.*),*.*", _
+        Title:="Moldflowレポートtxtを選択（複数可）", _
+        MultiSelect:=True)
+    If VarType(files) = vbBoolean Then Exit Sub
     
-    If ws Is Nothing Then
-        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
-    If wsSettings Is Nothing Then
-        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
-
-    ' シート2のZ2セルから値を取得
-    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
-
-    ' 値が有効か（正の数値か）をチェック
-    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の " & INTERVAL_CELL & " セルに、" & vbCrLf & _
-               "次工程間隔として有効な正の数値を入力してください。", vbCritical, "設定エラー"
-        Exit Sub
-    End If
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(DB_SHEET)
+    Dim logWs As Worksheet: Set logWs = ThisWorkbook.Worksheets(LOG_SHEET)
+    Dim last As Long: last = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    If last < 2 Then last = 1
     
-    ' Long型に変換して変数に格納
-    intervalValue = CLng(valFromCell)
+    Dim f As Variant, txt As String, lines As Variant
+    Dim totalParsed As Long, warnings As String, added As Long
+    
+    For Each f In files
+        warnings = ""
+        txt = ReadAllText(CStr(f))
+        If Len(txt) = 0 Then
+            warnings = "読み込み失敗"
+            added = 0
+        Else
+            lines = SplitLines(txt)
+            added = ParseOneFile(lines, CStr(f), ws, last, warnings)
+        End If
+        totalParsed = totalParsed + added
+        Dim lr As Long: lr = logWs.Cells(logWs.Rows.Count, 1).End(xlUp).Row
+        If lr < 2 Then lr = 1
+        logWs.Cells(lr + 1, 1).Resize(1, 4).Value = Array(NowStr, CStr(f), added, warnings)
+    Next f
+    
+    MsgBox "取込み完了。追加 " & totalParsed & " 行", vbInformation
+End Sub
 
-    ' --- 処理 ---
-    Application.ScreenUpdating = False
-
-    ' 最終行を取得 (ENDマーカー基準)
-    On Error GoTo FindErrorHandler
-    lastRow = ws.Columns(COL_ITEM_NAME).Find(What:=END_MARKER, LookIn:=xlValues, LookAt:=xlWhole).Row
-    On Error GoTo 0
-
-    ' BK列とBF列をクリア
-    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
-    ws.Range(ws.Cells(START_ROW, COL_TAP_OUTPUT), ws.Cells(lastRow, COL_TAP_OUTPUT)).ClearContents
-
-    ' ブロックの開始行をセット
-    blockStartRow = START_ROW
-
-    ' 2行目から最終行までループ
-    For i = START_ROW To lastRow
-        ' AH列に「品名」または「END」があるかチェック
-        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
-            
-            ' 現在のブロックの終了行を設定 (品名/ENDの手前の行)
-            blockEndRow = i - 1
-            
-            ' 前のブロックが存在すれば処理を実行
-            If blockEndRow >= blockStartRow Then
-                Call ProcessSingleBlock(ws, blockStartRow, blockEndRow, _
-                                        COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue, _
-                                        COL_HEAT_SUPPLIER, COL_TAP_OUTPUT, VAL_KOUYOU, PROC_TAP, VAL_TAP_OUTPUT)
-            End If
-            
-            ' 次のブロックの開始行を更新
-            blockStartRow = i
+' 1つのtxtから1材料分を抽出（Compareの書式でも1材料ずつ保存しておく運用を想定）
+Private Function ParseOneFile(ByVal lines As Variant, ByVal src As String, ByRef ws As Worksheet, ByRef last As Long, ByRef warnings As String) As Long
+    Dim sup$, grade$, base$, ds$
+    Dim fillerType$, fillerPct As Double, fillerRho As Double
+    Dim meltRho As Double, solidRho As Double
+    Dim b5 As Double, b6 As Double, b1m As Double, b2m As Double, b3m As Double, b4m As Double
+    Dim b1s As Double, b2s As Double, b3s As Double, b4s As Double
+    Dim e1 As Double, e2 As Double, nu12 As Double, nu23 As Double, g12 As Double
+    Dim a1 As Double, a2 As Double
+    Dim meltMin As Double, meltMax As Double, moldMin As Double, moldMax As Double
+    Dim maxMelt As Double, maxShearS As Double, maxShearR As Double
+    Dim viText$, mfr As Double, mfrT As Double, mfrLoad As Double, ttrans As Double
+    Dim cp80 As Double, cp140 As Double, cp200 As Double
+    Dim k100 As Double, k150 As Double, k200 As Double
+    Dim cpline As Long, kline As Long, i As Long
+    
+    ' Supplier / Grade
+    sup = FindTextNearKey(lines, "Supplier")
+    If sup = "" Then sup = FindTextNearKey(lines, "メーカー")
+    grade = FindTextNearKey(lines, "Grade")
+    If grade = "" Then grade = FindTextNearKey(lines, "商品名")
+    
+    ' Base polymer
+    base = FindTextNearKey(lines, "Resin abbreviation")
+    If base = "" Then base = FindTextNearKey(lines, "樹脂略号")
+    If base = "" Then base = FindTextNearKey(lines, "樹脂名")
+    base = NormalizeBasePolymer(base)
+    
+    ' Data source
+    ds = FindTextNearKey(lines, "Data Source")
+    If ds = "" Then ds = FindTextNearKey(lines, "データ情報源")
+    
+    ' Filler block（タイプ/含有率/フィラー密度）
+    Dim fillLine As String
+    fillLine = FindTextNearKey(lines, "Fiber / Filler")
+    If fillLine = "" Then fillLine = FindTextNearKey(lines, "フィラー データ")
+    fillerType = NormalizeFillerType(fillLine)
+    For i = LBound(lines) To UBound(lines)
+        If InStr(1, lines(i), "重量%", vbTextCompare) > 0 Or InStr(1, lines(i), "wt%", vbTextCompare) > 0 Then
+            fillerPct = FirstNumberIn(lines(i)): Exit For
+        End If
+    Next i
+    For i = LBound(lines) To UBound(lines)
+        If InStr(1, lines(i), "密度 (rho)", vbTextCompare) > 0 Or InStr(1, lines(i), "Density (rho)", vbTextCompare) > 0 Then
+            fillerRho = FirstNumberIn(lines(i)): Exit For
         End If
     Next i
     
-    Application.ScreenUpdating = True
-    MsgBox "次工程間隔および特別処理の入力を完了しました。", vbInformation
-    Exit Sub
-
-FindErrorHandler:
-    MsgBox "最終行マーカー「" & END_MARKER & "」が " & COL_ITEM_NAME & "列に見つかりませんでした。", vbCritical
-    Application.ScreenUpdating = True
-End Sub
-
-
-' --- 1つのブロックを処理するサブルーチン ---
-Private Sub ProcessSingleBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
-                                ByVal processCol As String, ByVal intervalOutputCol As String, ByVal valueToSet As Long, _
-                                ByVal heatSupplierCol As String, ByVal tapOutputCol As String, ByVal kouyouName As String, ByVal tapProcessName As String, ByVal tapOutputValue As Long)
+    ' pvT coefficients
+    meltRho = FindValueNearKey(lines, "溶融密度"): If meltRho = 0 Then meltRho = FindValueNearKey(lines, "Melt Density")
+    solidRho = FindValueNearKey(lines, "固体密度"): If solidRho = 0 Then solidRho = FindValueNearKey(lines, "Solid Density")
+    b5 = FindValueNearKey(lines, "b5"): b6 = FindValueNearKey(lines, "b6")
+    b1m = FindValueNearKey(lines, "b1m"): b2m = FindValueNearKey(lines, "b2m"): b3m = FindValueNearKey(lines, "b3m"): b4m = FindValueNearKey(lines, "b4m")
+    b1s = FindValueNearKey(lines, "b1s"): b2s = FindValueNearKey(lines, "b2s"): b3s = FindValueNearKey(lines, "b3s"): b4s = FindValueNearKey(lines, "b4s")
     
-    Dim i As Long
-    Dim currentProcess As String
-    Dim nextProcess As String
-    Dim nextHeatSupplier As String
+    ' Mechanical & CTE
+    e1 = FindValueNearKey(lines, "弾性率、第 1 主要方向 (E1)"): If e1 = 0 Then e1 = FindValueNearKey(lines, "Elastic modulus, major direction 1 (E1)")
+    e2 = FindValueNearKey(lines, "弾性率、第 2 主要方向 (E2)"): If e2 = 0 Then e2 = FindValueNearKey(lines, "Elastic modulus, major direction 2 (E2)")
+    nu12 = FindValueNearKey(lines, "ポアソン比 (v12)"): If nu12 = 0 Then nu12 = FindValueNearKey(lines, "Poisson's ratio (v12)")
+    nu23 = FindValueNearKey(lines, "ポアソン比 (v23)"): If nu23 = 0 Then nu23 = FindValueNearKey(lines, "Poisson's ratio (v23)")
+    g12 = FindValueNearKey(lines, "せん断弾性率 (G12)"): If g12 = 0 Then g12 = FindValueNearKey(lines, "Shear modulus (G12)")
+    a1 = FindValueNearKey(lines, "Alpha1")
+    a2 = FindValueNearKey(lines, "Alpha2")
     
-    For i = startRow To endRow - 1
-        currentProcess = Trim(CStr(ws.Cells(i, processCol).Value))
-        nextProcess = Trim(CStr(ws.Cells(i + 1, processCol).Value))
-        
-        ' --- 元の次工程間隔の処理 ---
-        If currentProcess <> nextProcess Then
-            If Not IsExcludedProcess(currentProcess) Then
-                ws.Cells(i, intervalOutputCol).Value = valueToSet
-            End If
+    ' Recommended conditions
+    meltMin = FindValueNearKey(lines, "樹脂温度範囲 (設定推奨値)" & vbCrLf & "最小"): If meltMin = 0 Then meltMin = FindValueNearKey(lines, "Recommended melt temperature range" & vbCrLf & "Min")
+    meltMax = FindValueNearKey(lines, "樹脂温度範囲 (設定推奨値)" & vbCrLf & "最大"): If meltMax = 0 Then meltMax = FindValueNearKey(lines, "Recommended melt temperature range" & vbCrLf & "Max")
+    moldMin = FindValueNearKey(lines, "金型温度範囲 (設定推奨値)" & vbCrLf & "最小"): If moldMin = 0 Then moldMin = FindValueNearKey(lines, "Recommended mold temperature range" & vbCrLf & "Min")
+    moldMax = FindValueNearKey(lines, "金型温度範囲 (設定推奨値)" & vbCrLf & "最大"): If moldMax = 0 Then moldMax = FindValueNearKey(lines, "Recommended mold temperature range" & vbCrLf & "Max")
+    maxMelt = FindValueNearKey(lines, "最大溶融温度"): If maxMelt = 0 Then maxMelt = FindValueNearKey(lines, "Maximum melt temperature")
+    maxShearS = FindValueNearKey(lines, "最大せん断応力"): If maxShearS = 0 Then maxShearS = FindValueNearKey(lines, "Maximum shear stress")
+    maxShearR = FindValueNearKey(lines, "最大せん断速度"): If maxShearR = 0 Then maxShearR = FindValueNearKey(lines, "Maximum shear rate")
+    
+    ' Rheology
+    ttrans = FindValueNearKey(lines, "Ttrans")
+    viText = FindTextNearKey(lines, "VI(")
+    If viText = "" Then viText = FindTextNearKey(lines, "Moldflow 粘度指数")
+    
+    ' Cp & k（代表点だけ抽出：比熱=80/140/200℃、熱伝導=100/150/200℃相当）
+    cpline = -1: kline = -1
+    For i = LBound(lines) To UBound(lines)
+        If cpline = -1 Then
+            If InStr(1, lines(i), "比熱データ", vbTextCompare) > 0 Or InStr(1, lines(i), "Specific heat", vbTextCompare) > 0 Then cpline = i
         End If
-        
-        ' --- 追加した処理 ---
-        ' 次の行の熱処理先を取得
-        nextHeatSupplier = Trim(CStr(ws.Cells(i + 1, heatSupplierCol).Value))
-        
-        ' 【修正】現在の行が「穴あけﾀｯﾌﾟ」で、かつ次の行の熱処理先に「光陽産業」が "含まれる" 場合
-        If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
-            ws.Cells(i, tapOutputCol).Value = tapOutputValue
+        If kline = -1 Then
+            If InStr(1, lines(i), "熱伝導率データ", vbTextCompare) > 0 Or InStr(1, lines(i), "Thermal conductivity", vbTextCompare) > 0 Then kline = i
         End If
     Next i
-    
-    ' --- ブロック最終行の次工程間隔処理 ---
-    currentProcess = Trim(CStr(ws.Cells(endRow, processCol).Value))
-    nextProcess = Trim(CStr(ws.Cells(endRow + 1, processCol).Value))
-
-    If currentProcess <> nextProcess Then
-        If Not IsExcludedProcess(currentProcess) Then
-            ws.Cells(endRow, intervalOutputCol).Value = valueToSet
-        End If
+    If cpline > -1 Then
+        Dim t As Double, v As Double
+        For i = cpline + 1 To Application.Min(cpline + 40, UBound(lines))
+            If Len(Trim$(lines(i))) = 0 Then Exit For
+            t = FirstNumberIn(lines(i))
+            If t <> 0# Then
+                v = FirstNumberIn(lines(i))
+                If t <= 85 And cp80 = 0 Then cp80 = v
+                If t <= 150 And cp140 = 0 Then cp140 = v
+                If t <= 205 And cp200 = 0 Then cp200 = v
+            End If
+        Next i
     End If
-End Sub
-
-
-' --- 例外工程かどうかを判定する関数 ---
-Private Function IsExcludedProcess(ByVal processName As String) As Boolean
-    IsExcludedProcess = False
+    If kline > -1 Then
+        Dim tk As Double, kv As Double
+        For i = kline + 1 To Application.Min(kline + 40, UBound(lines))
+            If Len(Trim$(lines(i))) = 0 Then Exit For
+            tk = FirstNumberIn(lines(i))
+            If tk <> 0# Then
+                kv = FirstNumberIn(lines(i))
+                If tk <= 105 And k100 = 0 Then k100 = kv
+                If tk <= 155 And k150 = 0 Then k150 = kv
+                If tk <= 205 And k200 = 0 Then k200 = kv
+            End If
+        Next i
+    End If
     
-    Select Case Trim(processName)
-        Case "主材購入", "穴あけﾀｯﾌﾟ", "熱処理"
-            IsExcludedProcess = True
-    End Select
+    ' Append row to DB
+    last = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    If last < 2 Then last = 1
+    ws.Cells(last + 1, 1).Resize(1, 52).Value = Array( _
+        sup, grade, base, fillerType, fillerPct, ds, _
+        meltRho, solidRho, _
+        b5, b6, b1m, b2m, b3m, b4m, b1s, b2s, b3s, b4s, _
+        "", "", _
+        cp80, cp140, cp200, _
+        k100, k150, k200, _
+        e1, e2, nu12, nu23, g12, _
+        a1, a2, _
+        meltMin, meltMax, _
+        moldMin, moldMax, _
+        maxMelt, maxShearS, maxShearR, _
+        fillerRho, _
+        viText, mfr, mfrT, mfrLoad, _
+        ttrans, _
+        "", src)
+        
+    ParseOneFile = 1
 End Function
-
