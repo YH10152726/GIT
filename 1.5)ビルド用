@@ -316,3 +316,9 @@ Public Sub BuildWorkbook(Optional ByVal SaveAsPath As String = "")
     ' 新しい A00_BuildFriendlyWorkbook を使用してください。
     MsgBox "このマクロは旧バージョンです。" & vbCrLf & "「A00_BuildFriendlyWorkbook」を実行してください。", vbExclamation
 End Sub
+' ↓↓↓ このマクロをAlt+F8から実行してください ↓↓↓
+Public Sub 実行_ブックの初期構築()
+    Call A00_BuildFriendlyWorkbook
+End Sub
+
+
