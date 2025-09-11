@@ -1,50 +1,89 @@
-【改善提案】Excel業務自動化によるヒューマンエラー撲滅と品質向上施策
-提案①：部品情報の入力自動化による、転記・計算ミスの撲滅
-現状の課題
-現在は、作業者が図面の品目表を目視で確認しながら、部品の材質、寸法、焼き入れ方法、硬度、個数などをExcelに一件ずつ手動で転記しています。この作業には、以下のようなヒューマンエラーが発生するリスクが常に内在しています。
-
-転記ミス: 依頼番号や品番に紐づく材質、硬度、コーティングなどの情報を誤って入力する。
-
-知識依存: 材質に対する適切な焼き入れ方法の知見が作業者によって異なり、入力内容にバラつきや間違いが生じる。
-
-計算・記入漏れ: 重量計算を忘れたり、計算式や数値を誤る。また、焼き入れ方法など一部の項目を転記し忘れる。
-
-改善後の状態
-新たに実装したマクロを実行することで、これまで手作業で行っていた一連の入力作業を完全に自動化します。
-
-依頼番号からの一括入力:
-共有サーバー上の「統合_部品製作見積リスト」を参照し、依頼番号を入力するだけで、関連する全部品の「品番」「材質」「硬度」「処理」「コーティング」「個数」などの基本情報が一括で正確に転記されます。
-
-材質に応じた情報の自動反映と重量計算:
-部品リストの材質が入力・変更されると、それをトリガーにマスターデータ（シート2）から最適な「焼き入れ方法」と「焼き硬度」を自動で検索し、入力します。また、材質と寸法情報から鋼材の比重に基づいた重量も自動計算され、記入漏れを防ぎます。
-
-改善効果
-転記・入力ミスの撲滅:
-手動での転記作業を撤廃することで、品番と異なる焼き入れ方法や硬度を入力してしまうといった根本的なミスを撲滅します。
-
-データの一貫性と標準化の実現:
-常にマスターデータを唯一の正として情報を引用するため、作業者の知識や記憶への依存をなくします。「いつもと違う表記で入力してしまった」といった表記揺れを防ぎ、データの一貫性を確保します。
-
-計算・記入漏れの構造的な防止:
-マクロの処理フローに組み込むことで、重量計算や関連項目の記入漏れが構造的に発生しない仕組みを構築しました。
-
-作業工数の大幅な削減:
-これまで一件ずつ行っていた入力作業が一瞬で完了するため、作業工数を大幅に削減し、より付加価値の高い業務に時間を充てることが可能になります。
-
-提案②：「同時工程の自動整列」機能の工程生成プロセスへの組み込み
-現状の課題
-ユーザーフォームを利用して効率的に工程を作成・出力した後、Y列に「同時」と記載された工程ブロック（子部品）を、対応する親部品の下へ移動させるための手動での並べ替え作業が発生していました。この手作業には、並べ替えの実行漏れや、移動先を誤るといったリスクが伴います。
-
-改善後の状態
-工程作成プロセスに「親子関係・同時工程の自動整列マクロ」を完全に組み込みました。ユーザーフォームから工程が出力された後、自動的に以下の処理が実行されます。
-
-工程表データ内のAG列「品番」とY列の「同時」というキーワードをシステムが自動で解析します。
-
-解析結果に基づき、各部品の親子関係を正確に把握し、子部品の工程ブロック全体を、対応する親部品の直下へ自動的に移動・再配置します。
-
-改善効果
-並べ替え作業の実行漏れを撲滅:
-工程作成と並べ替えが一連の処理として実行されるため、人的な判断や操作が介在する余地がなくなります。これにより、作業者が並べ替えを失念するといった実行漏れを構造的に防止します。
-
-工程順序の正確性を担保（品質保証）:
-誰が作業しても、常にルールに基づいた正しい順序の工程表が生成されるため、成果物の品質が安定・向上します。手作業による順序間違いのリスクをゼロにします。
+ Sub SearchAndOutput()
+    Dim ws As Worksheet
+    Dim searchFile As Workbook
+    Dim searchSheet As Worksheet
+    Dim searchNumber As String
+    Dim foundCell As Range
+    Dim outputRow As Long
+    Dim searchPath As String
+    Dim lastRow As Long
+    Dim machineFound As Boolean
+    
+    ' 依頼番号を入力
+    searchNumber = InputBox("依頼番号を入力してください", "依頼番号入力")
+    
+    ' 入力がキャンセルされた場合は終了
+    If searchNumber = "" Then
+        Exit Sub
+    End If
+    
+    ' 検索するファイルのパス
+    searchPath = "\\yamasrv100\seisui\kagi\kakougijutsu\【社外】\型企2\部品見積フォルダー\統合_部品製作見積リスト.xlsm"
+    
+    ' 検索ファイルを開く
+    On Error Resume Next
+    Set searchFile = Workbooks.Open(searchPath)
+    On Error GoTo 0
+    
+    ' ファイルが開けなかった場合はメッセージを表示
+    If searchFile Is Nothing Then
+        MsgBox "指定されたファイルを開けませんでした。", vbExclamation
+        Exit Sub
+    End If
+    
+    ' 検索シートを設定（最初のページ）
+    Set searchSheet = searchFile.Sheets(1)
+    
+    ' ★★★ 追加部分 ここから ★★★
+    ' シートにフィルターがかかっている場合、すべて表示する
+    If searchSheet.AutoFilterMode Then
+        searchSheet.AutoFilter.ShowAllData
+    End If
+    ' ★★★ 追加部分 ここまで ★★★
+    
+    ' 出力先のシートを設定（アクティブシートを使用）
+    Set ws = ThisWorkbook.ActiveSheet
+    
+    ' 出力行を3行目に設定
+    outputRow = 3
+    
+    ' J列の最終行を取得
+    lastRow = searchSheet.Cells(searchSheet.Rows.Count, "J").End(xlUp).Row
+    
+    ' 機種と品名が見つかったかどうかのフラグ
+    machineFound = False
+    
+    ' J列で依頼番号を検索
+    For Each foundCell In searchSheet.Range("J1:J" & lastRow)
+        If foundCell.Value = searchNumber Then
+            ' ヒットした場合、指定された列に出力
+            ws.Cells(outputRow, "X").Value = foundCell.Offset(0, 1).Value ' K列の葉番
+            ws.Cells(outputRow, "AG").Value = foundCell.Offset(0, 2).Value ' L列の品番
+            ws.Cells(outputRow, "AC").Value = foundCell.Offset(0, 4).Value ' N列の材質
+            ws.Cells(outputRow, "AE").Value = foundCell.Offset(0, 5).Value ' O列の硬度
+            ws.Cells(outputRow, "AZ").Value = foundCell.Offset(0, 6).Value ' P列の処理
+            ws.Cells(outputRow, "Z").Value = foundCell.Offset(0, 7).Value ' Q列のコーティング
+            ws.Cells(outputRow, "AF").Value = foundCell.Offset(0, 8).Value ' R列の個数
+            
+            ' 機種と品名をB3とC3に出力（最初のヒットのみ）
+            If Not machineFound Then
+                ws.Cells(3, "B").Value = foundCell.Offset(0, -4).Value ' F列の値
+                ws.Cells(3, "C").Value = foundCell.Offset(0, -3).Value ' G列の値
+                machineFound = True
+            End If
+            
+            ' 出力行を次に進める
+            outputRow = outputRow + 1
+        End If
+    Next foundCell
+    
+    ' 検索ファイルを閉じる
+    searchFile.Close SaveChanges:=False
+    
+    ' 結果が見つからなかった場合のメッセージ
+    If outputRow = 3 Then
+        MsgBox "依頼番号 " & searchNumber & " は見つかりませんでした。", vbInformation
+    Else
+        MsgBox "依頼番号 " & searchNumber & " のデータを出力しました。", vbInformation
+    End If
+ End Sub
