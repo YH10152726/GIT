@@ -1,199 +1,109 @@
+ご無無沙汰しております。
+以前、ご相談させていただいておりましたワックス試験の見学の件につきまして、その後当方からのご連絡が長らく滞ってしまい、誠に申し訳ございませんでした。
 
-Option Explicit
+改めまして、ワックス試験の件でご相談があり、ご連絡いたしました。
+この度、上司の承認が得られまして、現在[現場にある金型の名称や型番など]の修正を正式に依頼させていただく運びとなりました。
+つきましては、以前ご相談しておりましたワックス試験の見学を、この「金型修正が完了したタイミング」でぜひ実現させていただければと考えております。
+誠に恐縮ではございますが、
+今回の**「①金型修正」、「②ワックス試験実施（作業費）」、および「③試験用ワックス材料費」**にかかります費用のお見積りを、それぞれご提示いただけますでしょうか。
 
-' メインの処理：テンプレートを生成します
-Public Sub Build_Template_v3i()
-    Dim ws As Worksheet
+ワックス試験の実施にあたり、以下の条件にてお願いしたく存じます。
+1. 使用ワックス（貴社手配願い）：
+試験に使用するワックスは、貴社にてご準備いただけますでしょうか。
+（※上記お見積りの③に、その材料費を含めてください。）
+2. 成形品の持ち帰り（許可願い）：
+試験後、成形品は検証に使用するため、弊社に持ち帰らせていただきたく存じます。
+3. 当日の撮影（許可願い）：
+見学の際、検証報告のため、金型の動作や成形品の状態を写真および動画で撮影させていただくことは可能でしょうか。
 
-    ' --- Controlシートの作成 ---
-    Set ws = SheetCreate("Control")
-    ws.Range("A1:B11").Clear
-    
-    Dim controlData As Variant
-    controlData = Array( _
-        Array("表示モード", "簡易"), _
-        Array("想定ホールド時間[s]", 6#), _
-        Array("目標サイクルタイム[s]", 25#), _
-        Array("AutoCal 使用", "はい"), _
-        Array("ベースライン使用", "いいえ"), _
-        Array("ベースライン・フォルダ", ""), _
-        Array("使用マシン", "Sample-IM-220"), _
-        Array("使用材料グレード", "PC-ABS-GF10"), _
-        Array("材料ファミリ", "PC/ABS"), _
-        Array("ランナー方式", "コールド"), _
-        Array("求める品質クラス", "外観") _
-    )
-    ' 1行ずつデータを書き込み
-    Dim i As Long
-    For i = LBound(controlData) To UBound(controlData)
-        ws.Cells(i + 1, 1).value = controlData(i)(0)
-        ws.Cells(i + 1, 2).value = controlData(i)(1)
-    Next i
-    ws.Columns("A").ColumnWidth = 22
-    ws.Columns("B").ColumnWidth = 40
+上記内容にて、日程の案をこちらからご提案させてください。
+まず、修正をお願いする金型を [例：11月13日(水)頃] に貴社へ発送（または持込）させていただく予定です。
 
-    ' --- Criteriaシートの作成 ---
-    Set ws = SheetCreate("Criteria")
-    ws.Range("A1:H1").value = Array("KPI（A列一致）", "判定方向（>=OK/<=OK/範囲）", "下限（OK）", "上限（OK）", "注意下限", "注意上限", "単位", "備考")
+貴社での修正作業が完了し、ワックス試験を実施される日程として、 [例：11月20日(水)] または [例：11月21日(木)] あたりで、森下社長のご都合はいかがでしょうか。
 
-    ' --- Playbookシートの作成 ---
-    Set ws = SheetCreate("Playbook")
-    ws.Range("A1:C1").value = Array("KPI（A列一致）", "Severity（OK/ATTN/NG）", "推奨対策（複数案は改行区切り）")
-
-    ' --- Machine_Libraryシートの作成 ---
-    Set ws = SheetCreate("Machine_Library")
-    ws.Range("A1:E1").value = Array("Machine", "Max_Clamp_kN", "Max_InjPressure_MPa", "ShotSize_cm3", "ScrewDia_mm")
-    Dim machineData As Variant
-    machineData = Array( _
-        Array("Sample-IM-220", 2200, 200, 400, 45), _
-        Array("Sample-IM-350", 3500, 220, 700, 60) _
-    )
-    ws.Range("A2").Resize(UBound(machineData) + 1, 5).value = ConvertTo2DArray(machineData)
-
-    ' --- Material_Libraryシートの作成 ---
-    Set ws = SheetCreate("Material_Library")
-    ws.Range("A1:G1").value = Array("Grade", "Family", "MeltT_min", "MeltT_max", "MoldT_min", "MoldT_max", "Note")
-    Dim materialData As Variant
-    materialData = Array( _
-        Array("PC-ABS-GF10", "PC/ABS", 250, 280, 70, 100, "例"), _
-        Array("PP-H", "PP", 210, 240, 30, 60, "例") _
-    )
-    ws.Range("A2").Resize(UBound(materialData) + 1, 7).value = ConvertTo2DArray(materialData)
-
-    ' --- Baselineシートの作成 ---
-    Set ws = SheetCreate("Baseline")
-    ws.Range("A1:G1").value = Array("Key（MaterialFamily|Runner|Class）", "KPI", "P50", "P80", "P90", "方向（small_better/big_better）", "学習数")
-
-    ' --- Result_Mapシートの作成 ---
-    Set ws = SheetCreate("Result_Map")
-    ws.Range("A1:I1").value = Array("Enabled", "Excel KPI label (A列一致)", "Target sheet", "Source type", "File pattern / Result hint", "Aggregator", "Mode Level（1=簡易,2=詳細,3=全て）", "Signature keywords", "方向（small/big）")
-    Dim rmData As Variant
-    rmData = Array( _
-        Array(True, "Confidence of fill 最小[%]", "2_FillPack_MULTI", "XML", "*confidence*", "MIN", 1, "confidence;fill;probability", "big"), _
-        Array(True, "Quality prediction 最小[%]", "2_FillPack_MULTI", "XML", "*quality*", "MIN", 1, "quality;prediction;grade", "big"), _
-        Array(True, "Flow-front 温度低下ΔT 最大[℃]", "2_FillPack_MULTI", "XML", "*flow*front*temperature*", "DELTA", 1, "temperature;flow front;delta", "small"), _
-        Array(True, "Pressure drop 最大[MPa]", "2_FillPack_MULTI", "XML", "*pressure*drop*", "MAX", 1, "pressure;drop", "small"), _
-        Array(True, "Shear stress at wall 最大", "2_FillPack_MULTI", "XML", "*shear*stress*wall*", "MAX", 1, "shear;wall;stress", "small"), _
-        Array(True, "Viscosity 最大[Pa・s]", "2_FillPack_MULTI", "XML", "*viscosity*", "MAX", 1, "viscosity", "small"), _
-        Array(True, "Sink marks index 最大", "2_FillPack_MULTI", "XML", "*sink*index*", "MAX", 1, "sink;index", "small"), _
-        Array(True, "Gate seal time [s]", "2_FillPack_MULTI", "XML", "*total*part*weight*", "PLATEAU_TIME", 1, "total part weight;gate seal;plateau", "small"), _
-        Array(True, "Clamp force 最大[kN]", "2_FillPack_MULTI", "XML", "*clamp*force*xy*", "MAX", 2, "clamp;force;xy", "small"), _
-        Array(True, "Injection pressure 最大[MPa]", "2_FillPack_MULTI", "XML", "*pressure*injection*xy*", "MAX", 2, "pressure;injection;xy", "small"), _
-        Array(True, "Volumetric shrinkage 最大[%]", "2_FillPack_MULTI", "XML", "*volumetric*shrinkage*", "MAX", 2, "volumetric;shrinkage", "small"), _
-        Array(True, "Frozen layer fraction 最大", "2_FillPack_MULTI", "XML", "*frozen*layer*fraction*", "MAX", 2, "frozen;layer;fraction", "small"), _
-        Array(True, "Residual stress 最大[MPa]", "2_FillPack_MULTI", "XML", "*residual*stress*", "MAX", 3, "residual;stress", "small"), _
-        Array(True, "Orientation index 最大[-]", "2_FillPack_MULTI", "XML", "*orientation*index*", "MAX", 3, "orientation;index", "small"), _
-        Array(True, "Birefringence 最大[nm]", "2_FillPack_MULTI", "XML", "*birefringence*", "MAX", 3, "birefringence;optical", "small"), _
-        Array(True, "Cooling time variance 最大[s]", "3_Cool_MULTI", "XML", "*cooling*time*variance*", "MAX", 1, "cooling;time;variance", "small"), _
-        Array(True, "Time to freeze 最小/平均[s]", "3_Cool_MULTI", "XML", "*time*to*freeze*", "MIN", 1, "time to freeze;freeze", "small"), _
-        Array(True, "Deflection total 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*total*", "MAX", 2, "deflection;total;warp", "small"), _
-        Array(True, "Deflection X 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*x*", "MAX", 3, "deflection;x-component;warp", "small"), _
-        Array(True, "Deflection Y 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*y*", "MAX", 3, "deflection;y-component;warp", "small"), _
-        Array(True, "Deflection Z 最大[mm]", "4_Warp_MULTI", "XML", "*deflection*z*", "MAX", 3, "deflection;z-component;warp", "small") _
-    )
-    ws.Range("A2").Resize(UBound(rmData) + 1, 9).value = ConvertTo2DArray(rmData)
-
-    ' --- 各種結果シートの作成 ---
-    Dim fillPackLabels, coolLabels, warpLabels
-    fillPackLabels = Array("Confidence of fill 最小[%]", "Quality prediction 最小[%]", "Flow-front 温度低下ΔT 最大[℃]", _
-                 "Pressure drop 最大[MPa]", "Shear stress at wall 最大", "Viscosity 最大[Pa・s]", _
-                 "Sink marks index 最大", "Gate seal time [s]", _
-                 "Clamp force 最大[kN]", "Injection pressure 最大[MPa]", "Volumetric shrinkage 最大[%]", "Frozen layer fraction 最大", _
-                 "Residual stress 最大[MPa]", "Orientation index 最大[-]", "Birefringence 最大[nm]")
-    BuildTarget "2_FillPack_MULTI", fillPackLabels
-
-    coolLabels = Array("Cooling time variance 最大[s]", "Time to freeze 最小/平均[s]")
-    BuildTarget "3_Cool_MULTI", coolLabels
-
-    warpLabels = Array("Deflection total 最大[mm]", "Deflection X 最大[mm]", "Deflection Y 最大[mm]", "Deflection Z 最大[mm]")
-    BuildTarget "4_Warp_MULTI", warpLabels
-
-    ' --- Import_Logシートの作成 ---
-    Set ws = SheetCreate("Import_Log")
-    ws.Range("A1:G1").value = Array("Timestamp", "KPI", "Matched file", "Match score", "Aggregator", "Value", "Notes")
-
-    MsgBox "テンプレv3iを生成しました。", vbInformation
-End Sub
-
-
-' ----------------------------------------------------------------
-' 補助的な関数・サブルーチン
-' ----------------------------------------------------------------
-
-' 指定した名前のシートを安全に作成する（既存の場合は削除してから作成）
-Private Function SheetCreate(name As String) As Worksheet
-    On Error Resume Next
-    Application.DisplayAlerts = False
-    ThisWorkbook.Worksheets(name).Delete
-    Application.DisplayAlerts = True
-    On Error GoTo 0
-    
-    Set SheetCreate = ThisWorkbook.Worksheets.Add
-    SheetCreate.name = name
-End Function
-
-' 結果シートの雛形を作成する
-Private Sub BuildTarget(title As String, labels As Variant)
-    Dim ws As Worksheet
-    Set ws = SheetCreate(title)
-    
-    ws.Range("A1:M1").value = Array("項目（A列一致）", _
-        "Gate1 値", "Gate1 合否", "Gate1 対策", _
-        "Gate2 値", "Gate2 合否", "Gate2 対策", _
-        "Gate3 値", "Gate3 合否", "Gate3 対策", _
-        "Gate4 値", "Gate4 合否", "Gate4 対策")
-    
-    Dim i As Long
-    For i = LBound(labels) To UBound(labels)
-        ws.Cells(i + 2, 1).value = labels(i)
-    Next i
-    
-    ' ▼▼▼ ここから修正 ▼▼▼
-    ws.Columns("A").ColumnWidth = 30
-    
-    ' Gate1
-    ws.Columns("B").ColumnWidth = 12
-    ws.Columns("C").ColumnWidth = 10
-    ws.Columns("D").ColumnWidth = 36
-    
-    ' Gate2
-    ws.Columns("E").ColumnWidth = 12
-    ws.Columns("F").ColumnWidth = 10
-    ws.Columns("G").ColumnWidth = 36
-    
-    ' Gate3
-    ws.Columns("H").ColumnWidth = 12
-    ws.Columns("I").ColumnWidth = 10
-    ws.Columns("J").ColumnWidth = 36
-    
-    ' Gate4
-    ws.Columns("K").ColumnWidth = 12
-    ws.Columns("L").ColumnWidth = 10
-    ws.Columns("M").ColumnWidth = 36
-    ' ▲▲▲ ここまで修正 ▲▲▲
-End Sub
-
-' Arrayの入れ子（ジャグ配列）を、Rangeに書き込める2次元配列に変換する
-Private Function ConvertTo2DArray(jaggedArray As Variant) As Variant
-    Dim i As Long, j As Long
-    Dim rows As Long, cols As Long
-    Dim twoDArray() As Variant
-
-    rows = UBound(jaggedArray) - LBound(jaggedArray) + 1
-    If rows = 0 Then Exit Function ' 配列が空の場合は終了
-    
-    cols = UBound(jaggedArray(LBound(jaggedArray))) - LBound(jaggedArray(LBound(jaggedArray))) + 1
-    
-    ReDim twoDArray(1 To rows, 1 To cols)
-
-    For i = LBound(jaggedArray) To UBound(jaggedArray)
-        For j = LBound(jaggedArray(i)) To UBound(jaggedArray(i))
-            twoDArray(i - LBound(jaggedArray) + 1, j - LBound(jaggedArray) + 1) = jaggedArray(i)(j)
-        Next j
-    Next i
-    
-    ConvertTo2DArray = twoDArray
-End Function
+もし上記日程では作業ご計画（または修正の所要日数）と合わないようでしたら、もちろん調整いたしますので、森下社長のご都合の良い候補日を2～3日いただけますと幸いです。
+ご多忙中、多岐にわたるご確認・ご依頼となり大変恐縮ではございますが、ご検討のほど、何卒よろしくお願い申し上げます。
 
 
 
+【プロジェクト計画書】
+金型 [金型名/型番] ワックス試験によるT0品質の定量的評価
+作成日： 2025年 [月] [日]
+作成者： 金型工作係 [あなたの名前]
+承認： [係長] [班長]
+1. 概要
+1-1. 目的
+金型 [金型名/型番] のT0（初回トライ）における修正手戻り工数 [例：XX H] の削減を目的とする。
+そのために、金型修正を依頼するサイタ製作所にて「ワックス試験」を実施し、金型の品質（形状・動作）を**「定量的」に事前検証**する。
+1-2. 背景
+* 従来、T0トライでバリ、カジリ、段差等の不具合が発覚し、成形機停止と金型修正（手戻り）が工数・コストを圧迫していた。
+* 今回、当該金型の修正をサイタ製作所に依頼するタイミングと合わせ、同社のワックス成形機を用いた試験・見学の許可を得た。
+* 本検証で得られる「3Dスキャンデータ（カラーマップ）」は、モールド仕上げのノウハウ（型合わせ、カジリの判断基準）を客観的データとして、後任予定の[プレス仕上げ作業者・研削盤作業者]へ技術伝承する教材としても活用する。
+2. スケジュール（案）
+フェーズ	項目	予定日	担当	成果物
+1. 準備	プロジェクト計画・承認	[M]月 [D]日	[あなた]	本計画書
+	サイタ製作所と事前調整	[M]月 [D]日	[あなた]	見積書、日程合意
+	金型・ワックス発送	[M]月 [D]日	[あなた]	-
+2. 実行	サイタにて金型修正	～[M]月 [D]日	サイタ	-
+	ワックス試験・見学	[M]月 [D]日	[あなた]、サイタ	検証動画・写真、成形品サンプル
+3. 検証	非接触測定（3Dスキャン）	[M]月 [D]日	[あなた・測定担当]	スキャンデータ
+	データ分析（CAD比較）	[M]月 [D]日	[あなた]	カラーマップ比較レポート
+4. 判断	T0修正要否リスト作成	[M]月 [D]日	[あなた]	修正指示書
+	T0トライ Go/No-Go判断	[M]月 [D]日	[あなた・係長]	-
+	プロジェクト効果測定	T0トライ後	[あなた]	最終報告書
+3. 検証内容（詳細）
+「動的（現地）」と「静的（自社）」の2軸で検証する。
+A. サイタ製作所（現地）での検証 （＝動的性能の記録）
+* 目的: 金型が「動いている」瞬間にしか見えない離型性や動作のスムーズさを五感で確認し、記録する。
+* 項目:
+    1. 金型動作: 型開閉、スライド、突き出し時の異音・引っかかり・ぎこちない動きの有無。（動画で記録）
+    2. 離型性: 成形品が金型から抜ける瞬間のカジリ（食いつき）の有無、ピン跡の変形・白化の有無。（動画・写真で記録）
+    3. 内部状態: 成形品取り出し直後の、金型内部へのワックスカス残留、PL面へのバリ付着状態。（写真で記録）
+B. 自社（持ち帰り）での検証 （＝静的精度の数値化）
+* 目的: 持ち帰った成形品を「金型の写し鏡」として非接触測定し、形状・組付け精度を「数値化」する。
+* 手法: 3Dスキャンデータ vs 金型3D CADデータ による「カラーマップ比較」
+* 項目:
+    1. [定量] 型合わせ精度:
+        * PL（パーティングライン）の最大段差量 [X.XX] mm
+        * スライドコア合わせ目の最大段差量 [X.XX] mm
+    2. [定量] 修正箇所の仕上がり:
+        * 今回修正を依頼した箇所の、CADデータからの最大形状偏差 [X.XX] mm
+    3. [定性] 離型性（痕跡）:
+        * カラーマップ上の「スジ（偏差）」から、カジリ（抜き勾配不良）が疑われる箇所の「有無」を特定。
+4. 期待される効果
+1. [定量的] T0手戻り工数の削減:
+    * 従来T0後に発生していた修正工数 [例：XX H] および 成形機停止ロス [例：YY 時間] を削減する。
+2. [定性的] 金型品質の「可視化」と客観的判断:
+    * 目視や勘に頼っていた「型合わせ」品質を、[X.XX] mm という客観的数値で評価できる。
+    * T0トライ実施の「Go / No-Go判断」を、客観的根拠（カラーマップ）に基づき行える。
+3. [副次的] 技術伝承の促進:
+    * 「良い型」「悪い型」の事例を、非接触測定データという「共通言語」で蓄積・共有することで、後任者への技術伝承を加速させる。
+5. 事前確認事項（社内）
+* [承認] プロジェクトの承認（vs 上司）：
+    * 本計画書に基づき、発生するコスト（サイタへの支払い）および内部工数（見学、測定工数）の承認を得る。
+* [調整] 測定リソースの確保（vs 測定担当）：
+    * 上記スケジュール（案）に基づき、非接触測定機（三次元測定機）の使用予約を行う。
+* [調整] 技術伝承の連携（vs 後任者）：
+    * 可能であれば、[プレス仕上げ・研削盤作業者]にワックス試験見学、またはデータ分析作業への参加を打診し、教育機会として活用する。
+6. 事前確認事項（vs サイタ製作所）
+* [見積] 費用の確認:
+    * ①金型修正費、②ワックス試験実施費 の内訳を明記した見積書の受領。
+* [支給品] ワックスの仕様確認:
+    * 弊社支給の再利用ワックスが、サイタ様の成形機で使用可能か。
+    * 必要なワックス量（kg）と荷姿の確認。
+* [許可] 当日の実施内容の確認:
+    * 見学者 [X] 名の受け入れ可否。
+    * 写真および動画撮影（特に金型内部や動作プロセス）の許可。
+* [成果物] サンプル持ち帰りの確認:
+    * 検証用のワックス成形品（[例：10ショット程度]）の持ち帰り許可。
+* [日程] スケジュールの確定:
+    * 金型受領から試験実施までのリードタイム（作業日数）の確認。
+    * 試験・見学希望日 [M月D日 または D日] の確定。
+
+
+
+
+
+
+
+【プロジェクト計画書】金型 [金型名/型番] ワックス試験によるT0品質の定量的評価作成日： 2025年 [月] [日]作成者： 金型工作係 [あなたの名前]承認： [係長] [班長]1. 概要1-1. 目的金型 [金型名/型番] のT0（初回トライ）における修正手戻り工数 [例：XX H] の削減を目的とする。そのために、金型修正を依頼するサイタ製作所にて「ワックス試験」を実施し、金型の品質（形状・動作）を**「定量的」に事前検証**する。1-2. 背景従来、T0トライでバリ、カジリ、段差等の不具合が発覚し、成形機停止と金型修正（手戻り）が工数・コストを圧迫していた。今回、当該金型の修正をサイタ製作所に依頼するタイミングと合わせ、同社のワックス成形機を用いた試験・見学の許可を得た。本検証で得られる「3Dスキャンデータ（カラーマップ）」は、モールド仕上げのノウハウ（型合わせ、カジリの判断基準）を客観的データとして、後任予定の[プレス仕上げ作業者・研削盤作業者]へ技術伝承する教材としても活用する。2. スケジュール（案）フェーズ項目予定日担当成果物1. 準備プロジェクト計画・承認[M]月 [D]日[あなた]本計画書サイタ製作所と事前調整[M]月 [D]日[あなた]見積書、日程合意金型・ワックス発送[M]月 [D]日[あなた]-2. 実行サイタにて金型修正～[M]月 [D]日サイタ-ワックス試験・見学[M]月 [D]日[あなた]、サイタ検証動画・写真、成形品サンプル3. 検証非接触測定（3Dスキャン）[M]月 [D]日[あなた・測定担当]スキャンデータデータ分析（CAD比較）[M]月 [D]日[あなた]カラーマップ比較レポート4. 判断T0修正要否リスト作成[M]月 [D]日[あなた]修正指示書T0トライ Go/No-Go判断[M]月 [D]日[あなた・係長]-プロジェクト効果測定T0トライ後[あなた]最終報告書3. 検証内容（詳細）「動的（現地）」と「静的（自社）」の2軸で検証する。A. サイタ製作所（現地）での検証 （＝動的性能の記録）目的: 金型が「動いている」瞬間にしか見えない離型性や動作のスムーズさを五感で確認し、記録する。項目:金型動作: 型開閉、スライド、突き出し時の異音・引っかかり・ぎこちない動きの有無。（動画で記録）離型性: 成形品が金型から抜ける瞬間のカジリ（食いつき）の有無、ピン跡の変形・白化の有無。（動画・写真で記録）内部状態: 成形品取り出し直後の、金型内部へのワックスカス残留、PL面へのバリ付着状態。（写真で記録）B. 自社（持ち帰り）での検証 （＝静的精度の数値化）目的: 持ち帰った成形品を「金型の写し鏡」として非接触測定し、形状・組付け精度を「数値化」する。手法: 3Dスキャンデータ vs 金型3D CADデータ による「カラーマップ比較」項目:[定量] 型合わせ精度:PL（パーティングライン）の最大段差量 [X.XX] mmスライドコア合わせ目の最大段差量 [X.XX] mm[定量] 修正箇所の仕上がり:今回修正を依頼した箇所の、CADデータからの最大形状偏差 [X.XX] mm[定性] 離型性（痕跡）:カラーマップ上の「スジ（偏差）」から、カジリ（抜き勾配不良）が疑われる箇所の「有無」を特定。4. 期待される効果[定量的] T0手戻り工数の削減:従来T0後に発生していた修正工数 [例：XX H] および 成形機停止ロス [例：YY 時間] を削減する。[定性的] 金型品質の「可視化」と客観的判断:目視や勘に頼っていた「型合わせ」品質を、[X.XX] mm という客観的数値で評価できる。T0トライ実施の「Go / No-Go判断」を、客観的根拠（カラーマップ）に基づき行える。[副次的] 技術伝承の促進:「良い型」「悪い型」の事例を、非接触測定データという「共通言語」で蓄積・共有することで、後任者への技術伝承を加速させる。5. 事前確認事項（社内）[承認] プロジェクトの承認（vs 上司）：本計画書に基づき、発生するコスト（サイタへの支払い）および内部工数（見学、測定工数）の承認を得る。[調整] 測定リソースの確保（vs 測定担当）：上記スケジュール（案）に基づき、非接触測定機（三次元測定機）の使用予約を行う。[調整] 技術伝承の連携（vs 後任者）：可能であれば、[プレス仕上げ・研削盤作業者]にワックス試験見学、またはデータ分析作業への参加を打診し、教育機会として活用する。6. 事前確認事項（vs サイタ製作所）[見積] 費用の確認:①金型修正費、②ワックス試験実施費 の内訳を明記した見積書の受領。[支給品] ワックスの仕様確認:弊社支給の再利用ワックスが、サイタ様の成形機で使用可能か。必要なワックス量（kg）と荷姿の確認。[許可] 当日の実施内容の確認:見学者 [X] 名の受け入れ可否。写真および動画撮影（特に金型内部や動作プロセス）の許可。[成果物] サンプル持ち帰りの確認:検証用のワックス成形品（[例：10ショット程度]）の持ち帰り許可。[日程] スケジュールの確定:金型受領から試験実施までのリードタイム（作業日数）の確認。試験・見学希望日 [M月D日 または D日] の確定。
