@@ -1,89 +1,22 @@
- Sub SearchAndOutput()
-    Dim ws As Worksheet
-    Dim searchFile As Workbook
-    Dim searchSheet As Worksheet
-    Dim searchNumber As String
-    Dim foundCell As Range
-    Dim outputRow As Long
-    Dim searchPath As String
-    Dim lastRow As Long
-    Dim machineFound As Boolean
-    
-    ' 依頼番号を入力
-    searchNumber = InputBox("依頼番号を入力してください", "依頼番号入力")
-    
-    ' 入力がキャンセルされた場合は終了
-    If searchNumber = "" Then
-        Exit Sub
-    End If
-    
-    ' 検索するファイルのパス
-    searchPath = "\\yamasrv100\seisui\kagi\kakougijutsu\【社外】\型企2\部品見積フォルダー\統合_部品製作見積リスト.xlsm"
-    
-    ' 検索ファイルを開く
-    On Error Resume Next
-    Set searchFile = Workbooks.Open(searchPath)
-    On Error GoTo 0
-    
-    ' ファイルが開けなかった場合はメッセージを表示
-    If searchFile Is Nothing Then
-        MsgBox "指定されたファイルを開けませんでした。", vbExclamation
-        Exit Sub
-    End If
-    
-    ' 検索シートを設定（最初のページ）
-    Set searchSheet = searchFile.Sheets(1)
-    
-    ' ★★★ 追加部分 ここから ★★★
-    ' シートにフィルターがかかっている場合、すべて表示する
-    If searchSheet.AutoFilterMode Then
-        searchSheet.AutoFilter.ShowAllData
-    End If
-    ' ★★★ 追加部分 ここまで ★★★
-    
-    ' 出力先のシートを設定（アクティブシートを使用）
-    Set ws = ThisWorkbook.ActiveSheet
-    
-    ' 出力行を3行目に設定
-    outputRow = 3
-    
-    ' J列の最終行を取得
-    lastRow = searchSheet.Cells(searchSheet.Rows.Count, "J").End(xlUp).Row
-    
-    ' 機種と品名が見つかったかどうかのフラグ
-    machineFound = False
-    
-    ' J列で依頼番号を検索
-    For Each foundCell In searchSheet.Range("J1:J" & lastRow)
-        If foundCell.Value = searchNumber Then
-            ' ヒットした場合、指定された列に出力
-            ws.Cells(outputRow, "X").Value = foundCell.Offset(0, 1).Value ' K列の葉番
-            ws.Cells(outputRow, "AG").Value = foundCell.Offset(0, 2).Value ' L列の品番
-            ws.Cells(outputRow, "AC").Value = foundCell.Offset(0, 4).Value ' N列の材質
-            ws.Cells(outputRow, "AE").Value = foundCell.Offset(0, 5).Value ' O列の硬度
-            ws.Cells(outputRow, "AZ").Value = foundCell.Offset(0, 6).Value ' P列の処理
-            ws.Cells(outputRow, "Z").Value = foundCell.Offset(0, 7).Value ' Q列のコーティング
-            ws.Cells(outputRow, "AF").Value = foundCell.Offset(0, 8).Value ' R列の個数
-            
-            ' 機種と品名をB3とC3に出力（最初のヒットのみ）
-            If Not machineFound Then
-                ws.Cells(3, "B").Value = foundCell.Offset(0, -4).Value ' F列の値
-                ws.Cells(3, "C").Value = foundCell.Offset(0, -3).Value ' G列の値
-                machineFound = True
-            End If
-            
-            ' 出力行を次に進める
-            outputRow = outputRow + 1
-        End If
-    Next foundCell
-    
-    ' 検索ファイルを閉じる
-    searchFile.Close SaveChanges:=False
-    
-    ' 結果が見つからなかった場合のメッセージ
-    If outputRow = 3 Then
-        MsgBox "依頼番号 " & searchNumber & " は見つかりませんでした。", vbInformation
-    Else
-        MsgBox "依頼番号 " & searchNumber & " のデータを出力しました。", vbInformation
-    End If
- End Sub
+1. 目的
+金型個々の調整・改作・破損履歴を「金型カルテ」として記録・蓄積する。 これにより、「図面（正）」に対し、現場で最適化された「現物の調整値（図面との差）」を管理・共有する。 最終目的は、「現物調査」工数の削減と、熟練者の調整ノウハウの確実な伝承である。
+2. 現状の問題点
+1. 「調整ノウハウ（図面との差）」の消失: 現場で「図面に対し-0.02mm」といった最適な調整を行っても、その「調整値（図面との差）」が記録されず、担当者の頭の中にしか残らない。
+2. ムダな「現物調査」工数の発生: 設計者は「図面（正）」しか持っていないが、「現物の最適値（調整履歴）」が分からない。そのため、改作指示の前に金型を戻して「現物調査」を行うというムダが発生し、設計者と作業者双方の工数が奪われている。
+3. 不具合の再発: 後継者が「図面（正）」だけを見て部品を作成・調整してしまい、熟練者が過去に見つけた「最適値（-0.02mm）」から外れ、同じ不具合（バリ）を再発させている。
+3. 改善内容
+作業指示書提出時に、「フィードバックフォーム」の添付を「金型カルテ」の更新作業として義務化する。
+ルール: 作業完了後、5分以内に「何を」「なぜ」「どう調整したか（図面との差）」を簡潔に記入する。
+必須項目:
+1. 作業概要: （例：バリ修正、破損修理など）
+2. 調整前の問題 / または 破損状況: （例：〇〇部 当たり不良、EJP折損（写真・スケッチ添付推奨））
+3. 対応内容（調整・修理）: （例：〇〇部を-0.02mm研磨 (図面値 10.00mmに対し、実績値 9.98mm)）
+4. 次回への申し送り: （例：破損傾向（材質変更推奨）、この金型は-0.02mmで調整すること）
+4. 期待される効果（時間試算）
+1. 「現物調査」工数の完全削減
+現状: 改作指示のたび、「現物調査」が発生。（試算：設計者 2H ＋ 作業者 2H ＝ 計4時間/回）
+改善後: 設計者は金型を戻さず、PCで「カルテ（調整履歴）」を見るだけで、「図面（正）」と「現物の最適値（図面との差）」を同時に把握できる。
+削減効果: 月5回の調査があった場合、月間 20時間 (4時間 × 5回) の工数削減。
+2. 【品質維持】「図面は正」ルールの下での最適値の伝承
+効果: 「カルテ」により、図面を変更することなく、「この金型は図面に対し-0.02mmで合わせる」というノウハウが正確に共有される。
+これにより、担当者が変わっても、図面だけを見て作業して不具合を出すといったミスを防ぎ、金型を常に正しい状態（現物の最適値）に維持できる。
