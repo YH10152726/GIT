@@ -1,324 +1,109 @@
-' [変更後] modBuild.bas
-Attribute VB_Name = "modBuild"
-Option Explicit
+改善提案書： VCI（気化性防錆剤）導入による金型水管の錆防止対策
+作成日: 2025年11月17日 作成者: [あなた様のお名前]（金型工作係 モールド仕上げ担当） 提出先: 金型工作係 御中
 
-'------------------------------------------------------------
-' ■ メインプロシージャ：操作説明付きのExcelブックを生成します
-'------------------------------------------------------------
-Public Sub A00_BuildFriendlyWorkbook(Optional ByVal SaveAsPath As String = "")
-    ' 既存シートを一旦リセット
-    Dim ws As Worksheet
-    Application.DisplayAlerts = False
-    For Each ws In ThisWorkbook.Worksheets
-        If ws.Name <> "Sheet1" Then ws.Delete ' 例外シート名があれば調整
-    Next
-    Application.DisplayAlerts = True
-    
-    ' --- 各シートの生成 ---
-    Build_Sheet_HowToUse          ' ★最重要：「使い方」シート
-    Build_Sheet_Target            ' 検索条件
-    Build_Sheet_Weights           ' 重み付け
-    Build_Sheet_Results           ' 類似度ランキング
-    Build_Sheet_DB                ' 材料DB
-    Build_Sheet_Config            ' 解析設定
-    Build_Sheet_ImportLog         ' インポート履歴
-    
-    ' 最初に「使い方」シートを表示
-    ThisWorkbook.Worksheets("使い方").Activate
-    
-    If Len(SaveAsPath) > 0 Then
-        Application.DisplayAlerts = False
-        ThisWorkbook.Worksheets("使い方").Select
-        ThisWorkbook.SaveAs Filename:=SaveAsPath, FileFormat:=xlOpenXMLWorkbookMacroEnabled
-        Application.DisplayAlerts = True
-    End If
-    
-    MsgBox "操作説明付きのブック構造を生成しました。" & vbCrLf & _
-           "最初に「使い方」シートの案内に沿って操作を開始してください。", vbInformation, "代替材料検索ツール"
-End Sub
+1. 目的
 
+金型返却・保管時に、冷却水管内部の防錆対策を標準作業として導入する。 これにより、錆やスケールによる**「配管詰まり（水量低下）」の発生を未然に防ぎ、「緊急清掃（ウォーターリーマ作業）」という作業工数と金型拘束時間（リードタイム）**のムダをゼロにする。
 
-'------------------------------------------------------------
-' ■ 各シートの構築（プライベートサブルーチン）
-'------------------------------------------------------------
+2. 現状の問題点
 
-' 【新規】★★★★★ 「使い方」シート ★★★★★
-Private Sub Build_Sheet_HowToUse()
-    Dim ws As Worksheet: Set ws = EnsureSheet("使い方", True) ' 先頭に追加
-    
-    ' --- デザインと説明文 ---
-    ws.Cells.Clear
-    With ws.Cells
-        .Interior.Color = RGB(242, 242, 242)
-        .Font.Name = "Meiryo UI"
-    End With
-    
-    ws.Range("B2:K2").Merge
-    ws.Range("B2").Value = "Moldflow 代替材料 検索ツール"
-    With ws.Range("B2").Font
-        .Size = 20
-        .Bold = True
-    End With
-    
-    ws.Range("B4:K5").Merge
-    ws.Range("B4").Value = "このツールは、Moldflowからエクスポートした材料データを元に、指定した条件に最も近い代替材料を自動で検索・ランク付けします。"
-    ws.Range("B4").WrapText = True
-    
-    ' --- 操作手順 ---
-    Dim i As Long
-    For i = 1 To 3: ws.Columns(i * 3).ColumnWidth = 2: Next
-    ws.Columns("B:B").ColumnWidth = 30
-    ws.Columns("E:E").ColumnWidth = 30
-    ws.Columns("H:H").ColumnWidth = 30
+現在、配管内の防錆処理を特に行っていない。 その結果、年に数回「水量低下」の不具合で緊急の修正依頼が入り、以下の多大なコスト（工数と時間）が発生している。
 
-    ' Step 1
-    ws.Range("B7:D12").Interior.Color = vbWhite
-    ws.Range("B7").Value = "STEP 1：材料データの取込み"
-    ws.Range("B8:D10").Merge
-    ws.Range("B8").Value = "Moldflowの[Compare/Report]機能で保存した材料レポート(.txt)をデータベースに取り込みます。" & vbCrLf & "（複数ファイル選択可）"
-    CreateButton ws, ws.Range("B11"), "データをDBに取り込む", "modImport.ImportReports"
+(A) 作業工数（人が動く時間）:
 
-    ' Step 2
-    ws.Range("E7:G12").Interior.Color = vbWhite
-    ws.Range("E7").Value = "STEP 2：検索条件の入力"
-    ws.Range("E8:G10").Merge
-    ws.Range("E8").Value = "隣の「検索条件」シートを開き、探したい材料の特性（樹脂、フィラー、物性値など）を入力してください。"
-    CreateButton ws, ws.Range("E11"), "「検索条件」シートへ移動", "GoToTargetSheet"
+詰まり箇所の調査: 4〜5時間
 
-    ' Step 3
-    ws.Range("H7:J12").Interior.Color = vbWhite
-    ws.Range("H7").Value = "STEP 3：類似品ランキング実行"
-    ws.Range("H8:J10").Merge
-    ws.Range("H8").Value = "入力した条件に基づき、データベース内の全材料を評価し、類似度が高い順に「類似度ランキング」シートへ出力します。"
-    CreateButton ws, ws.Range("H11"), "類似品を検索・ランク付け", "modScore.RankSimilar"
-    
-    For i = 7 To 7
-        With ws.Rows(i).Font
-            .Bold = True
-            .Size = 12
-        End With
-    Next
-End Sub
+ウォーターリーマ準備: 1時間
 
-' --- 「検索条件」シート ---
-Private Sub Build_Sheet_Target()
-    Dim wsT As Worksheet: Set wsT = EnsureSheet("検索条件")
-    wsT.Cells.Clear
-    wsT.Range("A1:D1").Value = Array("項目", "目標値", "単位", "説明")
-    wsT.Range("A1:D1").Interior.ColorIndex = 15
-    wsT.Range("A1:D1").Font.Bold = True
-    
-    Dim t As Variant
-    t = Array( _
-        Array("① 樹脂ファミリー", "PA66", "", "例: PA66, PC, ABS など。'Any'で指定なし"), _
-        Array("② フィラー種類", "GF", "", "例: GF, CF, Mineral など。'Any'で指定なし"), _
-        Array("③ フィラー含有率", 30, "%", "目標とする重量パーセント"), _
-        Array("④ 固体密度", 1.35, "g/cm3", "（任意）"), _
-        Array("⑤ Moldflow粘度指数(VI)", "", "", "（任意）特定の流動性を狙う場合"), _
-        Array("⑥ 平均線膨張係数", "", "μm/mK", "（任意）そりへの影響が大きい。異方性比率も考慮可"), _
-        Array("⑦ 弾性率（乾燥時）", "", "GPa", "（任意）そりへの影響が大きい。異方性比率も考慮可"), _
-        Array("⑧ 推奨樹脂温度（中心値）", "", "℃", "（任意）"), _
-        Array("⑨ 推奨金型温度（中心値）", "", "℃", "（任意）"), _
-        Array("⑩ その他メモ", "", "", "検索条件に関するメモ") _
-    )
-    
-    Dim i As Long
-    For i = 0 To UBound(t)
-        wsT.Cells(i + 2, 1).Resize(1, 4).Value = t(i)
-        wsT.Cells(i + 2, 1).Font.Bold = True
-        wsT.Range("A" & i + 2 & ":D" & i + 2).Borders(xlEdgeBottom).LineStyle = xlDot
-    Next
-    wsT.Columns("A").ColumnWidth = 25
-    wsT.Columns("B").ColumnWidth = 15
-    wsT.Columns("C").ColumnWidth = 10
-    wsT.Columns("D").ColumnWidth = 50
-    wsT.Range("D2:D" & UBound(t) + 2).Font.Color = RGB(128, 128, 128)
-End Sub
+ウォーターリーマ片付け: 1時間
 
-' --- 「重み付け」シート ---
-Private Sub Build_Sheet_Weights()
-    Dim wsW As Worksheet: Set wsW = EnsureSheet("重み付け")
-    wsW.Cells.Clear
-    wsW.Range("A1:C1").Value = Array("評価項目（内部名）", "ペナルティの重み", "説明：この値が大きいほど、その項目の違いを重視します")
-    
-    Dim w As Variant
-    w = Array( _
-        Array("PolymerMismatch", 100, "樹脂ファミリーが違う場合の基本ペナルティ"), _
-        Array("FillerTypeMismatch", 40, "フィラー種類が違う場合の基本ペナルティ"), _
-        Array("FillerWtPct_per_%", 1#, "フィラー含有率が1%違うごとのペナルティ"), _
-        Array("SolidDensity_per_gcc", 20#, "固体密度が 0.01 g/cm3 違うごとのペナルティ"), _
-        Array("Flow_VI_or_MFR", 3#, "Moldflow粘度指数(VI)の差に対するペナルティ"), _
-        Array("pvT_coeff_vector_norm", 0#, "（上級者向け）pvT係数ベクトルの差（デフォルトOFF）"), _
-        Array("Anisotropy_E1E2_ratio", 20#, "弾性率の異方性（E1/E2比）の差に対するペナルティ"), _
-        Array("Anisotropy_Alpha_ratio", 25#, "線膨張係数の異方性（α2/α1比）の差に対するペナルティ"), _
-        Array("Cp_avg", 2#, "（開発中）比熱の平均値の差"), _
-        Array("k_avg", 2#, "（開発中）熱伝導率の平均値の差"), _
-        Array("Rec_Melt_mid", 0.5, "推奨樹脂温度の中心値が1℃違うごとのペナルティ"), _
-        Array("Rec_Mold_mid", 0.5, "推奨金型温度の中心値が1℃違うごとのペナルティ") _
-    )
-    
-    Dim i As Long
-    For i = 0 To UBound(w)
-        wsW.Cells(i + 2, 1).Resize(1, 3).Value = w(i)
-    Next
-    
-    With wsW.Range("A1:C1")
-        .Interior.ColorIndex = 15
-        .Font.Bold = True
-    End With
-    wsW.Range("C2:C" & UBound(w) + 2).Font.Color = RGB(128, 128, 128)
-    wsW.Columns("A").ColumnWidth = 25
-    wsW.Columns("B").ColumnWidth = 18
-    wsW.Columns("C").ColumnWidth = 60
-End Sub
+（洗浄・乾燥は自動のため工数ゼロ）
 
-' --- 「解析設定」シート ---
-Private Sub Build_Sheet_Config()
-    Dim wsC As Worksheet: Set wsC = EnsureSheet("解析設定")
-    wsC.Cells.Clear
-    wsC.Range("A1:C1").Value = Array("設定項目", "設定値", "説明")
-    
-    Dim c As Variant
-    c = Array( _
-        Array("評価プリセット", "バランス", "ランキング実行時の重み付けを自動調整します"), _
-        Array("FlowGrid_Temps_C", "260,280,300,320", "（開発用）粘度評価グリッド（温度）"), _
-        Array("FlowGrid_Shear_1persec", "100,1000,10000,50000", "（開発用）粘度評価グリッド（せん断速度）"), _
-        Array("pvT_Temps_C", "40,80,120,200", "（開発用）pvT評価グリッド（温度）"), _
-        Array("pvT_Pressures_MPa", "0,50,100", "（開発用）pvT評価グリッド（圧力）"), _
-        Array("Eval_Cp_Temps_C", "80,140,200", "（開発用）比熱の代表評価温度"), _
-        Array("Eval_k_Temps_C", "100,150,200", "（開発用）熱伝導率の代表評価温度") _
-    )
-    Dim i As Long
-    For i = 0 To UBound(c)
-        wsC.Cells(i + 2, 1).Resize(1, 3).Value = c(i)
-    Next
-    
-    ' プリセット選択をドロップダウンリストに
-    With wsC.Range("B2").Validation
-        .Delete
-        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
-        xlBetween, Formula1:="バランス,流動性重視,そり重視"
-        .IgnoreBlank = True
-        .InCellDropdown = True
-    End With
-    
-    With wsC.Range("A1:C1")
-        .Interior.ColorIndex = 15
-        .Font.Bold = True
-    End With
-    wsC.Columns("A:C").AutoFit
-End Sub
+不具合1回あたりの合計作業工数: 6〜7時間
 
-' --- DB、Results、Logシート（ヘッダーのみ日本語化） ---
-Private Sub Build_Sheet_DB()
-    Dim wsDB As Worksheet: Set wsDB = EnsureSheet("材料DB")
-    wsDB.Cells.Clear
-    Dim h As Variant
-    h = Array( _
-        "メーカー", "グレード名", "樹脂ファミリー", "フィラー種類", "フィラー含有量(wt%)", "データソース", _
-        "溶融密度(g/cc)", "固体密度(g/cc)", _
-        "b5", "b6", "b1m", "b2m", "b3m", "b4m", "b1s", "b2s", "b3s", "b4s", _
-        "比熱(生データ)", "熱伝導率(生データ)", _
-        "比熱(80C)", "比熱(140C)", "比熱(200C)", _
-        "熱伝導率(100C)", "熱伝導率(150C)", "熱伝導率(200C)", _
-        "弾性率E1(MPa)", "弾性率E2(MPa)", "ポアソン比ν12", "ポアソン比ν23", "せん断弾性率G12(MPa)", _
-        "線膨張係数α1(1/℃)", "線膨張係数α2(1/℃)", _
-        "推奨樹脂温度 Min(℃)", "推奨樹脂温度 Max(℃)", _
-        "推奨金型温度 Min(℃)", "推奨金型温度 Max(℃)", _
-        "絶対最大温度(℃)", "最大せん断応力(MPa)", "最大せん断速度(1/s)", _
-        "フィラー密度(g/cc)", _
-        "Moldflow粘度指数(VI)", "MFR(g/10min)", "MFR測定温度(℃)", "MFR測定荷重(kg)", _
-        "ガラス転移温度(℃)", _
-        "備考", "元ファイル" _
-    )
-    With wsDB.Range("A1").Resize(1, UBound(h) + 1)
-        .Value = h
-        .Font.Bold = True
-        .Interior.ColorIndex = 15
-    End With
-    wsDB.Columns("A:AZ").AutoFit
-    wsDB.Activate
-    ActiveWindow.FreezePanes = True
-End Sub
+(B) 金型拘束時間（リードタイム）:
 
-Private Sub Build_Sheet_Results()
-    Dim wsR As Worksheet: Set wsR = EnsureSheet("類似度ランキング")
-    wsR.Cells.Clear
-    wsR.Range("A1:H1").Value = Array("スコア (小さいほど類似)", "メーカー", "グレード名", "樹脂", "フィラー", "データソース", "粘度指数(参考)", "備考")
-    With wsR.Range("A1:H1")
-        .Font.Bold = True
-        .Interior.ColorIndex = 15
-    End With
-    wsR.Columns("A:H").AutoFit
-    wsR.Columns("A").ColumnWidth = 20
-    wsR.Columns("B").ColumnWidth = 20
-    wsR.Columns("C").ColumnWidth = 30
-    wsR.Columns("H").ColumnWidth = 40
-    wsR.Activate
-    ActiveWindow.FreezePanes = True
-End Sub
+上記(A)の作業時間: 6〜7時間
 
-Private Sub Build_Sheet_ImportLog()
-    Dim wsL As Worksheet: Set wsL = EnsureSheet("インポート履歴")
-    wsL.Cells.Clear
-    wsL.Range("A1:D1").Value = Array("取込日時", "ファイル名", "解析行数", "警告")
-    With wsL.Range("A1:D1")
-        .Font.Bold = True
-        .Interior.ColorIndex = 15
-    End With
-    wsL.Columns("A:D").AutoFit
-    wsL.Columns("B").ColumnWidth = 60
-End Sub
+洗浄・乾燥（自動）: 2日間（= 48時間）
 
-'------------------------------------------------------------
-' ■ 補助ユーティリティ
-'------------------------------------------------------------
+不具合1回あたりの合計拘束時間: 約 2.5日以上
 
-' --- 安全にシートを確保する関数 ---
-Private Function EnsureSheet(ByVal nm As String, Optional isFirst As Boolean = False) As Worksheet
-    On Error Resume Next
-    Set EnsureSheet = ThisWorkbook.Worksheets(nm)
-    On Error GoTo 0
-    If EnsureSheet Is Nothing Then
-        If isFirst Then
-            Set EnsureSheet = ThisWorkbook.Worksheets.Add(Before:=ThisWorkbook.Worksheets(1))
-        Else
-            Set EnsureSheet = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
-        End If
-        EnsureSheet.Name = nm
-    End If
-End Function
+この間、金型は生産に使用できず、顧客のラインを止める深刻な事態となっている。
 
-' --- ボタンを生成するサブルーチン ---
-Private Sub CreateButton(ws As Worksheet, pos As Range, txt As String, macroName As String)
-    Dim btn As Button
-    Set btn = ws.Buttons.Add(pos.Left, pos.Top, pos.Width, pos.Height)
-    With btn
-        .OnAction = macroName
-        .Caption = txt
-        .Font.Name = "Meiryo UI"
-    End With
-End Sub
+3. 改善内容
 
-' --- 「検索条件」シートにジャンプするマクロ ---
-Public Sub GoToTargetSheet()
-    On Error Resume Next
-    ThisWorkbook.Worksheets("検索条件").Activate
-    If Err.Number <> 0 Then
-        MsgBox "「検索条件」シートが見つかりません。", vbExclamation
-        Err.Clear
-    End If
-End Sub
+金型返却・保管時の標準作業として、**VCI（気化性防錆剤）**による予防防錆を導入する。
 
-' --- 旧ビルドプロシージャ（互換性のため残す場合はこのまま）---
-Public Sub BuildWorkbook(Optional ByVal SaveAsPath As String = "")
-    ' こちらは古い英語のビルドプロシージャです。
-    ' 新しい A00_BuildFriendlyWorkbook を使用してください。
-    MsgBox "このマクロは旧バージョンです。" & vbCrLf & "「A00_BuildFriendlyWorkbook」を実行してください。", vbExclamation
-End Sub
-' ↓↓↓ このマクロをAlt+F8から実行してください ↓↓↓
-Public Sub 実行_ブックの初期構築()
-    Call A00_BuildFriendlyWorkbook
-End Sub
+(1) 清掃: （初回のみ）ウォーターリーマ等で既存の錆を完全に除去し、配管内をクリーンな状態に戻す。
+
+(2) VCI塗布（予防作業）:
+
+金型返却・清掃後、水管内をエアブローで乾燥させる。（約1分）
+
+各配管の入り口からVCI（パウダーまたはタブレット）を少量投入する。（約2分）
+
+即座にメクラ栓やキャップで**「完全密閉」**し、保管・出荷する。（約2分）
+
+予防1回あたりの合計作業工数・拘束時間: 約 5分
+
+4. 期待される効果（時間・コスト比較）
+
+本改善は、**「5分間の予防作業（投資）」を行うことで、「6〜7時間の作業工数」と「2.5日間の金型拘束（機会損失）」**という最大のムダを未然に防ぐものです。
+
+比較項目	従来（緊急対応）	改善後（VCI予防）
+作業内容	錆びてから対応（緊急修理）	錆びる前に予防（標準作業）
+作業工数
 
 
+（人が動く時間）
+
+6〜7時間
+
+
+(調査 + 準備 + 片付け)
+
+約 5分 (0.08時間)
+
+
+(エアブロー + VCI投入 + 密閉)
+
+金型拘束時間
+
+
+（リードタイム）
+
+約 2.5日以上
+
+
+(作業工数 + 自動洗浄・乾燥2日)
+
+約 5分
+コスト	
+極めて高
+
+
+(作業工数 + ライン停止の損失)
+
+低
+
+
+(予防工数 + VCI薬剤費のみ)
+
+■ 年間削減工数の試算
+
+前提: 錆詰まりによる緊急対応が 年間3回 発生していると仮定する。
+
+従来の年間総工数: （平均6.5時間/回） × 3回 = 19.5時間/年
+
+従来の年間総拘束時間: 2.5日/回 × 3回 = 7.5日/年
+
+改善後の年間総工数: （仮に、予防対象の金型が年間60型あったと仮定） 5分/回 × 60型 = 300分/年 = 5時間/年
+
+年間削減効果（試算）:
+
+作業工数: 19.5時間 - 5時間 = 年間 14.5時間 の工数削減
+
+拘束時間: 年間 7.5日分 の金型停止（と顧客のライン停止）をゼロにできる。
+
+結論: VCIによる予防防錆は、作業工数（14.5時間/年）を削減するだけでなく、金型の拘束時間（7.5日/年）と、それに伴う生産ライン停止という最大の損失を未然に防ぐ、
