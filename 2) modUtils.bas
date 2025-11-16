@@ -1,107 +1,35 @@
-Attribute VB_Name = "modUtils"
-Option Explicit
-
-Public Function ReadAllText(ByVal path As String) As String
-    Dim f As Integer: f = FreeFile
-    On Error GoTo EH
-    Open path For Binary As #f
-    ReadAllText = Space$(LOF(f))
-    Get #f, , ReadAllText
-    Close #f
-    Exit Function
-EH:
-    On Error Resume Next
-    If f <> 0 Then Close #f
-    ReadAllText = ""
-End Function
-
-Public Function SplitLines(ByVal s As String) As Variant
-    s = Replace(s, vbCrLf, vbLf)
-    s = Replace(s, vbCr, vbLf)
-    SplitLines = Split(s, vbLf)
-End Function
-
-Public Function FirstNumberIn(ByVal s As String) As Double
-    Dim i As Long, c As String, buf As String
-    For i = 1 To Len(s)
-        c = Mid$(s, i, 1)
-        If (c Like "[0-9]") Or c = "." Or c = "-" Or c = "+" Then
-            buf = buf & c
-        ElseIf Len(buf) > 0 Then
-            Exit For
-        End If
-    Next i
-    If buf = "" Then
-        FirstNumberIn = 0#
-    Else
-        On Error Resume Next
-        FirstNumberIn = CDbl(buf)
-        On Error GoTo 0
-    End If
-End Function
-
-Public Function FindValueNearKey(ByVal lines As Variant, ByVal key As String, Optional ByVal defaultVal As Double = 0#) As Double
-    Dim i As Long, L As String
-    For i = LBound(lines) To UBound(lines)
-        L = lines(i)
-        If InStr(1, L, key, vbTextCompare) > 0 Then
-            FindValueNearKey = FirstNumberIn(L)
-            Exit Function
-        End If
-    Next i
-    FindValueNearKey = defaultVal
-End Function
-
-Public Function FindTextNearKey(ByVal lines As Variant, ByVal key As String, Optional ByVal defaultText As String = "") As String
-    Dim i As Long, L As String
-    For i = LBound(lines) To UBound(lines)
-        L = lines(i)
-        If InStr(1, L, key, vbTextCompare) > 0 Then
-            Dim p As Long: p = InStr(1, L, ":", vbTextCompare)
-            If p > 0 Then
-                FindTextNearKey = Trim$(Mid$(L, p + 1))
-                Exit Function
-            Else
-                FindTextNearKey = Trim$(L)
-                Exit Function
-            End If
-        End If
-    Next i
-    FindTextNearKey = defaultText
-End Function
-
-Public Function NormalizeBasePolymer(ByVal txt As String) As String
-    Dim t As String: t = UCase$(txt)
-    If InStr(t, "PA46") > 0 Or InStr(t, "POLYAMIDE 46") > 0 Or InStr(t, "NYLON 46") > 0 Then
-        NormalizeBasePolymer = "PA46": Exit Function
-    End If
-    If InStr(t, "PA66") > 0 Then NormalizeBasePolymer = "PA66": Exit Function
-    If InStr(t, "PA6") > 0 Then NormalizeBasePolymer = "PA6": Exit Function
-    If InStr(t, "PPS") > 0 Then NormalizeBasePolymer = "PPS": Exit Function
-    If InStr(t, "PBT") > 0 Then NormalizeBasePolymer = "PBT": Exit Function
-    If InStr(t, "PC+PBT") > 0 Then NormalizeBasePolymer = "PC+PBT": Exit Function
-    If InStr(t, "PC+PET") > 0 Then NormalizeBasePolymer = "PC+PET": Exit Function
-    If InStr(t, "PC") > 0 Then NormalizeBasePolymer = "PC": Exit Function
-    If InStr(t, "ABS") > 0 Then NormalizeBasePolymer = "ABS": Exit Function
-    NormalizeBasePolymer = Trim$(txt)
-End Function
-
-Public Function NormalizeFillerType(ByVal txt As String) As String
-    Dim t As String: t = UCase$(txt)
-    If InStr(t, "GLASS") > 0 Or InStr(t, "GF") > 0 Then NormalizeFillerType = "GF": Exit Function
-    If InStr(t, "CARBON") > 0 Or InStr(t, "CF") > 0 Then NormalizeFillerType = "CF": Exit Function
-    If InStr(t, "MINERAL") > 0 Then NormalizeFillerType = "Mineral": Exit Function
-    If InStr(t, "POTASSIUM TITANATE") > 0 Or InStr(t, "TITANATE") > 0 Or InStr(t, "TISMO") > 0 Then NormalizeFillerType = "Mineral": Exit Function
-    If InStr(t, "NONE") > 0 Or InStr(t, "NO FILLER") > 0 Then NormalizeFillerType = "None": Exit Function
-    NormalizeFillerType = Trim$(txt)
-End Function
-
-Public Function SafeDbl(ByVal v As Variant) As Double
-    On Error Resume Next
-    SafeDbl = CDbl(v)
-    On Error GoTo 0
-End Function
-
-Public Function NowStr() As String
-    NowStr = Format$(Now, "yyyy-mm-dd hh:nn:ss")
-End Function
+1. 全29タスクの「平均削減時間」の試算
+全29タスクを、難易度（従来のOJT所要時間）別に3グループに分類し、それぞれの削減時間を推定します。
+①【高】（手順が複雑・OJTが長時間）
+• 該当タスク（2件）:
+• T259 金型組込み
+• T260 金型分解
+• 試算:
+• 従来OJT 20時間 → 改善後 12時間
+• 削減時間： 8.0時間 × 2件 ＝ 16.0時間
+②【中】（技能・感覚が重要）
+• 該当タスク（約13件）:
+• T112 ミガキ作業(紙ヤスリ)
+• T152 ミガキ作業(リューター)
+• T212 型合わせ作業(ダイスポ)
+• T210 新明丹当たり確認
+• T151, T153, T154 (各種溶接)
+• T099, T013 (面取り)
+• T063 (タップ立て)、T222 (リーマ)、T100 (リターンピン調整) など
+• 試算:
+• 従来のOJTは平均 3時間/件 と仮定。動画で30%（約1時間）削減できると試算。
+• 削減時間： 1.0時間 × 13件 ＝ 13.0時間
+③【低】（設備操作・単純作業）
+• 該当タスク（約14件）:
+• T180 金型洗浄機、T108 鏡面仕上げ装置、T110 表面処理装置
+• T150 クレーン作業、T111 フォークリフト作業
+• T041 エアグラインダー準備、T071 リュータ使用方法、T037 シールテープ巻き など
+• 試算:
+• 従来のOJTは平均 1時間/件 と仮定。動画で50%（0.5時間）削減できると試算。
+• 削減時間： 0.5時間 × 14件 ＝ 7.0時間
+2. 年間削減時間の合計試算
+1. 1人あたりの総削減時間:
+• （① 高）16.0時間 ＋ （② 中）13.0時間 ＋ （③ 低）7.0時間 ＝ 36.0時間
+• （※これが、後継者1名が全29タスクを習得するまでに見込める、あなたの指導工数の削減時間です）
+2. 年間の総削減時間（2名教育）:
+• 36.0時間/人 × 2名（プレス、研削） ＝ 72時間
