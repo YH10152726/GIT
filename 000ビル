@@ -1,622 +1,92 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工程作成支援ツール 導入効果報告（完全版）</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #E60012; /* Mitsubishi Electric Red */
-            --text-color: #333333;
-            --bg-color: #ffffff;
-            --gray-bg: #f4f4f4;
-            --accent-blue: #005eb0;
-            --header-height: 60px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Noto Sans JP', sans-serif;
-            background-color: #222;
-            height: 100vh;
-            width: 100vw;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden; /* Prevent scrollbars */
-            color: var(--text-color);
-        }
-
-        /* Scale Wrapper: Holds the deck and scales it */
-        #scale-wrapper {
-            width: 1024px;
-            height: 768px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            /* Scaling handled by JS */
-        }
-
-        /* Slide Container */
-        .deck-container {
-            position: relative;
-            width: 1024px;
-            height: 768px;
-            background-color: var(--bg-color);
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
-            overflow: hidden;
-        }
-
-        /* Header Style */
-        .slide-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: var(--header-height);
-            background-color: #e0e0e0;
-            display: flex;
-            align-items: center;
-            padding: 0 40px;
-            border-bottom: 2px solid #ccc;
-            justify-content: space-between;
-            z-index: 100;
-        }
-
-        .slide-header .page-title {
-            font-size: 20px;
-            font-weight: bold;
-            color: #555;
-            margin-left: 20px;
-        }
-        
-        .slide-header .page-number {
-            font-size: 32px;
-            font-weight: bold;
-            color: #333;
-            width: 40px;
-            text-align: center;
-        }
-
-        .confidential-badge {
-            border: 2px solid var(--primary-color);
-            color: var(--primary-color);
-            font-weight: bold;
-            padding: 2px 10px;
-            font-size: 14px;
-            margin-right: 20px;
-        }
-
-        .logo-area {
-            font-size: 12px;
-            font-weight: bold;
-            color: #333;
-            text-align: right;
-            line-height: 1.1;
-        }
-
-        /* Slide Content */
-        .slide {
-            position: absolute;
-            top: var(--header-height);
-            left: 0;
-            width: 100%;
-            height: calc(100% - var(--header-height));
-            padding: 40px 60px;
-            display: none;
-            flex-direction: column;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            cursor: default;
-        }
-
-        .slide.active {
-            display: flex;
-            opacity: 1;
-            z-index: 1;
-        }
-
-        /* Typography */
-        h1 {
-            font-size: 36px;
-            margin-bottom: 25px;
-            border-left: 10px solid var(--primary-color);
-            padding-left: 20px;
-            color: #333;
-            line-height: 1.2;
-        }
-
-        h2 {
-            font-size: 28px;
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 5px;
-        }
-
-        p, li {
-            font-size: 22px;
-            line-height: 1.6;
-            margin-bottom: 10px;
-        }
-
-        ul {
-            list-style: none;
-            padding-left: 10px;
-        }
-
-        ul li::before {
-            content: "■";
-            color: var(--primary-color);
-            display: inline-block;
-            width: 1.2em;
-            margin-left: -1.2em;
-        }
-
-        .highlight {
-            background: linear-gradient(transparent 70%, #fff200 70%);
-            font-weight: bold;
-            padding: 0 5px;
-        }
-
-        .red-text { color: var(--primary-color); font-weight: bold; }
-
-        /* Layout Helpers */
-        .two-columns {
-            display: flex;
-            gap: 40px;
-            height: 100%;
-        }
-        .col { flex: 1; }
-
-        /* Box Styles */
-        .box {
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-            border-left: 5px solid var(--primary-color);
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 0 8px 8px 0;
-        }
-        .box-title {
-            font-weight: bold;
-            color: var(--primary-color);
-            display: block;
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
-
-        /* Pattern Grid */
-        .pattern-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 10px;
-        }
-        .pattern-box {
-            background: #fff;
-            border: 2px solid #eee;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        .pattern-header {
-            font-weight: bold;
-            font-size: 20px;
-            border-bottom: 2px solid var(--primary-color);
-            margin-bottom: 10px;
-            display: inline-block;
-        }
-
-        /* Tables */
-        .calc-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 18px;
-        }
-        .calc-table th, .calc-table td {
-            border: 1px solid #ccc;
-            padding: 12px;
-            text-align: center;
-        }
-        .calc-table th {
-            background-color: #f0f0f0;
-            color: #333;
-        }
-        .calc-table tr:last-child {
-            background-color: #ffe6e6;
-            font-weight: bold;
-            font-size: 20px;
-        }
-
-        /* Navigation Controls - Fixed Visibility */
-        .controls {
-            position: absolute;
-            bottom: 15px; /* Moved up slightly */
-            right: 20px;  /* Moved left slightly */
-            z-index: 9999; /* Maximum priority */
-            display: flex;
-            gap: 15px;
-            background-color: rgba(255, 255, 255, 0.9); /* Add background to ensure contrast */
-            padding: 5px 15px;
-            border-radius: 50px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        .btn {
-            background-color: #555;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            transition: background-color 0.2s;
-        }
-        .btn:hover { background-color: var(--primary-color); }
-        .btn i { margin: 0 5px; }
-
-        .footer-info {
-            position: absolute;
-            bottom: 10px;
-            left: 20px;
-            font-size: 12px;
-            color: #999;
-        }
-
-    </style>
-</head>
-<body>
-
-    <!-- Scale Wrapper handles the responsive sizing -->
-    <div id="scale-wrapper">
-        <div class="deck-container">
-            
-            <!-- Header -->
-            <div class="slide-header">
-                <div style="display:flex; align-items:center;">
-                    <span class="page-number" id="headerPageNum">1</span>
-                    <span class="page-title" id="headerTitle">タイトル</span>
-                </div>
-                <div style="display:flex; align-items:center;">
-                    <span class="confidential-badge">社外秘</span>
-                    <div class="logo-area">
-                        MITSUBISHI<br>ELECTRIC<br><span style="font-size:10px;">Changes for the Better</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Slide 1: Title -->
-            <div class="slide active" data-title="導入効果報告" onclick="nextSlide()">
-                <div style="display:flex; flex-direction:column; justify-content:center; height:100%; text-align:center;">
-                    <h1 style="border:none; font-size:52px; margin-bottom:10px;">工程作成支援ツール導入による<br>業務効率化と効果算出報告</h1>
-                    <p style="font-size:28px; color:#555; margin-top:30px;">金型製作係</p>
-                    <p style="margin-top:60px; font-size:22px;">2025年5月13日</p>
-                    <p style="margin-top:120px; font-size:14px; color:#aaa;">（画面をクリックまたは右下のボタンで進みます）</p>
-                </div>
-            </div>
-
-            <!-- Slide 2: Executive Summary -->
-            <div class="slide" data-title="1. エグゼクティブサマリー" onclick="nextSlide()">
-                <h1>要旨</h1>
-                <div class="box">
-                    <span class="box-title">【目的】</span>
-                    工程作成業務の自動化による工数削減と、属人化の解消。
-                </div>
-                <div class="box">
-                    <span class="box-title">【実施内容】</span>
-                    VBAを活用した「工程作成支援ツール」を開発・導入。
-                    <ul>
-                        <li>部品特性に応じた工程リスト自動展開</li>
-                        <li>標準工数・備考のマスターデータ連携（Sheet2活用）</li>
-                    </ul>
-                </div>
-                <div class="box" style="border-left-color: #005eb0; background-color: #eef6ff;">
-                    <span class="box-title" style="color: #005eb0;">【結論】</span>
-                    工程ごとの負荷（思考時間）を考慮した詳細試算において、<br>
-                    <span class="highlight" style="font-size: 28px;">年間 99.96 時間</span> の実質的な工数削減を実現。<br>
-                    併せて、担当者のスキルに依存しない業務品質の標準化を達成。
-                </div>
-            </div>
-
-            <!-- Slide 3: Background -->
-            <div class="slide" data-title="2. 背景と課題" onclick="nextSlide()">
-                <h1>現状の課題</h1>
-                <div class="two-columns">
-                    <div class="col" style="background:#f0f0f0; padding:25px; border-radius:10px; text-align:center;">
-                        <h3 style="margin-bottom:20px; color:#555;">【定量的負荷】</h3>
-                        <div style="font-size:20px; margin-bottom:10px;">年間工程作成数</div>
-                        <div style="font-size:40px; font-weight:bold; color:var(--primary-color); margin-bottom:20px;">2,430 件</div>
-                        <hr style="margin: 20px 40px;">
-                        <div style="font-size:20px; margin-bottom:10px;">年間総作業時間</div>
-                        <div style="font-size:36px; font-weight:bold; color:#333;">約 324 時間</div>
-                        <div style="font-size:16px; color:#666; margin-top:5px;">(平均 8分/件 として算出)</div>
-                    </div>
-                    <div class="col">
-                        <h3>【業務上の課題】</h3>
-                        <ul style="margin-top:20px; font-size:24px;">
-                            <li style="margin-bottom:30px;"><strong>工数負荷</strong><br>単純な繰り返し入力作業に多大な時間を要している。</li>
-                            <li style="margin-bottom:30px;"><strong>品質のバラつき</strong><br>手入力による誤記や、担当者ごとの工数設定の揺れ。</li>
-                            <li style="margin-bottom:30px;"><strong>属人化</strong><br>過去データの検索や特殊工程の判断がベテランの経験則に依存。</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Slide 4: Solution -->
-            <div class="slide" data-title="3. 解決策：ツールの機能" onclick="nextSlide()">
-                <h1>VBAによる自動化と標準化</h1>
-                <div class="pattern-grid">
-                    <div class="pattern-box">
-                        <span class="pattern-header"><i class="fas fa-desktop"></i> 1. インターフェース</span>
-                        <p style="font-size:18px;">部品分類（プレート/ブロック）、加工種別を選択するだけで操作完結。直感的なUI。</p>
-                    </div>
-                    <div class="pattern-box">
-                        <span class="pattern-header"><i class="fas fa-cogs"></i> 2. 自動展開ロジック</span>
-                        <p style="font-size:18px;">「外注」「焼入れ」「研削」「放電」等の工程順序をルールベースで自動生成。抜け漏れ防止。</p>
-                    </div>
-                    <div class="pattern-box">
-                        <span class="pattern-header"><i class="fas fa-table"></i> 3. マスターデータ (Sheet2)</span>
-                        <p style="font-size:18px;">工数・備考は全てExcelシートで管理。<strong>プログラム修正不要</strong>で、現場で容易に調整可能。</p>
-                    </div>
-                    <div class="pattern-box">
-                        <span class="pattern-header"><i class="fas fa-search"></i> 4. 過去データ活用</span>
-                        <p style="font-size:18px;">類似品検索機能により、既存の資産を有効活用し、ゼロからの作成手間を排除。</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Slide 5: Quantitative Method -->
-            <div class="slide" data-title="4.1. 定量的効果の算出方針" onclick="nextSlide()">
-                <h1>作業時間の大幅な短縮効果</h1>
-                <p>単純なPC操作時間の短縮だけでなく、業務の本質である<span class="red-text">「思考時間」</span>に着目して算出を行いました。</p>
-                
-                <div class="box" style="margin-top:30px;">
-                    <span class="box-title">【「思考時間 (Thinking Time)」の定量化】</span>
-                    <ul>
-                        <li>特に複雑な案件（熱処理・複数加工）では、「どの工程をどう組むべきか」という思考・計画時間が大きな割合を占めます。</li>
-                        <li>本ツールは最適な工程パターンを瞬時に提示するため、この<strong>「迷う時間」</strong>が大幅に短縮されます。</li>
-                    </ul>
-                </div>
-
-                <p>この効果を正確に反映させるため、ツールの処理ルートに基づき作成パターンを<span class="highlight">4段階に分類</span>し、それぞれに手動作成時間（操作＋思考）と年間発生割合を割り当てて試算しました。</p>
-            </div>
-
-            <!-- Slide 6: Load Patterns -->
-            <div class="slide" data-title="4.2. 負荷別パターン詳細" onclick="nextSlide()">
-                <h1>4つの工程パターンと削減効果</h1>
-                <div class="pattern-grid">
-                    <div class="pattern-box" style="background:#fff5f5;">
-                        <span class="pattern-header">A. 高負荷工程 (15.2%)</span>
-                        <p style="font-size:16px; margin-bottom:5px;">条件：ルート5(通常)。熱処理・研削多数の複雑パターン。</p>
-                        <ul style="font-size:16px;">
-                            <li>手動: 5分40秒 + 思考2分 = <strong>7分40秒</strong></li>
-                            <li>ツール: 2分 + 思考1分 = <strong>3分</strong></li>
-                            <li>削減: <span class="red-text">4分40秒 / 件</span></li>
-                        </ul>
-                    </div>
-                    <div class="pattern-box" style="background:#fffcf0;">
-                        <span class="pattern-header">B. 中負荷工程 (40.2%)</span>
-                        <p style="font-size:16px; margin-bottom:5px;">条件：ルート5(通常)。12行以下の定型的な工程。</p>
-                        <ul style="font-size:16px;">
-                            <li>手動: 4分 + 思考1分 = <strong>5分</strong></li>
-                            <li>ツール: 30秒 + 思考1分 = <strong>1分30秒</strong></li>
-                            <li>削減: <span class="red-text">3分30秒 / 件</span></li>
-                        </ul>
-                    </div>
-                    <div class="pattern-box" style="background:#f0f9ff;">
-                        <span class="pattern-header">C. 低負荷工程 (10.3%)</span>
-                        <p style="font-size:16px; margin-bottom:5px;">条件：ルート3(同時加工) / ルート2(ミスミ追加工)。</p>
-                        <ul style="font-size:16px;">
-                            <li>手動: <strong>1分</strong> (60秒)</li>
-                            <li>ツール: <strong>20秒</strong></li>
-                            <li>削減: <span class="red-text">40秒 / 件</span></li>
-                        </ul>
-                    </div>
-                    <div class="pattern-box" style="background:#f5fff5;">
-                        <span class="pattern-header">D. 定型工程 (34.3%)</span>
-                        <p style="font-size:16px; margin-bottom:5px;">条件：ルート1(外作) / ルート2(追加工なし)。思考不要。</p>
-                        <ul style="font-size:16px;">
-                            <li>手動: <strong>20秒</strong></li>
-                            <li>ツール: <strong>10秒</strong></li>
-                            <li>削減: <span class="red-text">10秒 / 件</span></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Slide 7: Final Calculation -->
-            <div class="slide" data-title="4.3. 効果算出結果" onclick="nextSlide()">
-                <h1>年間削減工数の算出</h1>
-                <p>各パターンの削減時間を積み上げた結果は以下の通りです。</p>
-
-                <table class="calc-table">
-                    <tr>
-                        <th style="width:20%;">パターン</th>
-                        <th style="width:30%;">1件あたり削減時間</th>
-                        <th style="width:20%;">年間件数</th>
-                        <th style="width:30%;">年間削減時間 (秒)</th>
-                    </tr>
-                    <tr>
-                        <td>A (高負荷)</td>
-                        <td>280 秒</td>
-                        <td>369 件</td>
-                        <td>103,320 秒</td>
-                    </tr>
-                    <tr>
-                        <td>B (中負荷)</td>
-                        <td>210 秒</td>
-                        <td>976 件</td>
-                        <td>204,960 秒</td>
-                    </tr>
-                    <tr>
-                        <td>C (低負荷)</td>
-                        <td>40 秒</td>
-                        <td>251 件</td>
-                        <td>10,040 秒</td>
-                    </tr>
-                    <tr>
-                        <td>D (定型)</td>
-                        <td>10 秒</td>
-                        <td>834 件</td>
-                        <td>8,340 秒</td>
-                    </tr>
-                    <tr style="border-top:3px solid #555;">
-                        <td colspan="3" style="text-align:right;">合計秒数：</td>
-                        <td>359,870 秒</td>
-                    </tr>
-                </table>
-
-                <div style="margin-top:30px; display:flex; align-items:center; justify-content:center; background:#eee; padding:20px; border-radius:10px;">
-                    <div style="text-align:right; margin-right:30px;">
-                        <p style="font-size:24px; margin:0;">年間削減工数</p>
-                        <p style="font-size:14px; margin:0; color:#666;">(359,870秒 ÷ 3600)</p>
-                    </div>
-                    <div style="font-size:60px; font-weight:bold; color:var(--primary-color); line-height:1;">
-                        約 99.96 時間
-                    </div>
-                </div>
-            </div>
-
-            <!-- Slide 8: Qualitative Effects -->
-            <div class="slide" data-title="5. 定性的効果" onclick="nextSlide()">
-                <h1>標準化と技術承継</h1>
-                <div class="two-columns" style="margin-top:20px;">
-                    <div class="col">
-                        <div class="box">
-                            <span class="box-title"><i class="fas fa-check-double"></i> 業務品質の均一化</span>
-                            <p style="font-size:20px;">ツール利用により、経験の浅い担当者でもベテランと同等の構成・工数基準で工程表を作成可能。<br>
-                            入力ミス減少により、後工程（加工現場）からの問合せも削減。</p>
-                        </div>
-                        <div class="box">
-                            <span class="box-title"><i class="fas fa-tools"></i> メンテナンス性の確保</span>
-                            <p style="font-size:20px;">プログラムの書き換えは不要。<br>
-                            <strong>「Sheet2」の値を変更するだけで</strong>工数基準の改定が可能。<br>
-                            → 係長・班長レベルで運用管理が可能。</p>
-                        </div>
-                    </div>
-                    <div class="col" style="display:flex; flex-direction:column; justify-content:center; align-items:center; background:#fdfdfd; border-radius:10px; border:1px dashed #ccc;">
-                        <i class="fas fa-people-carry" style="font-size:100px; color:#ddd; margin-bottom:20px;"></i>
-                        <h3 style="color:#555;">技術承継の基盤構築</h3>
-                        <p style="text-align:center; padding:0 20px; font-size:18px;">私が異動した後も、<br>係内で運用・管理が継続できる<br>仕組みを構築済みです。</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Slide 9: Conclusion -->
-            <div class="slide" data-title="6. まとめ" onclick="nextSlide()">
-                <h1>まとめと今後の展望</h1>
-                
-                <div style="background-color: #eef6ff; padding: 30px; border-radius: 8px; margin-bottom: 40px; text-align:center; border:2px solid #005eb0;">
-                    <h3 style="margin-bottom: 15px; color: #005eb0;">【結論】</h3>
-                    <p style="font-size: 32px; font-weight: bold; margin:0;">本ツールは、年間約100時間の余力を創出し、<br>金型製作係の生産性向上に直接寄与する。</p>
-                </div>
-
-                <h3>【今後の展望】</h3>
-                <ul style="margin-bottom:50px;">
-                    <li style="margin-bottom:20px;"><strong>運用定着：</strong> 係内メンバー（班長・スタッフ・工程作業者）への操作説明と引き継ぎの完了。</li>
-                    <li><strong>継続的改善：</strong> 現場の実績値をフィードバックし、マスターデータ（Sheet2）の精度を向上させることで、さらなる削減効果を目指す。</li>
-                </ul>
-
-                <hr>
-                <p style="margin-top: 20px; font-size:18px; text-align:right;">金型技術係への異動後も、スムーズな運用に向けてサポートいたします。</p>
-                <p style="text-align:center; font-size:24px; font-weight:bold; margin-top:50px;">ご清聴ありがとうございました。</p>
-            </div>
-
-            <!-- Footer -->
-            <div class="footer-info">© Mitsubishi Electric Corporation</div>
-
-            <!-- Controls inside the container to scale with it -->
-            <div class="controls" onclick="event.stopPropagation()">
-                <button class="btn" onclick="prevSlide()"><i class="fas fa-arrow-left"></i> 戻る</button>
-                <button class="btn" onclick="nextSlide()">次へ <i class="fas fa-arrow-right"></i></button>
-            </div>
-
-        </div>
-    </div>
-
-    <script>
-        let currentSlide = 0;
-        const slides = document.querySelectorAll('.slide');
-        const headerTitle = document.getElementById('headerTitle');
-        const headerPageNum = document.getElementById('headerPageNum');
-
-        // Auto-scaling logic
-        function scaleDeck() {
-            const wrapper = document.getElementById('scale-wrapper');
-            const deck = document.querySelector('.deck-container');
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            const deckWidth = 1024;
-            const deckHeight = 768;
-
-            // Calculate scale factor to fit window with some margin
-            const scaleX = windowWidth / deckWidth;
-            const scaleY = windowHeight / deckHeight;
-            const scale = Math.min(scaleX, scaleY) * 0.95; // 95% to leave a small border
-
-            deck.style.transform = `scale(${scale})`;
-        }
-
-        // Listen for window resize
-        window.addEventListener('resize', scaleDeck);
-        
-        // Initial scale
-        scaleDeck();
-
-
-        function updateHeader(index) {
-            const title = slides[index].getAttribute('data-title');
-            headerTitle.textContent = title;
-            headerPageNum.textContent = index + 1; 
-        }
-
-        function showSlide(index) {
-            slides.forEach((slide, i) => {
-                slide.classList.remove('active');
-                if (i === index) {
-                    slide.classList.add('active');
-                }
-            });
-            updateHeader(index);
-        }
-
-        function nextSlide() {
-            if (currentSlide < slides.length - 1) {
-                currentSlide++;
-                showSlide(currentSlide);
-            }
-        }
-
-        function prevSlide() {
-            if (currentSlide > 0) {
-                currentSlide--;
-                showSlide(currentSlide);
-            }
-        }
-
-        // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'Enter') {
-                nextSlide();
-            } else if (e.key === 'ArrowLeft') {
-                prevSlide();
-            }
-        });
-
-        // Initialize
-        showSlide(currentSlide);
-    </script>
-</body>
-</html>
+【検証レポート】 手動式ワックス試験の有効性と費用対効果に関する考察
+作成日: 2025年11月 [ ] 日 作成者: 金型工作係 [あなたの名前] 検証場所: 株式会社サイタ製作所
+1. 結論（Executive Summary）
+【T0検証としての位置付け】 手動ワックス成形は、実際の射出成形機と比較して圧力や温度条件が異なるため、成形品そのものの寸法保証や、ヒケ・反りの判定には適さない。 しかし、「金型起因の不具合（抜き勾配不足、加工漏れ、刻印ミス）」を早期発見するツールとしては機能する。
+【導入の真価】 本手法の目的は、製品品質の保証ではなく、**「T1トライの純度を高めること」**にある。 事前に金型起因の物理的な不具合（カジリリスクや形状不備）を排除しておくことで、T1トライ時は「射出条件の調整」のみに集中でき、原因切り分けの迅速化とトライ回数の削減（リードタイム短縮）が期待できる。
+【運用・費用対効果】 全型実施は準備・清掃工数の観点からメリットが薄い。 「新規の複雑構造型」や「大掛かりな改修時」に限定し、かつ安全面から**「外部委託（サイタ製作所等）」を活用する**スポット運用が妥当である。
+2. 「射出成形機」と「手動ワックス」のギャップ分析
+本番（T0）の結果を予測する上で、プロセスの違いが検証結果にどう影響するか（ノイズとなるか）を分析した。
+比較項目
+①本番（射出成形機）
+②今回（手動ワックス）
+発生するギャップ（検証時のノイズ）
+型締め力
+数十～数百トン （均一・高圧）
+万力・クランプ （不均一・低圧）
+「偽のバリ」が発生する。 手動でバリが出ても、それは金型精度の悪さではなく、単に型が開いただけの可能性が高い。
+射出圧力
+高圧・高速充填
+人力・低速充填
+「偽のショート」が発生する。 ガスは抜けやすいが、圧不足で末端まで入らない。 → ガスベントの要否判定には使えない。
+離型・突出し
+エジェクタプレート （垂直・均一動作）
+ハンマー等 （手動打撃）
+「偽のカジリ」が発生する。 ピンを斜めに叩くことで生じるカジリや、ピン跡の変形（めり込み）が起きる可能性がある。
+材料物性
+溶融樹脂 （高粘度・収縮大）
+ワックス （低粘度・収縮小）
+「ヒケ・ソリ・寸法」は相関しない。 樹脂特有の「ガス焼け」「ウェルドライン」も再現しない。
+3. T0トライへの有用性評価（○×判定）
+上記のギャップを踏まえ、本手法が「何に使えて、何に使えないか」を明確化する。
+✅ 使える（有用である）項目：金型品質の担保
+入れ子の「組み間違い」や「刻印ミス」の発見: 入れ子の誤組付や、鏡文字で見にくい刻印の文字間違い（スペルミス）・加工漏れ等は、ワックスに転写させることで、金型直視よりも確実に発見できる。
+PLの「大きな」段差・隙間: ワックスが「膜状（バリ）」ではなく「塊」として漏れるレベルの隙間は、本番でも確実に大バリとなるため修正判断に使える。
+アンダーカット（抜き勾配不足）の兆候: ワックスですら離型時に抵抗がある（カジる）箇所は、樹脂では致命的（金型破損）になるため、修正必須の判断材料となる。
+❌ 使えない（判断を誤る）項目：製品品質の判定
+成形品の「ヒケ・反り」: これらは樹脂温度と保圧条件に依存するため、ワックスで評価しても無意味である。
+微細なバリ（Flash）の有無: 手動の締め付け不足によるバリか、金型精度によるバリか判別不能。これを根拠に金型を修正すると、逆に「食い切り」がきつくなりすぎて型破損を招く恐れがある。
+ショートショット・ガスベント: 手動では圧力が足りず入らないだけの場合が多い。
+4. 実践検証：非接触測定機によるデータ照合結果
+今回持ち帰ったワックス成形品に対し、社内の非接触測定機（3Dスキャナ）を用いて製品3Dデータとの比較検証を行った。
+【検証方法】
+測定対象: 手動ワックス成形品
+使用機器: 非接触3次元測定機（[機種名などがあれば記載]）
+手法: 3Dスキャンデータを取得し、製品設計CADデータとベストフィット（重ね合わせ）させ、カラーマップで偏差を表示。
+【検証結果】
+検証項目
+測定・解析結果
+判定
+考察
+① 形状・加工漏れ
+カラーマップ上で、設計データにあるボス形状とワックス形状が一致。未加工部位がないことを確認。
+有効
+金型を目視するよりも、データ照合することで「加工忘れ」を一発で発見できる。
+② 刻印・文字
+ワックス表面のスキャン画像により、微細な文字のスペルミスがないことを鮮明に確認。
+有効
+金属光沢のある金型面では見落としやすい刻印ミスも、ワックス（無光沢）であれば視認性が高く、スキャンでも明確に形状が出る。
+③ 入れ子・PL段差
+PLライン周辺に [ 0.0X ] mm の段差反応あり。（※今回のワックス特有のバリ含む）
+条件付有効
+大きな段差はカラーマップで「赤/青」として明確に出るため、T0前に修正指示が可能。
+④ 全体寸法・反り
+全体的に [ -0.X ] % 程度の縮小傾向が見られた。
+参考外
+ワックスと樹脂の収縮率の違いであり、このデータを寸法補正には使用できない。
+【測定における結論】 寸法測定としては機能しないが、**「形状の正誤確認（加工漏れ、間違い探し）」**においては、3Dスキャンとの組み合わせが極めて強力なツールとなることが実証された。
+5. 費用対効果（ROI）と工数検証
+コスト（投資）:
+準備・後始末工数: [  ] 時間 特に**「試験後の金型清掃（ワックス除去）」**に多大な時間を要する。除去不十分は本番成形での異物混入（コンタミ）リスクに直結する。
+実施工数: [  ] 時間（加温待ち～実施）
+外注費: [  ] 円
+ベネフィット（効果）:
+T0手戻り削減: 「致命的なミス（型破損レベル）」があった場合のみ、数百万円規模の効果がある。
+T1トライの効率化: 金型起因の問題が排除されているため、トライ時に「条件出し」のみに集中でき、原因究明が早まる。
+判定: 全型実施はROIが低い。「スライド機構が複雑で、型破損リスクが高い金型」に限定すれば、保険としてのROIは合う。
+6. 安全面・運用面の課題（社内展開の可否）
+今後、モールド仕上げを担当する予定の作業者（プレス・研削担当者）が社内で実施する場合の懸念点。
+火傷・安全リスク: 安全扉のない状態で、高熱のワックスを顔の近くで扱うリスクが高い。万が一の「ノズルバック（噴き出し）」が発生した場合、重大災害につながる。
+作業環境: ワックスの溶解臭、ミストが発生するため、局所排気装置が必須となる。
+5S・品質への影響: 飛び散ったワックスによる転倒リスクや、金型内残留による成形不良リスクを完全に排除することは困難。
+結論: 現状の「ハンディ・手動方式」を社内の仕上げ工程に標準導入するのは、安全衛生および品質管理の観点から 非現実的（推奨しない） である。
+7. 最終的な着地点（Proposal）
+本検証の結果、以下の通り提案する。
+社内標準プロセスとしては導入しない
+安全面および清掃工数の観点から、社内設備としての導入は見送る。
+「リスクが高い特殊金型」に限り、外注（サイタ製作所等）を活用する
+新規の複雑構造や大掛かりな改修時は、T0前の保険として外部委託を行う。
+目的は「製品寸法の確認」ではなく、**「金型動作と形状の保証」**に絞る。
+期待される効果
+T1トライの際に起こる不具合現象に対し、「金型形状の問題」が事前に排除されているため、「射出条件に問題がある」等の原因究明が迅速化する。
+これにより、仕上げ担当者が自信を持って次工程（成形）へ金型を引き渡すことができる。
+以上
