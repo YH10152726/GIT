@@ -1,77 +1,128 @@
-TS設定シート 仕様・運用方針の決定
+Option Explicit
 
-目的: 天川さんより提起された懸念事項の解決と、ツール仕様の確定
+Sub CountAndFillParameters()
+    Dim ws As Worksheet
+    Dim sheetNames As Variant
+    Dim sName As Variant
+    Dim i As Long
+    Dim colPartNo As String, colName As String, colQty As String
+    
+    ' --- 集計用変数の定義 ---
+    Dim cntEPin As Double       ' Eピン本数
+    Dim cntORing As Double      ' Oリング個数
+    Dim cntCavity As Double     ' キャビ部品個数
+    Dim cntCore As Double       ' コア部品個数
+    Dim cntPurchase As Double   ' 購入品個数
+    Dim cntSlide As Double      ' スライド個数
+    Dim cntAll As Double        ' 全部品個数
+    Dim cntNipple As Double     ' ニップル個数
+    Dim cntBaffle As Double     ' バッフル個数
+    
+    ' --- 入力シート名の定義 ---
+    sheetNames = Array("入力用 (1)", "入力用 (2)", "入力用 (3)")
+    
+    ' ==========================================
+    ' 1. 3つのシートを巡回して集計
+    ' ==========================================
+    For Each sName In sheetNames
+        ' シートが存在するかチェック
+        On Error Resume Next
+        Set ws = ThisWorkbook.Worksheets(sName)
+        On Error GoTo 0
+        
+        If Not ws Is Nothing Then
+            ' --- ヘッダー位置による列判定 ---
+            ' B1に「品番」が含まれていればパターン1(B,C,F)、そうでなければパターン2(C,D,G)と仮定
+            If InStr(ws.Range("B1").Value, "品番") > 0 Then
+                colPartNo = "B"
+                colName = "C"
+                colQty = "F"
+            Else
+                colPartNo = "C"
+                colName = "D"
+                colQty = "G"
+            End If
+            
+            ' --- 2行目から51行目までループ ---
+            Dim pNoVal As Variant   ' 品番
+            Dim pName As String     ' 品名
+            Dim pQty As Double      ' 所要数
+            
+            For i = 2 To 51
+                pNoVal = ws.Range(colPartNo & i).Value
+                pName = StrConv(ws.Range(colName & i).Value, vbWide) ' 全角統一
+                pName = UCase(pName) ' 大文字統一
+                pQty = Val(ws.Range(colQty & i).Value) ' 空白や文字は0扱い
+                
+                If pQty > 0 Then
+                    ' 全部品カウント
+                    cntAll = cntAll + pQty
+                    
+                    ' --- A. 品番による分類 (数値の場合のみ) ---
+                    If IsNumeric(pNoVal) And pNoVal <> "" Then
+                        Dim pNo As Long
+                        pNo = CLng(pNoVal)
+                        
+                        Select Case pNo
+                            Case 1 To 199
+                                cntPurchase = cntPurchase + pQty
+                            Case 200 To 299
+                                cntCavity = cntCavity + pQty
+                            Case 300 To 399
+                                cntCore = cntCore + pQty
+                        End Select
+                    End If
+                    
+                    ' --- B. 品名キーワードによる分類 ---
+                    ' Eピン
+                    If InStr(pName, "E-PIN") > 0 Or InStr(pName, "Ｅ－ＰＩＮ") > 0 Or InStr(pName, "Ｅピン") > 0 Then
+                        cntEPin = cntEPin + pQty
+                    End If
+                    
+                    ' Oリング
+                    If InStr(pName, "O-RING") > 0 Or InStr(pName, "Ｏリング") > 0 Then
+                        cntORing = cntORing + pQty
+                    End If
+                    
+                    ' スライド関連 (スライドコア、スライドブロック等)
+                    If InStr(pName, "スライド") > 0 Or InStr(pName, "アンギュラ") > 0 Then
+                        cntSlide = cntSlide + pQty
+                    End If
+                    
+                    ' ニップル
+                    If InStr(pName, "ニップル") > 0 Or InStr(pName, "NIPPLE") > 0 Then
+                        cntNipple = cntNipple + pQty
+                    End If
+                    
+                    ' バッフル
+                    If InStr(pName, "バッフル") > 0 Or InStr(pName, "BAFFLE") > 0 Then
+                        cntBaffle = cntBaffle + pQty
+                    End If
+                End If
+            Next i
+        End If
+        Set ws = Nothing
+    Next sName
+    
+    ' ==========================================
+    ' 2. 集計結果を指定セルへ出力
+    ' ==========================================
+    ' ※ 出力先シートがアクティブである前提です。
+    ' ※ 画像の並びに合わせています。出力列は「B列」と仮定しています。
+    '    必要に応じて Range("B40") などを変更してください。
+    
+    With ActiveSheet
+        .Range("B40").Value = cntEPin       ' Eピン本数
+        .Range("B41").Value = cntORing      ' Oリング個数
+        .Range("B42").Value = cntCavity     ' キャビ部品個数
+        .Range("B43").Value = cntCore       ' コア部品個数
+        .Range("B44").Value = cntPurchase   ' 購入品個数
+        .Range("B45").Value = cntSlide      ' スライド個数
+        .Range("B46").Value = cntAll        ' 全部品個数
+        .Range("B47").Value = cntNipple     ' ニップル個数
+        .Range("B48").Value = cntBaffle     ' バッフル個数
+    End With
+    
+    MsgBox "品目集計とパラメータ入力を完了しました。", vbInformation, "完了"
 
-1. 提起された課題と解決方針
-
-メールにて頂いた以下の懸念事項に対し、「部品表活用による自動化」ですべて対応します。
-No.	天川さんからの懸念・確認事項	本会議での解決策（回答）
-①	「部品点数が多く、1点ずつの入力は対応が厳しそう」	手入力を廃止します。
-
-システムから出力した部品表データを読み込み自動集計する仕様に変更し、工程作成者の負荷をゼロにします。
-②	「目的は『明確化（根拠）』と『簡素化』である」	両立させます。
-
-「部品表にスライドが〇個あるから」という客観的な根拠を元に、自動計算で簡素に結果を出します。
-③	「重量係数は仕上げ工程に必要ないのでは？」	削除します。
-
-仕上げ工数は「重量」ではなく「構造と個数」に依存するため、算出ロジックから除外します。
-④	「Dr（工程管理）の指示方法は現状維持したい」	維持します。
-
-ツールで詳細に計算した結果を、Drの既存区分（組立・調整）に振り分けてます。
-
-
-2. 新ツールの運用フロー（工程作成者の作業）
-
-これまでの「考えて入力する」作業をなくし、品目表を読み込んで自動化します。
-1. データ取得: 部品表を読み込む。
-2. サイズ選択: 「型クラス（60t、100t等）」を選ぶ。 ⇒ これだけで見積もりを完了させます。
-
-
-
-3. 算出ロジックの定義（本日の決定事項）
-
-総時間は 「①ベース工数（固定）」＋「②部品連動工数（変動）」 で算出します。
-
-① ベース工数（型サイズ連動）
-
-部品数に関わらず必ず発生する固定作業（受入・開梱・洗浄・基本組立・梱包など）
-* 60tクラス: [ 20.0 ] H （仮）
-* 100tクラス: [ 30.0 ] H （仮）
-
-② 部品連動工数（自動カウント）
-
-部品表の「品名」を検索し、個数をカウントして積算する
-対象作業	検索キーワード（BOM上の名称）	設定単価 (1個/本あたり)
-スライド機構 組立・調整	スライド, Slide, S・C	[ 3.0 ] H
-傾斜コア	傾斜,	[ 4.0 ] H
-突出しピン・スリーブ	Eピン, スリーブ	[ 0.1 ] H (6分)
-水管・継手 組付け	ニップル, バッフル	[ 0.2 ] H (12分)
-アンギュラピン	アンギュラ	[ 0.5 ] H (30分)
-プレート類 点検・清掃	UPP,コアプレート,キャビティプレート	[ 0.5 ] H (30分)
-		[ 0.01 ] H
-
-
-4. 設計（型技）部門との連携について
-
-本ツールの精度は「部品名称の統一」に依存します。
-* 課題: 図面によって「スライド」「S・C」など表記揺れがあると集計漏れが発生する。
-* 対策: 12月より型技係へ異動する[あなたの名前]が、設計側での「部品名称統一ルール」の策定と定着を推進します。
-
-
-
-会議進行スクリプト（あなたの発言用）
-
-Step 1: 懸念への回答（冒頭で安心させる）
-「天川さんから頂いたメールの懸念点、特に『入力が大変すぎる』『でも根拠は欲しい』という点について、最適解を作成しました。
-結論として、**『部品表をコピペして自動計算させるツール』**にします。
-これなら、工程作成担当の方は品目表を貼り付けるだけですし、中身は『部品の個数』に基づいて計算されるので、根拠も明確です。」
-Step 2: 不要項目の削除確認
-「また、ご指摘の通り『重量係数』は仕上げ作業の実態に合わないため削除します。Drの指示方法も変えず、ツール側がDrに合わせて『組立』『調整』の合計時間を出すように作ります。」
-Step 3: 単価の決定（ここだけ議論する）
-「仕組みはこれで確定として、中身の数字を決めさせてください。
-資料3番の表ですが、私の感覚で仮の数字を入れています。
-スライド1個につき3時間、ピン1本につき6分。 この設定で、皆さんの肌感覚と大きくズレていないか確認してください。」
-Step 4: 未来への布石
-「最後に資料4番です。このツールは設計図面の『部品名』が命です。
-来月から私は型技に行きますので、私が責任を持って『部品名の書き方を統一するルール』を設計側で作ります。
-製造と設計が連携できる仕組みとして、このツールを完成させましょう。」
+End Sub
