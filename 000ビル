@@ -1,128 +1,33 @@
-Option Explicit
+目標③「変化に追従できる協力体制の構築」
+目標項目名： モールド仕上げ技能伝承における「進捗管理体制の確立」と「教育生産性の変革」
+目標修正の背景： 現在、業務リソースの約40%（毎日3時間）を後任育成に充当しており、当初目標の「MCスキル習得」よりも「後任の独り立ち」が組織的急務となっています。この教育業務を、単なる作業指導ではなく、班長連携を含めた「管理されたプロジェクト」として遂行し、確実な成果（自立）と効率化（時短）を目指します。
+評価基準
+• ★★★（達成）：計画通りの教育遂行と後任の自立
+◦ 【結果】 3月末までに、後任者がモールド仕上げの主要作業（組込み・分解等）を、指導者の補助なしで単独完遂できるレベル（理解度80%以上）に到達させる。
+◦ 【遂行】 班長より展開された「教育計画Excel」に基づき、週次・月次の進捗管理を行い、遅延なくカリキュラムを進行させる。
+◦ 【MCスキル】 優先度変更に伴い、MCは基礎（レベル1）の維持・定着とする。
+• ★★★★（超過達成）：3者連携PDCAの確立と指導工数の40%削減
+◦ 【マネジメント品質】 計画Excelのコメント機能を活用し、**「受講者・指導者・班長」の3方向連携（フィードバックループ）を毎週確実に回す運用を定着させる。これにより、後任者の理解不足や悩みを早期発見・解決し、手戻りのない指導を実現する。
+◦ 【生産性向上】 体系的な指導プロセスの導入により、1作業あたりの指導時間を従来の20時間から12時間へ短縮（40%削減）**しつつ、★3と同等の習熟度を実現する。
+◦ ※動画ツールの有無に関わらず、「指導の段取り」と「管理」によって時間を圧縮したことを成果とします。
 
-Sub CountAndFillParameters()
-    Dim ws As Worksheet
-    Dim sheetNames As Variant
-    Dim sName As Variant
-    Dim i As Long
-    Dim colPartNo As String, colName As String, colQty As String
-    
-    ' --- 集計用変数の定義 ---
-    Dim cntEPin As Double       ' Eピン本数
-    Dim cntORing As Double      ' Oリング個数
-    Dim cntCavity As Double     ' キャビ部品個数
-    Dim cntCore As Double       ' コア部品個数
-    Dim cntPurchase As Double   ' 購入品個数
-    Dim cntSlide As Double      ' スライド個数
-    Dim cntAll As Double        ' 全部品個数
-    Dim cntNipple As Double     ' ニップル個数
-    Dim cntBaffle As Double     ' バッフル個数
-    
-    ' --- 入力シート名の定義 ---
-    sheetNames = Array("入力用 (1)", "入力用 (2)", "入力用 (3)")
-    
-    ' ==========================================
-    ' 1. 3つのシートを巡回して集計
-    ' ==========================================
-    For Each sName In sheetNames
-        ' シートが存在するかチェック
-        On Error Resume Next
-        Set ws = ThisWorkbook.Worksheets(sName)
-        On Error GoTo 0
-        
-        If Not ws Is Nothing Then
-            ' --- ヘッダー位置による列判定 ---
-            ' B1に「品番」が含まれていればパターン1(B,C,F)、そうでなければパターン2(C,D,G)と仮定
-            If InStr(ws.Range("B1").Value, "品番") > 0 Then
-                colPartNo = "B"
-                colName = "C"
-                colQty = "F"
-            Else
-                colPartNo = "C"
-                colName = "D"
-                colQty = "G"
-            End If
-            
-            ' --- 2行目から51行目までループ ---
-            Dim pNoVal As Variant   ' 品番
-            Dim pName As String     ' 品名
-            Dim pQty As Double      ' 所要数
-            
-            For i = 2 To 51
-                pNoVal = ws.Range(colPartNo & i).Value
-                pName = StrConv(ws.Range(colName & i).Value, vbWide) ' 全角統一
-                pName = UCase(pName) ' 大文字統一
-                pQty = Val(ws.Range(colQty & i).Value) ' 空白や文字は0扱い
-                
-                If pQty > 0 Then
-                    ' 全部品カウント
-                    cntAll = cntAll + pQty
-                    
-                    ' --- A. 品番による分類 (数値の場合のみ) ---
-                    If IsNumeric(pNoVal) And pNoVal <> "" Then
-                        Dim pNo As Long
-                        pNo = CLng(pNoVal)
-                        
-                        Select Case pNo
-                            Case 1 To 199
-                                cntPurchase = cntPurchase + pQty
-                            Case 200 To 299
-                                cntCavity = cntCavity + pQty
-                            Case 300 To 399
-                                cntCore = cntCore + pQty
-                        End Select
-                    End If
-                    
-                    ' --- B. 品名キーワードによる分類 ---
-                    ' Eピン
-                    If InStr(pName, "E-PIN") > 0 Or InStr(pName, "Ｅ－ＰＩＮ") > 0 Or InStr(pName, "Ｅピン") > 0 Then
-                        cntEPin = cntEPin + pQty
-                    End If
-                    
-                    ' Oリング
-                    If InStr(pName, "O-RING") > 0 Or InStr(pName, "Ｏリング") > 0 Then
-                        cntORing = cntORing + pQty
-                    End If
-                    
-                    ' スライド関連 (スライドコア、スライドブロック等)
-                    If InStr(pName, "スライド") > 0 Or InStr(pName, "アンギュラ") > 0 Then
-                        cntSlide = cntSlide + pQty
-                    End If
-                    
-                    ' ニップル
-                    If InStr(pName, "ニップル") > 0 Or InStr(pName, "NIPPLE") > 0 Then
-                        cntNipple = cntNipple + pQty
-                    End If
-                    
-                    ' バッフル
-                    If InStr(pName, "バッフル") > 0 Or InStr(pName, "BAFFLE") > 0 Then
-                        cntBaffle = cntBaffle + pQty
-                    End If
-                End If
-            Next i
-        End If
-        Set ws = Nothing
-    Next sName
-    
-    ' ==========================================
-    ' 2. 集計結果を指定セルへ出力
-    ' ==========================================
-    ' ※ 出力先シートがアクティブである前提です。
-    ' ※ 画像の並びに合わせています。出力列は「B列」と仮定しています。
-    '    必要に応じて Range("B40") などを変更してください。
-    
-    With ActiveSheet
-        .Range("B40").Value = cntEPin       ' Eピン本数
-        .Range("B41").Value = cntORing      ' Oリング個数
-        .Range("B42").Value = cntCavity     ' キャビ部品個数
-        .Range("B43").Value = cntCore       ' コア部品個数
-        .Range("B44").Value = cntPurchase   ' 購入品個数
-        .Range("B45").Value = cntSlide      ' スライド個数
-        .Range("B46").Value = cntAll        ' 全部品個数
-        .Range("B47").Value = cntNipple     ' ニップル個数
-        .Range("B48").Value = cntBaffle     ' バッフル個数
-    End With
-    
-    MsgBox "品目集計とパラメータ入力を完了しました。", vbInformation, "完了"
+行動計画（コアバリューに基づくプロセス評価）
 
-End Sub
+かえる（Change）：指導プロセスの変革
+• 【現状】 従来のOJTは、その場の状況任せで「つきっきり指導」を行うため時間がかかり、進捗も不透明だった。
+• 「計画Excel」を用いた「期限からの逆算思考」に基づく指導へ変革した。限られた時間（業務の40%）の中で最大の成果を出すため、漫然とした指導を排除し、ポイントを絞った高密度な教育プロセスを確立した。
+
+つながる（Connect）：3方向連携による組織的育成
+• 【連携】 計画Excelを単なる報告ツールで終わらせず、「受講者の気づき」「指導者のフィードバック」「班長の承認・助言」をつなぐコミュニケーションハブとして機能させた。
+•  班長を巻き込むことで、指導者個人の抱え込みを防ぎ、組織全体で後任者の成長をバックアップする体制を構築した。
+
+ささえる（Support）：再現性のある教育基盤
+• 【資産化】 Excel上に蓄積された週次の指導記録とフィードバック履歴は、後任者自身の振り返り資料となるだけでなく、次の指導者が参照できる「教育ログ（組織資産）」として残した。
+•  受講者自身にコメントを書かせる運用により、「教えられる受け身の姿勢」から「自ら課題を見つける姿勢」への意識変革を支えた。
+
+面談等で「動画作成（目標④）」や「班長Excel（既存ツール）」との兼ね合いを聞かれた際は、以下のロジックで説明
+「目標④は『良い教科書（動画）』を作ることですが、この目標③は『（マネジメント）』の評価です。」
+「目標③では、班長から頂いた『計画Excel』という枠組みを形骸化させず、最大限に活用して『人を確実に、かつ短期間で育てる運用』を行った点を評価していただきたいです。
+具体的には、Excel上の『私・後輩・班長』の3者コメント交換を徹底し、悩みの早期解決と進捗の見える化を行っています。このPDCAサイクルを回すことで、無駄な再指導をなくし、結果として指導時間を40%削減（20時間→12時間）**するという『生産性の高い教育』を実現します。
+道具（動画やExcel）があることと、それを使って成果を出すことは別物です。私は『運用の質と結果』で★4を目指します。」
+「計画性」「巻き込み力（リーダーシップ）」「数値成果（工数削減）」という、S職（プロフェッショナルコース）として相応しいマネジメント能力をアピール。
