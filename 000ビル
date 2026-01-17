@@ -173,3 +173,152 @@ Private Sub AddPolishingAndCoating(ws As Worksheet, ByRef currentRow As Long, in
     
     ' ... (以降の処理はそのまま) ...
 End Sub
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Public Sub AddNextProcessInterval()
+    Const SHEET_NAME As String = "工程表" ' 対象シート名
+    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
+    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
+    Const START_ROW As Long = 2 ' データ開始行
+    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
+    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
+    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
+    Const END_MARKER As String = "END" ' データ終了マーカー
+
+    Dim ws As Worksheet
+    Dim wsSettings As Worksheet
+    Dim lastRow As Long
+    Dim blockStartRow As Long
+    Dim blockEndRow As Long
+    Dim i As Long
+    Dim intervalValue As Long
+    Dim valFromCell As Variant
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
+    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
+    On Error GoTo 0
+    
+    If ws Is Nothing Then
+        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+    If wsSettings Is Nothing Then
+        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+
+    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
+
+ 
+    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
+        MsgBox "「" & SETTINGS_SHEET_NAME & "」の " & INTERVAL_CELL & " セルに、" & vbCrLf & _
+               "次工程間隔として有効な正の数値を入力してください。", vbCritical, "設定エラー"
+        Exit Sub
+    End If
+    
+    
+    intervalValue = CLng(valFromCell)
+
+    Application.ScreenUpdating = False
+
+ 
+    lastRow = ws.Columns(COL_ITEM_NAME).Find(What:=END_MARKER, LookIn:=xlValues, LookAt:=xlWhole).Row
+
+ 
+    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
+
+  
+    blockStartRow = START_ROW
+
+    For i = START_ROW To lastRow
+        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
+            
+            blockEndRow = i - 1
+            
+            If blockEndRow >= blockStartRow Then
+                Call ProcessSingleBlock(ws, blockStartRow, blockEndRow, COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue)
+            End If
+            
+            blockStartRow = i
+        End If
+    Next i
+    
+    Application.ScreenUpdating = True
+    MsgBox "次工程間隔（" & intervalValue & "）の入力を完了しました。", vbInformation
+End Sub
+
+
+Private Sub ProcessSingleBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
+                               ByVal processCol As String, ByVal outputCol As String, ByVal valueToSet As Long)
+    
+    Dim i As Long
+    Dim currentProcess As String
+    Dim nextProcess As String
+    Dim hasShotBlast As Boolean
+    
+    hasShotBlast = False
+    For i = startRow To endRow
+        If Trim(CStr(ws.Cells(i, processCol).Value)) = "ｼｮｯﾄﾌﾞﾗｽﾄ" Then
+            hasShotBlast = True
+            Exit For
+        End If
+    Next i
+    
+    For i = startRow To endRow - 1
+        currentProcess = Trim(CStr(ws.Cells(i, processCol).Value))
+        nextProcess = Trim(CStr(ws.Cells(i + 1, processCol).Value))
+        
+        If currentProcess <> nextProcess Then
+            
+            If currentProcess = "磨き" Then
+                If hasShotBlast = False Then
+                    ws.Cells(i, outputCol).Value = valueToSet
+                End If
+                
+            ElseIf IsExcludedProcess(currentProcess) Then
+                
+            Else
+                ws.Cells(i, outputCol).Value = valueToSet
+            End If
+            
+        End If
+    Next i
+End Sub
+
+
+Private Function IsExcludedProcess(ByVal processName As String) As Boolean
+    IsExcludedProcess = False
+    
+    Select Case Trim(processName)
+        Case "主材購入", "穴あけﾀｯﾌﾟ", "熱処理"
+            IsExcludedProcess = True
+    End Select
+End Function
+
