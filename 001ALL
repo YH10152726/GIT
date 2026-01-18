@@ -1,141 +1,629 @@
-1. 背景と現状の課題					
-　射出成形金型の製造プロセスにおいて、金型加工完了から初回成形（T1トライ）への移行フェーズは、製品開発のリードタイムとコストに直結					
-　するクリティカルパスである。従来、このフェーズでは高価な量産用樹脂を用いた実機トライによって初めて金型の不具合が顕在化していた。					
-　しかし、これら不具合の多く（加工漏れ、単純な形状ミス、ガスベントの未加工、PLの密着不良）は、本来「成形プロセス」の問題ではなく「金型精度」					
-　の問題である。高コストな成形機と樹脂を使って「金型の静的精度」を確認している現状は、リソースの浪費である。結果として金型の修正・分解・					
-　再組立という工数とコストロスが発生していた。					
-					
-　この課題に対し、GEFIE（ゲフィー）金型試験機GF-1型を用いた「手動ワックス成形」をT1前の検証手段として導入することを提案するものである。					
-　この手法は、低圧・低温で溶融する特殊ワックスを金型に注入することで、成形機を使用せずに金型のキャビティ形状や機構を確認するものである。   					
-					
-1.2 目的と範囲					
-　本報告は、「ワックス成形による金型検証」の有効性と限界を、分析・検証することを目的とする。特に、量産樹脂として指定されているガラス繊維					
-　30%強化ポリブチレンテレフタレート（PBT-GF30）と、検証用ワックス（パラフィン基材）との間の物理的挙動の相関性を明確化する。					
-					
-2. 流動特性と充填検証の限界					
-　ワックス成形の結果を量産樹脂の挙動予測に適用するためには、両者の流動特性の差異を明確にする必要がある。					
-2.1 粘度挙動とせん断速度依存性					
-　パラフィンワックス（ニュートン流体挙動）GEFIE専用ワックス（LJ832B）は、パラフィンワックスを主成分とする混合物である。一般的な鋳					
-　造用ワックスの粘度は、成形温度（約85℃）において10～25ｍPa・s の範囲にある。これは常温の水（約 1mPa・s）や軽質の機械油に近い極め					
-　て低い値である。特筆すべきは、溶融状態のワックスがニュートン流体に近い挙動を示す点である。すなわち、その粘度はせん断速度に依存せ					
-　ず、一定である。この特性により、ワックスはわずか0.4MPa の低圧下でも、金型の微細な隙間や流動末端まで、抵抗なく浸透することが可能となる。					
-　対して、量産樹脂であるPBT-GF30（Novaduran 5817GN2-30）は、ガラス繊維を含む結晶性プラスチックであり、溶融状態では非ニュートン流体					
-　としての挙動を示す。そのゼロせん断粘度は100~1000Pa・s(100000~1000000mPa・s)に達し、ワックスと比較して4〜5桁も高い。樹脂の流動は、					
-　せん断速度の増加に伴い粘度が低下する特性を持つため、高速射出によるせん断発熱と粘度低下を利用して充填させる必要がある					
-					
-【判定不可な現象】速度と勢いが原因の現象					
-　ジェッティング：ワックスは射出時の勢いがないため、ジェッティングを起こしやすいかどうかの判定は不可能。					
-　フローマーク ：樹脂が「滑ったり止まったり」を高速で繰り返す不安定流動。一定粘度のワックスでは発生しない。					
-【判定可能】形状と流路に依存する現象					
-　ウェルドラインの発生位置：樹脂の流れが合流する場所。					
-　エアトラップの場所：最終充填位置。					
-					
-2.2 充填メカニズム					
-ワックスの充填（バルク流動）					
-　低圧で射出されるワックスは、金型壁面での急激な固化層（スキン層）形成を伴わず、流体塊（バルク）として空気を置換しながらキャビティ内					
-　を満たしていく。熱伝導率が低く、流動先端が停止しにくい。					
-樹脂の充填（ファウンテンフロー）					
-　PBT-GF30のような熱可塑性樹脂は「ファウンテンフロー（噴水流）」と呼ばれるメカニズムで充填される。高温の樹脂が流路の中心を通り、					
-　流動先端から金型壁面へと押し広げられ、瞬時に冷却されて固化層（スキン層）を形成する。このスキン層の形成が流路断面積を狭め、流動抵抗を					
-　増大させる。					
-					
-					
-					
-					
-					
-			（出典：イオ インダストリー株式会社. "フローマークの発生メカニズム". 技術情報. https://www.io-industry.co.jp/technology/3057/, (参照 2026-01-07).）		
-【ショートショットの判定】					
-　ヘジテーション現象: リブなどの薄肉部において、樹脂の流動が一時的に滞留すると、スキン層が成長して流路を閉塞させる「ヘジテーション」が					
-　発生しやすい。ワックスはスキン層形成が遅いため、樹脂ではショートするような薄肉部でも充填できてしまう。					
-　ワックスの充填は、キャビティ空間の物理的な存在を証明するものではあるが、樹脂成形における流動性（充填可能性）を保証するものではな					
-　い。特に薄肉リブ等では、樹脂特有の熱的固化によるショートショット（ヘジテーション）が発生する可能性があることに留意が必要である。					
-3. 寸法・変形における非相関性					
-3.1 等方性収縮と異方性収縮					
-　ワックスの等方性収縮 ：ワックス（フィラーなし、または微細フィラー）の収縮は、液体から固体への変化に伴う体積の減少と、熱収縮によって					
-　支配される。繊維状の強化材を含まないため、分子配向による収縮率の指向性はほとんどなく、全方向に均一（等方性）に収縮する。収縮率は約					
-　0.5%とされる。   					
-　PBT-GF30の異方性収縮  ：PBT-GF30はガラス繊維（GF）によって強化されている。射出成形時、ガラス繊維は流動方向に沿って配向する性質を					
-　持つ。					
-					
-					
-					
-					
-					
-					
-		（出典：東レエンジニアリングDソリューションズ株式会社. "FRPなどの複合材、成形に不可欠なのは？". 3D TIMON 事例・トレンド. https://www.3dtimon.com/case/trends/trends04.html, (参照 2026-01-07).)			
-【反りの発生判定】					
-　樹脂成形品の反りは、このMD方向とTD方向の収縮率差（異方性）、および肉厚差による冷却速度の不均一に起因する残留応力が解放されること					
-　で発生する。ワックスにはこの「繊維配向による異方性」が存在しないため、PBT-GF30特有の反り挙動（ねじれ、反り返り）を再現することは					
-　物理的に不可能である。					
-					
-3.2 保圧工程の欠如					
-　射出成形の寸法精度を決定づける重要な工程に「保圧」がある。キャビティ充填後、50〜100 MPaの高圧を維持し、冷却収縮分を補うように樹脂					
-　を押し込むことで、ヒケを防止し寸法を安定させる。 GEFIE等の手動ワックス成形機は、射出圧力が約0.4 MPaと極めて低く、またゲートシール					
-　までの保圧制御機能を持たない。したがって、ワックス成形品は「自由収縮」に近い状態で固化する。   					
-					
-【寸法の判定】					
-　ワックス成形品は、保圧された樹脂成形品と比較して、ボイド（気泡）やヒケが顕著に発生し、全体寸法も小さくなる傾向がある。このことから					
-　ワックス品を寸法の判定には使用するべきではない。					
-					
-					
-4. 機構・合わせ精度の検証有効性					
-4.1 パーティングライン（PL）の再現性とバリ					
-　樹脂では発生しない微細な合わせ隙間にもワックスが流入し、膜状のバリを形成した。					
-　流体が隙間に侵入できる限界は、流体の降伏応力と表面張力に依存する。溶融ワックスは降伏応力がほぼゼロであり、表面張力も低いため、圧力					
-　が加われば数ミクロン（0.005mm程度）の隙間にも侵入する。一方、PBT-GF30は溶融粘度が高く、隙間に入ろうとすると即座に冷却固化して					
-　シール効果を発揮するため、0.01〜0.02mm程度の隙間ではバリになりにくい。   					
-					
-【バリ発生の判定】					
-　ワックスでバリが出ることは、必ずしも「樹脂でもバリが出る」ことを意味しない。しかし、これは「金型の合わせ精度（当たり）」を検証する					
-　上では極めて有用な感度増幅テストとして機能する。ワックスが漏れる箇所は、金型の密着圧が不足しているか、加工精度が出ていない箇所であ					
-　り、将来的な樹脂バリ発生のリスクが高いエリアであると判断できる。					
-　「ワックスでバリが出た＝即金型修正」ではなく、「ワックスのバリはPLの密着不良箇所を示唆するインジケータであり、その箇所のクリアラン					
-　ス測定を経て修正要否を判断する」というフローを推奨する。					
-					
-4.2 ガス逃げ（エアトラップ）と断熱圧縮					
-　樹脂成形におけるガス焼け 高速射出（充填時間0.5〜2秒程度）される樹脂は、キャビティ内の空気を瞬時に排気する必要がある。逃げ場のない空					
-　気は流動末端で急激に圧縮され、その温度は数百℃に達して樹脂を炭化させる（ガス焼け、ディーゼル燃焼）。   					
-　ワックス成形におけるエア噛み 低速・低圧で充填されるワックスは、空気を断熱圧縮するほどのエネルギーを持たない。エアトラップ箇所は単な					
-　る「未充填（ボイド）」や「気泡」として現れる。   					
-					
-					
-					
-					
-					
-					
-		（出典：株式会社関東製作所. "射出成形における不具合『ショートショット』の発生原因と対策方法". MFG Hack. https://mfg-hack.com/injection-molding/8213/, (参照 2026-01-07).)			
-					
-【ガス焼けに対する判定】					
-　ワックス成形品に気泡や欠けがある場所は、エアベントが物理的に不足している「行き止まり」であることを正確に示す。しかし、ワックスがき					
-　れいに充填されたからといって、樹脂成形時の高速排気に十分な断面積を持つベントが確保されている保証はない。					
-　ワックスで充填不良となる箇所はベント追加が必須である。ただし、ワックスが充填できたとしても、樹脂成形時の高速排気に耐えうるかは保証					
-　されないため、最終的なベント深さや幅は樹脂の流動解析や経験値に基づく設計が必要である。					
-					
-4.3 アンダーカットと離型性					
-　アンダーカット疑いのある箇所では、ワックス成形品の一部が欠ける					
-　ワックスは常温で脆く、引張強度が低い。無理な抜き勾配やアンダーカットがあると容易に破断する。PBT-GF30は強靭であるが、無理な離型は					
-　白化や変形、カジリを引き起こす。					
-【離型不良に対する判定】					
-　ワックスの破損は、離型抵抗が高いことを示す。ワックスが割れる箇所は、樹脂成形においても突き出しピンの応力集中やカジリのリスクが高い					
-　箇所であると断定できる。					
-					
-					
-5.要因の切り分け					
-本検証により、ワックスと量産樹脂（PBT-GF30）の物性の違いが明らかになった。この差異に基づき、従来T1トライですべて行っていた検証項目を、					
-以下の通り「形状起因」と「熱・流動起因」に分離するプロセスを提案する。					
-5.1 検証項目の棲み分け					
-検証フェーズ		T0：ワックス検証 (静的検証)		"T1：実機トライ 
-(動的検証)"	
-主な目的		「金型そのもの」の完成度確認		「成形プロセス」の最適化	
-コスト/リスク		低コスト・金型破損リスクなし		高コスト・金型破損リスクあり	
-"判定すべき項目
-(○:判定可能)"		○ 形状・機構の整合性		○ 寸法・反り・収縮	
-		（カジリ、アンダーカット、突き出し）		（PBT特有の異方性対応）	
-		○ ゲート・ベント「位置」の適正		○ 外観品位	
-		（最終充填位置の特定）		（ガス焼け、ジェッティング、フローマーク）	
-		○ PL面の当たり・密着度		○ サイクルタイム短縮	
-		（0.005mmレベルの加工精度確認）		（冷却効率、バリ取り等）	
-"判定できない項目
-(×:判定不可)"		× 寸法公差（収縮率が違うため）		（T0での潰し込みにより、	
-		× 反り・変形（繊維配向がないため）		本来ここで発覚する形状ミスはゼロにする）	
-		× ガス焼け（断熱圧縮しないため）			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+使用しているプロシージャ（175件）の概要、引数、内部ロジック、コードの抜粋 
+使用しているVBAコードの各プロシージャを自然言語に書き換えたものです。
+
+1. 構造体定義 (1件)
+プログラム全体で情報を一貫して管理するための基幹的なデータ設計図です。
+Private Type PreviewProcessItem
+　・概要: プレビュー機能で扱う製造工程情報を定義するユーザー定義型です。
+　・仕様: 工程名、担当業者、各種工数（前段取、有人、機械、後段取）、備考、および編集フラグを1つのグループとして保持します。これにより、配列操作時にデータの整合性を維持しながら、メモリ内で効率的に工程の順序入れ替えや編集内容の追跡を行うことができます。
+　・条件・分岐: 条件分岐はありません。変数の型定義（String, Boolean）に従ってデータが格納されます。
+　・技術的ロジック: VBA の Type 構文を用いて構造体を定義。各要素へのアクセスはドット演算子で行われ、メモリ上の連続した領域にデータを配置し、高速な参照を実行。
+　・コード引用:
+　　processName As String
+　　supplier As String
+　　MaeDandoriTime As String
+　　YujinTime As String
+　　MachineTime As String
+　　GoDandoriTime As String
+　　bikou As String
+　　IsEdited As Boolean
+　　UserEditedGoDandori As String
+　　IsGoDandoriUserEdited As Boolean
+　備考：IsEdited フラグは UpdatePreview プロシージャ内での自動上書きを回避するための判定に使用されます。また、IsGoDandoriUserEdited は、同一工程が連続する際の「段取時間集計ロジック」から、ユーザーが意図的に入力した値を保護するために保持されます。
+
+2. 公開サブプロシージャ (2件)
+外部モジュールやイベントから直接呼び出され、全体の動作をトリガーするエントリポイントです。
+Public Sub RefreshPreviewForActiveCell
+　・概要: 現在選択されているエクセルの行情報をフォームへ同期し、工程のプレビューを再構築します。
+　・仕様: 工程表シートの特定行（targetRowToLoad）から原材料データ（Z仕様、材質、サイズ等）を吸い上げ、フォーム内のテキストボックスやチェックボックスに即座に反映します。
+　・条件・分岐: ターゲット行が 0 以下の場合は、入力コントロールをすべて初期化（クリア）する分岐に入ります。有効な行番号の場合、列定数に基づき値をセルから抽出します。
+　・技術的ロジック: プログラムによる一括変更であることを示すフラグ m_bIsProgrammaticChange を True に設定。これにより、各コントロールの Change イベント内での再帰的なプレビュー更新を抑制しながら値をセットします。
+　・コード引用:
+　　m_bIsProgrammaticChange = True
+　　zColumnValue = Trim(CStr(ws.Cells(targetRowToLoad, COL_Z_INPUT).Value))
+　　materialCode = ws.Cells(targetRowToLoad, COL_AC_INPUT).Value
+　　sizeStr = ws.Cells(targetRowToLoad, COL_AD_SIZE_INPUT).Value
+備考：targetRowToLoad パラメータに基づきセルの値を参照。代入完了後、ParseZColumnInfo 等の解析関数を介して製造ルートの判定基礎を確立し、最終的に UpdatePreview を実行します。
+Public Sub TriggerClickEvent
+　・概要: フォーム上の実行ボタンのクリックイベントを、プログラム内部から強制的に発火させます。
+　・仕様: ボタンオブジェクトの Value プロパティを True に変更することで、ユーザーが物理的にクリックしたのと同等の挙動をシミュレートします。
+　・条件・分岐: 条件分岐はありません。
+　・技術的ロジック: CommandButton オブジェクトの Value プロパティに True を代入。VBAのメッセージループを介さず、関連付けられた _Click ハンドラを直接かつ同期的に呼び出します。
+　・コード引用: Me.CommandButton1.Value = True
+　・備考：設定値が True になると同時に実行が開始されます。主にショートカットキー（F5）や他のモジュールからの自動実行に使用される窓口です。
+
+3. 非公開関数 (10件)
+ロジックの判定や値の計算を担当し、真偽値や文字列を返す内部ロジックです。
+Private Function IsAnyPreviewItemEdited
+　・概要: プレビューリスト内に、ユーザーが手動で修正を加えた項目があるかを全走査して判定します。
+　・仕様: 配列 m_arrPreviewProcesses 内の全ての要素を一つずつスキャンし、各要素の IsEdited メンバの状態を確認します。
+　・条件・分岐: ループ内で IsEdited = True の要素が見つかった瞬間に、戻り値を True にして関数を抜ける早期退出（Early Exit）を行います。
+　・技術的ロジック: 0から m_lPreviewProcessCount - 1 までの線形探索。論理和（OR）的な判定を効率的に実行します。
+　・コード引用:
+　　For i = 0 To m_lPreviewProcessCount - 1
+　　    If m_arrPreviewProcesses(i).IsEdited Then
+　　        IsAnyPreviewItemEdited = True
+　　        Exit Function
+　　    End If
+　　Next i
+　・備考：配列長を上限とするループを実行。この戻り値に基づき、自動更新時の警告ダイアログの表示有無が決定されます。
+Private Function ConfirmAndUpdatePreviewIfEdited
+　・概要: 手動修正されたデータの保護を確認するための対話制御を担当します。
+　・仕様: 編集済み項目が存在する場合にのみ MsgBox を表示し、ユーザーに上書きの許可を求めます。条件・分岐: IsAnyPreviewItemEdited が True の場合、MsgBox の vbYesNo スタイルを表示。戻り値が vbNo であれば False を返し、処理を中断させます。
+　・技術的ロジック: UIとの対話結果を論理値に変換。vbYesNo の定数比較により、後続のプレビュー更新フローを制御。
+　・コード引用:
+　　If IsAnyPreviewItemEdited() Then
+　　    If MsgBox("編集内容を破棄しますか？", vbYesNo) = vbNo Then
+　　        ConfirmAndUpdatePreviewIfEdited = False
+　　        Exit Function
+　　    End If
+　　End If
+　・備考：MsgBox 関数の戻り値が定数 vbNo(7) かどうかで分岐。データの不用意な損失を防ぐ最終ガードレールです。
+Private Function ClassifyPartBasedOnSizeString
+　・概要: サイズ表記から、部品の物理的形状（プレートかブロックか）を算術的に判定します。
+　・仕様: 文字列（例：10020030）を分解し、3辺の寸法を評価します。厚み、面積、体積の複合的な閾値判定により、製造コストや研削回数が大きく変わる「プレート」かどうかを決定します。
+　・条件・分岐: 最小辺（厚み）が56mm以下、かつ特定の体積以上、かつ辺の比率がプレートの定義に合致するかを評価します。
+　・技術的ロジック: Split 関数で配列化した後、CDbl で数値変換. 3辺をソートして最小値・中間値・最大値を特定。
+　・コード引用:
+　　dimsStr = Split(Trim(sizeString), "*")
+　　d1 = CDbl(dimsStr(0)): d2 = CDbl(dimsStr(1)): d3 = CDbl(dimsStr(2))
+　　ClassifyPartBasedOnSizeString = IIf(dMin <= 56 And volume >= 70000, "+", "-")
+　・備考：戻り値が + であればプレート、- であればブロックとして扱われます。この判定は熱処理後のSG（研削）回数自動計算に直結します。
+Private Function GetProcessTimes
+　・概要: 工程名に対応する標準工数をマスターから高速に引き当てます。
+　・仕様: Dictionary オブジェクトから、工程名（または工程名と詳細の組み合わせ）をキーとしてデータを取得します。
+　・条件・分岐: キーが存在しない場合は False を返し、マスター未登録の状態を呼び出し元に通知します。
+　・技術的ロジック: Dictionary.Exists メソッドによる O(1) での定数時間検索。ハッシュテーブルを利用した高速なデータマッピングです。
+　・コード引用:
+　　If processTimesDict.Exists(lookupKey) Then
+ 　　   GetProcessTimes = processTimesDict(lookupKey)
+　　End If
+　・備考：戻り値は Variant 型の配列で、前段取、有人、機械、段取、備考の5要素が含まれます。
+Private Function GetOutsourcingSupplierName
+　・概要: 外注コードから正式な業者名称を特定します。
+　・仕様: 内部コードやキーワードに基づき外注マスター辞書を検索し、帳票出力用の正式名称を返します。
+　・条件・分岐: 一致するキーがない場合は空文字列を返却します。
+　・技術的ロジック: キーの UCase および Trim による正規化を行い、辞書参照を実行。
+　・コード引用: If outsourcingInfoDict.Exists(normalizedKey) Then GetOutsourcingSupplierName = dictItem(0)
+　・備考：主にコーティング業者や特定の特殊加工業者の自動特定に使用されます。
+Private Function GetMaterialName
+　・概要: 入力された材質コードの妥当性を確認し、マスターに存在する正規名称を返します。
+　・仕様: ユーザー入力の材質名をマスターデータと照合。熱処理条件などを決定するための「材質識別子」を確立します。
+　・条件・分岐: マスターに存在しない場合は空値を返し、エラーハンドリングを誘発します。
+　・技術的ロジック: Dictionary の Keys コレクションとの完全一致比較。
+　・コード引用: If materialInfoDict.Exists(normalizedCode) Then GetMaterialName = normalizedCode
+　・備考：SKD11やNAK80など、大文字小文字の区別を無くした正規化後の文字列を返します。
+Private Function NormalizeZText
+　・概要: Z仕様文字列の表記揺れ（全角・半角・空白など）を排除して正規化します。
+　・仕様: 加工種別（コーティング等）を正確に抽出するため、特定の文字列の削除や文字種の統一を行います。
+　・条件・分岐: 文字列中の「ｺｰﾃｨﾝｸﾞ」や「COATING」などを置換して削除します。
+　・技術的ロジック: StrConv 関数（vbNarrow + vbKatakana）による半角カナ化と、Replace 関数による空白・特定語句の一括削除。
+　・コード引用:
+　　t = StrConv(src, vbNarrow + vbKatakana)
+　　t = UCase(t): t = Replace(t, " ", ""): t = Replace(t, "　", "")
+　・備考：これにより設計者ごとの入力の癖を吸収し、安定したキーワード判定を可能にします。
+　Private Function GetShapeFromOptionButtons
+　・概要: フォーム上の形状選択ステータスを文字列として集約取得します。
+　・仕様: チェックボックスとオプションボタンの状態を統合し、現在の製造コンテキスト（ブロック・プレート・レイアウト後など）を決定します。
+　・条件・分岐: 「レイアウト切り離し後」のチェックが優先され、次に各ラジオボタンの状態を確認する階層的な If 分岐です。
+　・技術的ロジック: 各 UI コントロールの Value プロパティの論理評価。
+　・コード引用:
+　　If Me.CheckBoxLayout.Value Then GetShapeFromOptionButtons = "レイアウト切り離し後"
+　　ElseIf Me.OptionButton5.Value Then GetShapeFromOptionButtons = "プレート"
+　・備考：この戻り値が UpdatePreview 内の製造シーケンス分岐の主軸となります。
+Private Function ValidateActiveCell
+　・概要: 出力先となるエクセルのセルが適切に選択されているかを確認します。
+　・仕様: シート名の一致、選択セルが単一であること、選択対象が Range オブジェクトであることを検証します。
+　・条件・分岐: 条件を満たさない場合はメッセージを表示して False を返します。
+　・技術的ロジック: TypeName 関数によるオブジェクト種別の特定と、Cells.CountLarge プロパティの数値比較。
+　・コード引用: If ActiveSheet.name <> targetSheet.name Or Selection.Cells.CountLarge <> 1 Then
+　・備考：誤ったシートや広い範囲への書き出し事故を防止するための安全機能です。
+Private Function ReplaceCharsForSheetName
+　・概要: エクセルのシート名として使用できない禁止記号を安全な文字へ置換します。
+　・仕様: 保存時やシート作成時にエラーとなる記号（\ / * ?等）をアンダーバーに変換し、文字列長を制限します。
+　・条件・分岐: 禁止文字配列に合致する文字が含まれている場合のみ置換が走ります。
+　・技術的ロジック: 定義された禁止文字配列に対する For ループと Replace 処理。
+　・コード引用: invalidChars = Array("\", "/", "*", "?", ":", "[", "]"): For charIdx = LBound(invalidChars) To UBound(invalidChars): s = Replace(s, invalidChars(charIdx), "_")
+　・備考：最終的な文字列はエクセルの仕様に基づき31文字以内にカットされます。
+
+4. 非公開サブプロシージャ (112件)
+ユーザーインターフェース操作・イベント (60件)
+Private Sub cmdDeletePreviewItem_Click
+　・概要: プレビューリストから選択された製造工程を論理的に削除します。
+　・仕様: 配列から該当インデックスを削除し、後続の工程を前に詰めるシフト処理を行います。削除データはバックアップされます。
+　・条件・分岐: 何も選択されていない場合はメッセージを表示して終了します。
+　・技術的ロジック: For ループによる配列要素の順次コピー（i = i + 1）。配列ポインタ m_lPreviewProcessCount のデクリメント。
+　・コード引用: For i = deleteIdx To m_lPreviewProcessCount - 2: m_arrPreviewProcesses(i) = m_arrPreviewProcesses(i + 1): Next i
+　・備考：削除した項目は m_lastDeletedItem へ退避され、cmdUndoDelete による復元が可能となります。
+Private Sub cmdDuplicatePreviewItem_Click
+　・概要: 選択された工程の複製を、その直下の位置に挿入します。
+　・仕様: 配列内に空きスペースを作るための後方シフトを実行し、コピーした PreviewProcessItem を代入します。
+　・条件・分岐: 配列の上限に達した場合は自動的に ReDim Preserve で領域を拡張します。
+　・技術的ロジック: 配列末尾からの逆順ループによるデータ移動.
+　・コード引用: For i = m_lPreviewProcessCount To insertIdx Step -1: m_arrPreviewProcesses(i) = m_arrPreviewProcesses(i - 1): Next i
+　・備考：複製された工程は IsEdited フラグが真になり、自動上書きから保護されます。
+Private Sub cmdMoveDown_Click / cmdMoveUp_Click
+　・概要: リスト上の工程の製造順序を一つ前または後ろへ手動で入れ替えます。
+　・仕様: 配列内の隣接する2つの構造体要素を一時変数を介して交換（スワップ）します。
+　・条件・分岐: リストの先頭または末尾で移動不可能な場合は警告を表示します。
+　・技術的ロジック: PreviewProcessItem 型の一時変数を使用した、インデックス i と i+1（または i-1）の入れ替え。
+　・コード引用: tempItem = m_arrPreviewProcesses(idx): m_arrPreviewProcesses(idx) = m_arrPreviewProcesses(idx + 1): m_arrPreviewProcesses(idx + 1) = tempItem
+　・備考： 入れ替え後、現在の編集対象インデックス m_lEditingArrayIndex も同期して更新されます。
+Private Sub cmdExecuteLastOutputToActive_Click
+　・概要: 過去の出力履歴（LastOutputLog）からデータを読み出し、現在のシート位置へ工程を再現します。
+　・仕様: ログシートの全データを走査し、順次 AddProcessToSheet を実行してセルを生成します。
+　・条件・分岐: ログシートが存在しない、または空の場合はメッセージを表示して終了。
+　・技術的ロジック: Worksheets(SHEET_LAST_OUTPUT_LOG) の最終行取得と反復処理.
+　・コード引用: lastLoggedRow = wsLog.Cells(wsLog.Rows.Count, 1).End(xlUp).Row
+　・備考： 出力完了後、混乱を避けるためにフォームはアンロード（Unload Me）されます。
+Private Sub cmdUpdateEdit_Click
+　・概要: 編集フレームでの入力内容を確定させ、内部配列の該当要素に反映させます。
+　・仕様: UI上の各 TextBox の値を構造体メンバへ転記し、変更があった場合は IsEdited フラグを立てます。
+　・条件・分岐: いずれの項目も変更がない場合はその旨を通知します。
+　・技術的ロジック: m_lEditingArrayIndex が指す配列要素に対する直接的な値の代入。
+　・コード引用: m_arrPreviewProcesses(m_lEditingArrayIndex).MaeDandoriTime = Me.txtMaeDandoriEdit.Text
+　・備考：更新完了後、編集用フレームは非表示（Visible = False）に切り替わります。
+Private Sub cmdCancelEdit_Click
+　・概要: 現在行っている工程の編集作業を破棄し、画面を閉じます。
+　・仕様: 配列の書き換えを行わず、編集用フラグやポインタをリセットします。
+　・技術的ロジック: m_lEditingArrayIndex を -1 に初期化し、フレームを非表示化。
+　・コード引用: Me.FrameEditControls.Visible = False: m_lEditingArrayIndex = -1
+　・備考：入力途中の値は保存されません。
+Private Sub cmdUndoDelete_Click
+　・概要: 直前に削除した工程を元のインデックス位置へ正確に復元します。
+　・仕様: バックアップされた m_lastDeletedItem を、複製ロジックと同様のシフト挿入により配列に戻します。
+　・条件・分岐: バックアップが空（工程名が空）の場合は実行されません。
+　・技術的ロジック: For ループによる空きスペース作成と構造体の再代入。
+　・コード引用: m_arrPreviewProcesses(lRestoredIndex) = m_lastDeletedItem: m_lPreviewProcessCount = m_lPreviewProcessCount + 1
+　・備考： 復元された項目はリスト上で自動選択され、視認性が確保されます。
+Private Sub ListViewPreview_ItemClick
+　・概要: リストビューの項目がクリックされた際、その詳細データを編集用入力欄へロードします。
+　・仕様: クリックされた項目のインデックス（1開始）を配列インデックス（0開始）に変換し、各 TextBox へ値をセットします。
+　・条件・分岐: 引数 Item が有効であることを確認してから処理を開始します。
+　・技術的ロジック: ListView.ListItem オブジェクトの Index プロパティ参照。UIへの文字列転記。
+　・コード引用: idx = item.Index - 1: Me.cboNameEdit.Value = m_arrPreviewProcesses(idx).processName
+　・備考：編集フレーム（FrameEditControls）の Visible プロパティを True に切り替えます。
+Private Sub txt(各項目)Edit_Change / KeyPress (12件分)
+　・概要: 時間入力欄における文字種制限とリアルタイムのデータクレンジングを行います。
+　・仕様: キー入力時点（KeyPress）で数値以外の文字を遮断し、変更後（Change）に全角半角の統一や不正な記号の除去を行います。
+　・条件・分岐: 小数点が2つ以上含まれないようにフラグ判定を行います。
+　・技術的ロジック: Asc コードによる文字種フィルタリングと、SanitizeNumericTextBox への委譲。
+　・コード引用: If KeyAscii < 48 Or KeyAscii > 57 Then If KeyAscii <> 46 And KeyAscii <> 8 Then KeyAscii = 0
+　・備考：これにより、工数計算におけるランタイムエラーを未然に防止します。
+Private Sub ComboBox(各項目)_Enter / Change (12件分)
+　・概要: 設定値の変更を監視し、変化があった場合に自動でプレビューを再構築します。
+　・仕様: Enter 時に現在の値をキャッシュし、Change 時に変更があれば UpdatePreview を実行します。
+　・条件・分岐: プログラムによる自動変更中（m_bIsProgrammaticChange = True）は処理をスキップします。
+　・技術的ロジック: メンバ変数への旧値保存と、文字列比較によるトリガー発火。
+　・コード引用: If Me.ComboBoxSgCount.Value <> m_sOldComboBoxSgCount Then Call UpdatePreview
+　・備考： ユーザーの選択ミスを防ぐため、変更確定前に ConfirmAndUpdatePreviewIfEdited による確認を挟む場合があります。
+Private Sub CheckBox(各種加工)_Click (15件分)
+　・概要: 特定の加工工程（ワイヤー、磨き等）の有無を切り替え、関連する UI 要素の制御を行います。
+　・仕様: チェック状態の反転に合わせて、対応するコンボボックスやラベルの表示・非表示をトグルします。
+　・条件・分岐: 編集済み項目がある場合は破棄の確認を行い、キャンセルされた場合はチェックを元に戻します。
+　・技術的ロジック: CheckBox.Value プロパティと Visible/Enabled の同期制御。
+　・コード引用: Me.ComboBox2.Visible = Me.CheckBox9.Value: Me.LabelGyousha.Visible = Me.CheckBox9.Value
+　・備考：クリック完了後、常に UpdatePreview が走り、工程順序が動的に再計算されます。
+Private Sub CheckBox4_Click / CheckBox5_Click
+　・概要: 「φ10以下」や「形状加工」が選択された際に、依存関係にある「ワイヤー加工」フラグを自動更新します。
+　・仕様: これら下位条件が1つでも真であれば、上位工程であるワイヤー放電（CheckBox1）を自動的にオンにします。
+　・条件・分岐: OR条件による論理和の代入です。
+　・コード引用: Me.CheckBox1.Value = (Me.CheckBox4.Value Or Me.CheckBox5.Value)
+　・備考： 製造上の必然的なシーケンスを UI レベルで強制します。
+Private Sub CheckBox7_Click (ミスミ購入品判定)
+　・概要: 部品がミスミからの購入品であるかどうかのフラグを管理します。
+　・仕様: 真の場合、追加加工（CheckBox8）や加工詳細（ComboBox3）のオプションを可視化します。
+　・条件・分岐: Value = False 時は下位のオプションもすべてオフかつ非表示にリセットされます。
+　・技術的ロジック: 階層的なコントロール制御。
+　・コード引用: Me.CheckBox8.Visible = Me.CheckBox7.Value
+　・備考： プレビュー工程が「主材購入」から「副材（購入品）」へと切り替わります。
+Private Sub OptionButton(4/5/6)_Click
+　・概要: 形状の選択（ブロック・プレート等）が変更された際の、工程全体の大まかなルート変更を管理します。
+　・仕様: 編集破棄確認を経て、選択された形状に応じたデフォルトの工程フローを再生成します。
+　・条件・分岐: HandleShapeOptionChange プロシージャへコントロール名を引数として渡し、統合処理を行います。
+　・コード引用: Call HandleShapeOptionChange("OptionButton4")
+　・備考：プレート判定時はSG回数やマシニングの種類が自動的に切り替わります。
+Private Sub CommandButton1_Click
+　・概要: プレビューされている全工程を、エクセルの実際のシートへ物理的に書き出します。
+　・仕様: シートへの行挿入、データの代入、備考の整形、およびログシートへの履歴記録をループで実行します。
+　・条件・分岐: ValidateActiveCell でエラーとなった場合は処理を中止します。
+　・技術的ロジック: For ループによる m_arrPreviewProcesses の全件反復. Rows.Insert による動的な行確保。
+　・コード引用: For i = 0 To m_lPreviewProcessCount - 1: Call AddProcessToSheet(ws, curr, ...): Next i
+　・備考： 実行後、最後に書き出した内容が LastOutputLog に保存され、次回以降の「再出力」に使用されます。
+Private Sub CommandButton単品挿入_Click
+　・概要: ユーザーがコンボボックスから選んだ任意の工程を、現在のプレビューリストの末尾に強制挿入します。
+　・仕様: ComboBox工程選択 の値を元にマスターから工数を引き当て、AddItemToPreviewList を実行します。
+　・条件・分岐: 未選択時は警告を出します。
+　・技術的ロジック: 単体レコードの追加処理.
+　・コード引用: Call AddItemToPreviewList(Me.ComboBox工程選択.Value)
+　・備考： 自動計算ルートとは無関係に、現場独自の例外工程を追加するための機能です。
+
+データ読み込み・制御ロジック (10件)
+Private Sub LoadZKeywords
+　・概要: Z列の仕様文字（コーティング名など）と内部フラグの紐付けリストをメモリに展開します。
+　・仕様: シート2のZキーワードテーブルを走査し、キーワードをキーとした Dictionary を構築します。
+　・技術的ロジック: Scripting.Dictionary.Add メソッドによるデータ登録. 値は Array でパッキングされます。
+　・コード引用: zKeywordsDict.Add keyword, Array(keywordType, internalKey, needsOutsource, needsPolish)
+　・備考：キーワードの種類（コーティングかサブゼロか）によって、後の ParseZColumnInfo での振る舞いが変わります。
+Private Sub UpdateGoDandoriTimes
+　・概要: 同一の業者・工程が連続する場合、段取時間を最適化して集計します。
+　・仕様: 配列を走査し、同じ工程のグループを特定。グループの最終行以外は段取時間を空にし、最終行にのみマスター値をセットします。
+　・条件・分岐: ユーザーが手動で段取り時間を編集した項目（IsGoDandoriUserEdited = True）は、マスター値での上書き対象から除外します。
+　・技術的ロジック: グループ化アルゴリズム. i行目を起点とした連続一致カウント。
+　・コード引用: If k = groupCount - 1 Then .GoDandoriTime = masterVal Else .GoDandoriTime = ""
+　・備考：これにより、見積もり上の段取時間が過大計上されるのを防ぎます。
+Private Sub SanitizeNumericTextBox
+　・概要: 入力されたテキストから数字と小数点以外の不純物を完全に除去します。
+　・仕様: 文字列を1文字ずつ精査し、半角化と数値判定を行い、有効な文字のみで再構成します。
+　・条件・分岐: すでに小数点が出現している場合は、2つ目以降のピリオドを無視します。
+　・技術的ロジック: Mid$ 関数による文字走査とバッファ文字列の連結.
+　・コード引用: For i = 1 To Len(t): char = Mid(t, i, 1): If IsNumeric(char) Or char = "." Then ...
+　・備考： カーソル位置（SelStart）の整合性を保ちながら文字列を書き換えます。
+Private Sub UserForm_Initialize
+　・概要: フォーム起動時の初期セットアップ（マスター読込、外観設定、初期プレビュー）を実行します。
+　・仕様: 全ての辞書オブジェクトを初期化し、リストビューのヘッダーを定義し、現在選択されている行に応じた初期プレビューを構築します。
+　・技術的ロジック: 各 Load 関数のシーケンシャルな実行. Application.OnKey による F5 キーへのマクロ紐付け。
+　・コード引用: .ColumnHeaders.Add , , "工程名", 120: Call LoadProcessTimes
+　・備考： 起動時にマスターデータが不足している場合は、警告を表示してアンロードする自浄機能を備えています。
+Private Sub UserForm_Terminate
+　・概要: フォームを閉じる際のクリーンアップ処理を行います。
+　・仕様: システムレベルでフックしていた F5 キーの設定を解除し、エクセルの標準動作に戻します。
+　・コード引用: Application.OnKey "{F5}"
+　・備考：メモリリークや不正なキー動作を防止するための重要な終了処理です。
+Private Sub AutoRenumberProcessRemarks
+　・概要: 同名工程が連続する場合に、備考欄へ「 1/3」といった分数形式の連番を自動付与します。
+　・仕様: RegExp（正規表現）を用いて既存の連番を一旦除去し、現在のリスト状態に基づいた正確な連番を再構成して付与します。
+　・条件・分岐: ワイヤー放電や外注工程など、連番を付与すべきでない特定の工程はスキップされます。
+　・技術的ロジック: VBScript.RegExp オブジェクトの活用. パターン置換。
+　・コード引用: patternToRemove.pattern = "\s*\d+/\d+$": cleanBikou = patternToRemove.Replace(originalBikou, "")
+　・備考：プレビュー描画直前とシート出力直前の2回実行され、常に最新の順序を反映します。
+Private Sub LoadProcessTimes / LoadMaterialInfo / LoadOutsourcingInfo
+　概要: シート2に定義された各マスターテーブルをメモリ上の Dictionary へロードします。
+　・仕様: 2行目から最終行までをループし、指定列をキーとして各属性（工数・業者等）を配列または配列型 Variant として格納します。
+　・技術的ロジック: Range.End(xlUp) による動的な最終行判定.
+　・備考：読み込み中に重複キーが見つかった場合は、先勝ちで登録されます。
+Private Sub AllowNumericOnlyWithOptionalDecimal
+　・概要: キー入力レベルで数値・小数点以外のキャラクターを弾きます。
+　・仕様: 押されたキーの KeyAscii を検証し、許可リスト（0-9, ., BackSpace）にない場合は 0 に書き換えて無効化します。
+　・条件・分岐: InStr で既存のピリオドを確認し、重複入力を防止します。
+　・備考： SanitizeNumericTextBox と併用することで、堅牢な入力制限を実現します。
+
+プレビュー生成用サブロジック (16件)
+Private Sub UpdatePreview
+　・概要: プレビュー生成のメインエンジンであり、全工程構築の司令塔です。
+　・仕様: 入力フラグ（外注・ミスミ・レイアウト・通常等）を優先順位に従って判定し、対応する PreviewAdd 系プロシージャをシーケンシャルに呼び出して m_arrPreviewProcesses 配列を埋めます。
+　・条件・分岐: 優先度は「外注品 ＞ ミスミ購入 ＞ レイアウト切り離し ＞ ゲイビ外注 ＞ 通常内製」の順で評価されます。
+　・技術的ロジック: If / ElseIf / Else による巨大なパス分岐.
+　・コード引用: If isOutsourcedProduct Then Call ProcessOutsourcedProduct ElseIf ...
+　・備考：実行直前に、ユーザーの手動編集項目を維持するための ConfirmAndUpdatePreviewIfEdited を経由します。
+Private Sub RefreshListBoxFromInternalArray
+　・概要: メモリ内の配列データを ListView コントロールに視覚的に反映させます。
+　・仕様: リストを一旦クリアした後、配列を走査して各要素を追加します。編集済み項目はボールド体にするなどの装飾を施します。
+　・技術的ロジック: ListItem.SubItems への属性セット.
+　・コード引用: Set ListItem = Me.ListViewPreview.ListItems.Add(, , item.processName)
+　・備考： 直前に AutoRenumber と UpdateGoDandoriTimes を強制実行し、最新の集計結果を表示します。
+Private Sub AddItemToPreviewList
+　・概要: 配列への単体工程追加を行う汎用メソッドです。
+　・仕様: 引数で受け取った工程名をキーにマスターから工数を引き当て、構造体のメンバを埋めて配列の末尾に追加します。
+　・条件・分岐: 配列サイズが不足している場合は10要素ずつ動的に拡張（ReDim Preserve）します。
+　・技術的ロジック: メモリの再割り当て（Re-allocation）と値のコピー.
+　・コード引用: If m_lPreviewProcessCount > UBound(m_arrPreviewProcesses) Then ReDim Preserve ...
+　・備考： デフォルトでは IsEdited = False として登録されます。
+Private Sub PreviewAddMaterialPurchase
+　・概要: 材質に応じた主材購入工程を追加します。
+　・仕様: 材質辞書から仕入先を特定し、チェックボックス（C面取り、吊りネジ）の状態を備考欄に文字列として反映させます。
+　・備考： 材質不明時は「(仕入先不明)」として登録されます。
+Private Sub PreviewAddMCBeforeHeatTreatment
+　・概要: 熱処理前の荒マシニング工程を追加します。
+　・仕様: 形状がプレートであれば "M/C(大)"、それ以外は "M/C（小）" を選択し、通常2工程（荒1, 荒2）を挿入します。
+　・備考：最終行以外の段取り時間は自動的にクリアされます。
+Private Sub PreviewAddTapHole
+　・概要: 穴あけ・タップ工程を追加します。
+　・条件・分岐: 仕様キーワードに「サブゼロ」が含まれる場合、備考欄に「ｻﾌﾞｾﾞﾛ注意」を自動付加します。
+　・備考： 現場への警告情報を備考として統合します。
+Private Sub PreviewAddHeatTreatment
+　・概要: 材質に適した熱処理業者を指定して工程を追加します。
+　・条件・分岐: 材質辞書を参照し、サブゼロ有無に応じて通常熱処理業者かサブゼロ業者かを選択します。
+　・備考：材質マスターの熱処理列が「無」の場合は、この工程自体をスキップする判定が含まれます。
+Private Sub PreviewAddPostHeatTreatmentSG
+　・概要: 熱処理後の平面研削（SG）工程を回数分追加します。
+　・仕様: 形状やワイヤー有無の組み合わせから、最適な研削回数（2〜6回）を独自アルゴリズムで算出し、その回数分ループして工程を追加します。
+　・条件・分岐: autoSg = True 時は自動算出、False 時はユーザーが UI で指定した回数を採用します。
+　・技術的ロジック: 形状定数（プレート/ブロック）に基づく多重分岐評価.
+　・コード引用: Case "プレート": If Not useWireEDMPreview And useAfterMCPreview Then sgCount = 4
+　・備考： 精度確保のための重要ロジックです。
+Private Sub PreviewAddAfterMCFinish / PreviewAddSmallStartHole
+　・概要: 仕上げMCや、ワイヤー加工の前提となる細穴放電工程を追加します。
+　・備考： 各 UI のチェックボックスがオンの場合にのみ実行されます。
+Private Sub PreviewAddWireEDMProcessing
+　・概要: ワイヤー放電加工工程を追加します。
+　・仕様: 形状加工が真の場合、荒加工と仕上げ加工を分離して2レコード登録します。刃先有無のチェック状態を備考へ反映させます。
+　・コード引用: If hasShapeProcessingPreview Then ... specificMemo = "荒加工"
+　・備考： ファミリー加工時は専用の工数セット（カス取り等）が選択されます。
+Private Sub PreviewAddPostWireEDMGrinding
+　・概要: ワイヤー加工後の仕上げ研削工程を追加します。
+　・仕様: ファミリー加工時は "ヘソ取り"、ブロック形状時は "上面研削" とし、精度出しの意図を明確にします。
+　・備考： 刃先や磨きの有無により、上面研削を兼ねるかどうかの詳細判定を行います。
+Private Sub PreviewAddTsubaProcessing
+　・概要: つば加工（荒・仕上げ）を指定回数分追加します。
+　・仕様: 外側の For ループにより指定セット数分を繰り返し追加し、セットごとに工数を配分します。
+　・コード引用: For n = 1 To tsubaCountPreview: Call AddItemToPreviewList(tsubaRoughMethodPreview): ... Next n
+　・備考： 最終回には「・上面」の文言が付与される場合があります。
+Private Sub PreviewAddPolishingAndCoating / PreviewAddAdjustPProcess
+　・概要: 磨き、ショットブラスト、コーティング（外注）、および最終調整工程を順次追加します。
+　・備考：これらは常に製造シーケンスの最後尾に配置されます。
+Private Sub PreviewAddPostHeatTreatmentProcesses
+　・概要: 熱処理後の共通仕上げフローを一括して追加するパッケージプロシージャです。
+　・備考： 複数の PreviewAdd サブプロシージャを正しい順序（SG ＞ MC仕上 ＞ ワイヤー等）で呼び出します。
+
+5. シート出力・工程判定ロジック (26件)
+Private Sub AddProcessToSheet
+　・概要: 配列内の1工程を実際のワークシートの特定セルへ物理的に転記します。
+　・仕様: ws.Rows(currentRow).Insert で新規行を確保した上で、定数で定義された列（工程名：36列目等）に値を代入します。
+　・条件・分岐: 開始行でかつセルが空の場合は、行挿入をスキップして直接上書きします。
+　・技術的ロジック: Cells プロパティによる絶対位置指定と、Insert による既存データの下方シフト.
+　・コード引用: ws.Rows(currentRow).Insert Shift:=xlDown: ws.Cells(currentRow, COL_KOUTEI).Value = processName
+　・備考：備考欄に連番が含まれる場合、読みやすさを考慮してフォーマットを反転（例：工程名 1/3 ＞ 1/3 工程名）させて書き出します。
+Private Sub ProcessNormalRoute / ProcessOutsourcedProduct 等 (5件)
+　・概要: 判定された製造ルート（通常、外注、ミスミ、レイアウト、ゲイビ）に基づき、シート出力用プロシージャを順次実行します。
+　・備考： UpdatePreview と同様の製造論理を、今度は実際のシート書き出し用としてトレースします。
+Private Sub Add(個別工程名) (15件分)
+　・概要: 各工程（材料購入、熱処理、ワイヤー等）に特化したシート書き出し用プロシージャ群です。
+　・備考： プレビュー時のロジックをシート出力用に最適化しており、工数のマスター取得からセル代入までをカプセル化しています。
+Private Sub UpdateChamferCheckboxState
+　・概要: 形状がブロックの場合に、UI上の「C面取りなし」チェックボックスを操作不能にします。
+　・仕様: 現場のルール（ブロック材は常に面取りあり等）をシステム制約として反映させ、不整合なデータ入力を防ぎます。
+　・技術的ロジック: Enabled および Value プロパティの同期的な書き換え.
+　・コード引用: If currentShape = \"ブロック\" Then Me.CheckBoxChamferなし.Enabled = False
+　・備考： 形状変更イベントから毎回呼び出されます。
+Private Sub PreviewProcessLayoutAfterCut
+　・概要: レイアウト切り離し後製品に特化した、独自の製造シーケンスをプレビュー配列に構築します。
+　・備考：通常のルートをバイパスし、ヘソ取りを最優先で行う特殊なフローです。
+Private Sub RevertShapeOptionButton / AutoRenumberProcessRemarks
+　・概要: UI操作のキャンセル復帰と、最終的な連番文字列の整形を担当します（前述のデータ管理ロジックと共有）。
+
+6. 追加機能 (22件)
+Sub ProcessAndSortAllSimultaneousItems
+　・概要: 「同時」工程の整頓と品番順の並べ替えを一括で行うメインルーチンです。
+　・仕様: 画面更新の停止、計算モードの手動切り替えを行い、第1段階（同時工程の親子整理）と第2段階（ブロック内の品番ソート）を順次実行します。
+　・条件・分岐: 実行中にエラーが発生した場合は ErrorHandler_OverallProcess に飛び、設定を復元した上でエラー内容を表示します。
+　・技術的ロジック: Application.Calculation = xlCalculationManual による高速化と、On Error による堅牢なトラップ。
+　・コード引用: Call SortDoujiKouteiUnderHinban: Call SortGroupedItemsByTheirOwnAG
+　・備考： 完了後に処理時間を Debug.Print に出力します。
+Sub SortDoujiKouteiUnderHinban
+　・概要: Y列の「同時」情報を解析し、該当行を親品番の直下へ移動させてグループ化します。
+　・仕様: Y列に特定の数値を含む「同時」文字列がある行を子とし、その数値を品番として持つ親ヘッダーの下に Cut & Insert で移動させます。
+　・条件・分岐: 親子関係が循環して無限ループに陥るのを防ぐため、loopCounter による安全装置を備えています。
+　・技術的ロジック: VBScript.RegExP を用いた「同時(数値)」パターンの抽出と、ws.Rows.Cut による行移動.
+　・コード引用: regExY.pattern = \"(\\d+)と?同時|同時(\\d+)\": ws.Rows(childHeaderRow & \":\" & childBlockEndRow).Cut
+　・備考：ステータスバー（StatusBar）に現在の処理回数を表示し、進捗を可視化します。
+Private Function FindParentHeaderRow
+　・概要: 指定された品番に対応する、親となるヘッダー行を検索します。
+　・仕様: AG列の品番が一致し、かつY列に「同時」という文字が含まれていない最初の行を親として特定します。
+　・条件・分岐: 合致する行が見つかった時点で Exit Function し、見つからない場合は 0 を返します。
+　・技術的ロジック: シート全体の線形スキャン. 正規表現による品番抽出。
+　・コード引用: If hinbanInAG = hinbanToFind And Not regExY.test(yCellValue) Then FindParentHeaderRow = j
+　・備考：親品番の特定にはAG列の先頭の数値のみが使用されます。
+Private Function FindEndOfBlock
+　・概要: 特定のヘッダー行から始まる、連続した加工ブロックの最終行を特定します。
+　・仕様: 指定行から下方へスキャンし、次の親品番（AGに数値があり、Yに同時がない行）が現れる直前の行を返します。
+　・条件・分岐: 文字列 "END" に遭遇した場合も、その直前をブロックの終わりとみなします。
+　・技術的ロジック: ループ内での test メソッドによる終了条件の常時判定.
+　・コード引用: If (regExAG.test(agValue) And Not regExY.test(yValue)) Or UCase(agValue) = \"END\" Then FindEndOfBlock = i - 1
+　・備考：ブロックがシートの最後まで続く場合は lastRow を返します。
+Sub SortGroupedItemsByTheirOwnAG
+　・概要: 親品番の下に集まった子工程（同時工程）を、子自身の品番順に並べ替えます。
+　・仕様: ブロック内の各行のデータをメモリ（配列）に取り込み、AG列の品番を数値としてソート（並べ替え）した後、シートに書き戻します。
+　・条件・分岐: 品番が数値として解釈できない場合は、最後に配置されるよう大きな値（9999999）を代入します。
+　・技術的ロジック: バブルソートアルゴリズムによる配列内の入れ替え. ReDim itemDataContents による全列データの保持。
+　・コード引用: If CLng(blockItems(k)(0)) > CLng(blockItems(m)(0)) Then tempItem = blockItems(k): blockItems(k) = blockItems(m): blockItems(m) = tempItem
+　・備考：同時工程内の前後関係を品番昇順で整頓するために使用します。
+Public Sub DeleteInnerBlanks_AH_withAJKeep
+　・概要: 品名(AH)と工程名(AJ)が共に空の行を、データの末尾から順に削除します。
+　・仕様: 下から上へ向かうループを実行し、LenB 関数でセルの物理的な中身がゼロであることを確認して行を削除します。
+　・条件・分岐: AH列またはAJ列に値がある場合は削除対象から除外します。
+　・技術的ロジック: Step -1 ループによる行削除時のインデックス不整合防止.
+　・コード引用: If LenB(.Cells(i, \"AH\").Value) = 0 And LenB(.Cells(i, \"AJ\").Value) = 0 Then .Rows(i).Delete
+　・備考：シート上の余計な空白行を整理するためのユーティリティです。
+Public Sub AddNextProcessInterval
+　・概要: 工程間のリードタイム（次工程間隔）を指定列に自動入力します。
+　・仕様: 設定シート（シート2）のZ2セルから間隔日数を取得し、各製造ブロックの工程が切り替わるタイミングでBK列に値をセットします。
+　・条件・分岐: 「磨き」工程が「ショットブラスト」と共存する場合に出力を譲る特殊な除外判定を含みます。
+　・技術的ロジック: ブロック内スキャンによるフラグ hasShotBlast の事前確立.
+　・コード引用: Call ProcessSingleBlock(ws, blockStartRow, blockEndRow, COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue)
+　・備考： 全体の工程表において「品名」または「END」を区切りとしてブロックを自動識別します。
+Private Sub ProcessSingleBlock (リードタイム用)
+　・概要: 1つの製造ブロック内の各行を精査し、リードタイムをセットすべき箇所を特定します。
+　・仕様: 現在の工程名と次の行の工程名を比較し、変化がある場合のみ出力を行います。
+　・条件・分岐: IsExcludedProcess が真（主材購入など）の場合は出力をスキップします。
+　・技術的ロジック: 行 i と i+1 の文字列比較.
+　・コード引用: If currentProcess <> nextProcess Then If currentProcess = \"磨き\" And hasShotBlast = False Then ...
+　・備考： 「磨き」工程の直後に「ショットブラスト」がある場合、重複してリードタイムが発生しないよう調整されています。
+Private Function IsExcludedProcess (リードタイム用)
+　・概要: リードタイムを付与してはならない「準備工程」を判別します。
+　・仕様: 工程名が「主材購入」「穴あけﾀｯﾌﾟ」「熱処理」のいずれかに合致するかを確認します。
+　・技術的ロジック: Select Case による高速な文字列パターンマッチング.
+　・コード引用: Case \"主材購入\", \"穴あけﾀｯﾌﾟ\", \"熱処理\": IsExcludedProcess = True
+　・備考：これらの工程間には標準的なリードタイムを置かない現場ルールを反映しています。
+Sub test (BUH読み込み処理)
+　・概要: 外部の図面管理ファイル（BUH）から部品情報をインポートし、工程表の形式へ変換します。
+　・仕様: 指定されたブックを開き、3つの入力用シートからデータを取得。品番、サイズ、材質、重量等を計算・整形した上で自ブックの工程表へ転記します。
+　・条件・分岐: ファイル選択がキャンセルされた場合は、End ステートメントで即座に終了します。
+　・技術的ロジック: ReDim Preserve を用いた動的な二次元配列の構成と、Transpose による一括貼り付け.
+　・コード引用: tDest.Value = WorksheetFunction.Transpose(LST_str): LST_str(4, j) = weight(CStr(MST_str(l, 4)), CStr(MST_str(l, 5)))
+　・備考： 転記後には自動的に罫線を設定し、オーダ番号等も同時に移植します。
+Private Function SortDimensions
+　・概要: 3辺のサイズ文字列（WDH）を、常に小さい順に並べ替えて正規化します。
+　・仕様: * で区切られた文字列を分割し、3つの数値を昇順にソートして再結合します。
+　・技術的ロジック: Split 後の要素に対する簡易ソート関数の適用.
+　・コード引用: SortSubFunc DimArray(0), DimArray(1): SortDimensions = DimArray(0) & \"*\" & DimArray(1) & \"*\" & DimArray(2)
+　・備考： これにより、「305010」も「103050」も同一の表記へと統一されます。
+Private Sub SortSubFunc
+　・概要: 2つの値を比較し、左側が大きい場合に値を入れ替えます。
+　・仕様: 参照渡し（ByRef）により、呼び出し元の変数の値を直接書き換えます。
+　・技術的ロジック: 交換アルゴリズム（Swap）.
+　・コード引用: If CDbl(num1) > CDbl(num2) Then temp = num1: num1 = num2: num2 = temp
+Function weight
+　・概要: 材質と外形寸法から、部品の概算重量(kg)を算出します。
+　・仕様: 寸法文字列から体積を計算し、材質に応じた比重（鉄:7.85等）を乗算します。
+　・条件・分岐: Like 演算子により、角材(WDH)か丸棒(φD*L)かを自動判別し計算式を切り替えます。
+　・技術的ロジック: 文字列パターンマッチングと物理計算.
+　・コード引用: Volume = 3.14159 * (CDbl(DimArray(0)) / 2) ^ 2 * CDbl(DimArray(1))
+　・備考： 結果は小数点第一位を切り上げた文字列として返されます。
+Sub OrganizeProcessSheet (Dictionaryソート版)
+　・概要: メモリ上の連想配列を用いて、工程表の親子関係を完全に整頓して書き直します。
+　・仕様: シートデータを一旦すべて配列に読み込み、品番をキーとした入れ子構造の Dictionary に再構築。ソート後に一括出力します。
+　・技術的ロジック: Scripting.Dictionary をツリー構造（Parent ＞ Children ＞ Rows）として活用.
+　・コード引用: parentItems(parentKeyStr)(\"children\").Add childKeyAsLong, childDict
+　・備考： 並べ替えには BubbleSort を使用し、品番の昇順を保証します。
+Private Sub BubbleSort
+　・概要: 配列内の要素を昇順に並べ替えます。
+　・仕様: 隣接する要素を比較し、順序が逆であれば入れ替えを繰り返します。
+　・技術的ロジック: CVar による型に依存しない比較.
+　・コード引用: If CVar(arr(i)) > CVar(arr(j)) Then temp = arr(j): arr(j) = arr(i): arr(i) = temp
+Sub Show工程作成フォーム
+　・概要: メインの UI 画面を表示します。
+　・仕様: vbModeless モードで表示し、表示中もエクセルシートの操作を可能にします。
+　・コード引用: UserForm1.Show vbModeless
+Sub Clear工程列AJtoAS
+　・概要: 工程表シートの出力範囲（AJ列からAS列）を一括クリアします。
+　・仕様: ヘッダー（1行目）を残し、2行目から最終データ行までを削除対象とします。
+　・コード引用: ws.Range(\"AJ2:AS\" & lastRow).ClearContents
+　・備考：完全に新しい工程を出力する前のリセットに使用されます。
+Sub RunModule5_Then_Module7
+　・概要: 「同時工程の整頓」と「Dictionaryベースの全体整理」を連続して実行するマクロです。
+　・仕様: 各モジュールのプロシージャを順番にコールし、データの一貫性を確保します。
+　・コード引用: Call ProcessAndSortAllSimultaneousItems: Call OrganizeProcessSheet
+Public Function ValidateActiveCellForModule
+　・概要: 標準モジュールからの実行時、現在のセル選択状態が適切かを確認します。
+　・技術的ロジック: ユーザーフォーム版の ValidateActiveCell をモジュール用に移植したものです.
+　・コード引用: If ActiveSheet.name <> targetSheet.name Then MsgBox ...
+Public Sub AddProcessToSheetForModule
+　・概要: 標準モジュールから、シートへの工程書き込みを汎用的に実行します。
+　・技術的ロジック: ユーザーフォーム版の AddProcessToSheet を、外部引数から制御可能にした移植版です.
+　・備考： 備考の連番位置調整ロジック（正規表現）も完全に再現されています。
+Public Sub ExecuteLastOutputFromLogToActiveSheet
+　・概要: ユーザーフォームを介さず、ログデータから直接アクティブセルへ工程を再展開します。
+　・技術的ロジック: ログシート（LastOutputLog）のスキャンと AddProcessToSheetForModule の反復実行.
+　・コード引用: Call AddProcessToSheetForModule(wsTarget, currentOutputRow, outputStartRow, ...)
+Public Sub ExecuteMyFormButton
+　・概要: 開いているユーザーフォームを特定し、その中の実行イベントを外部から発火させます。
+　・仕様: UserForms コレクションをループし、目的の名称のフォームを探し、CallByName で公開メソッドを呼び出します。
+　・技術的ロジック: CallByName を利用した動的なメソッド実行。
+　・コード引用: CallByName frm, \"TriggerClickEvent\", VbMethod
+　・備考： F5キー入力時にこのプロシージャが呼ばれ、フォーム内の処理がキックされます。
+
+7. シートイベントブロック (2件)
+シート上での操作（選択・変更）に直接連動して動作するロジックです。
+Private Sub Worksheet_SelectionChange
+　・概要: シート上の選択セルが変更された際、リアルタイムでユーザーフォームのプレビューを更新するイベントハンドラです。
+　・仕様: 選択範囲（Target）が単一セルの場合、または特定条件を満たす場合、起動中の UserForm1 内の更新処理をキックします。
+　・技術的ロジック:
+　　For Each frm In UserForms
+　　    If frm.name = userFormNameToFind Then
+　　        Set userFormInstance = frm
+
+　　UserForms コレクションを反復処理し、名称が UserForm1 と一致するインスタンスを取得します。取得後、CallByName 関数を使用して RefreshPreviewForActiveCell メソッドを実行し、引数として現在の行番号（Target.Row）を渡します。
+　・コード引用:
+　　For Each frm In UserForms
+　　    If frm.name = userFormNameToFind Then
+　　        Set userFormInstance = frm
+　　        Exit For
+　　    End If
+　　Next frm
+　　If Not userFormInstance Is Nothing Then
+　　    CallByName userFormInstance, "RefreshPreviewForActiveCell", VbMethod, Target.Row
+　　End If
+　・備考： 選択セル数が100を超える巨大な範囲の場合は、処理負荷を避けるために即座に終了するガード処理が実装されています。
+Private Sub Worksheet_Change
+　・概要: セルの値が変更された際、材質情報に基づいて焼き入れ条件を自動入力するイベントハンドラです。
+　・仕様: AC列（材質）に変更があった場合、シート2のマスターデータを検索し、Z列（焼き入れ方法）と AE列（焼き硬度）に値を自動セットします。
+　・技術的ロジック:
+　　If Intersect(Target, Me.Range("AC:AC")) Is Nothing Then Exit Sub
+
+　　Intersect 関数で変更箇所が AC 列に含まれるか判定。Application.EnableEvents を False に設定して自己変更による無限ループを防ぎ、VLookup を用いてマスタから 2 列目と 3 列目のデータを取得・転記します。
+　・コード引用:
+　　If Intersect(Target, Me.Range("AC:AC")) Is Nothing Then Exit Sub
+　　Application.EnableEvents = False
+　　For Each changedCell In Target
+　　    materialToFind = changedCell.Value
+　　    foundMethod = Application.WorksheetFunction.VLookup(materialToFind, searchRange.Resize(, 3), 2, False)
+　　    foundHardness = Application.WorksheetFunction.VLookup(materialToFind, searchRange.Resize(, 3), 3, False)
+　　    Me.Cells(changedCell.Row, "Z").Value = foundMethod
+　　    Me.Cells(changedCell.Row, "AE").Value = foundHardness
+　　Next changedCell
+　　Application.EnableEvents = True
+
+
+　・備考：On Error Resume Next により、マスターに存在しない材質が入力された場合のエラー落ちを回避し、その場合は対象セルを空白に更新します。
