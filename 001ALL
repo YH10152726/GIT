@@ -70,17 +70,17 @@ Private Type PreviewProcessItem
 　・条件・分岐: 条件分岐はありません。変数の型定義（String, Boolean）に従ってデータが格納されます。
 　・技術的ロジック: VBA の Type 構文を用いて構造体を定義。各要素へのアクセスはドット演算子で行われ、メモリ上の連続した領域にデータを配置し、高速な参照を実行。
 　・コード引用:
-　　processName As String
-　　supplier As String
-　　MaeDandoriTime As String
-　　YujinTime As String
-　　MachineTime As String
-　　GoDandoriTime As String
-　　bikou As String
-　　IsEdited As Boolean
-　　UserEditedGoDandori As String
-　　IsGoDandoriUserEdited As Boolean
-　備考：IsEdited フラグは UpdatePreview プロシージャ内での自動上書きを回避するための判定に使用されます。また、IsGoDandoriUserEdited は、同一工程が連続する際の「段取時間集計ロジック」から、ユーザーが意図的に入力した値を保護するために保持されます。
+　　　processName As String
+　　　supplier As String
+　　　MaeDandoriTime As String
+　　　YujinTime As String
+　　　MachineTime As String
+　　　GoDandoriTime As String
+　　　bikou As String
+　　　IsEdited As Boolean
+　　　UserEditedGoDandori As String
+　　　IsGoDandoriUserEdited As Boolean
+　・備考：IsEdited フラグは UpdatePreview プロシージャ内での自動上書きを回避するための判定に使用されます。また、IsGoDandoriUserEdited は、同一工程が連続する際の「段取時間集計ロジック」から、ユーザーが意図的に入力した値を保護するために保持されます。
 
 2. 公開サブプロシージャ (2件)
 外部モジュールやイベントから直接呼び出され、全体の動作をトリガーするエントリポイントです。
@@ -90,11 +90,11 @@ Public Sub RefreshPreviewForActiveCell
 　・条件・分岐: ターゲット行が 0 以下の場合は、入力コントロールをすべて初期化（クリア）する分岐に入ります。有効な行番号の場合、列定数に基づき値をセルから抽出します。
 　・技術的ロジック: プログラムによる一括変更であることを示すフラグ m_bIsProgrammaticChange を True に設定。これにより、各コントロールの Change イベント内での再帰的なプレビュー更新を抑制しながら値をセットします。
 　・コード引用:
-　　m_bIsProgrammaticChange = True
-　　zColumnValue = Trim(CStr(ws.Cells(targetRowToLoad, COL_Z_INPUT).Value))
-　　materialCode = ws.Cells(targetRowToLoad, COL_AC_INPUT).Value
-　　sizeStr = ws.Cells(targetRowToLoad, COL_AD_SIZE_INPUT).Value
-備考：targetRowToLoad パラメータに基づきセルの値を参照。代入完了後、ParseZColumnInfo 等の解析関数を介して製造ルートの判定基礎を確立し、最終的に UpdatePreview を実行します。
+　　　m_bIsProgrammaticChange = True
+　　　zColumnValue = Trim(CStr(ws.Cells(targetRowToLoad, COL_Z_INPUT).Value))
+　　　materialCode = ws.Cells(targetRowToLoad, COL_AC_INPUT).Value
+　　　sizeStr = ws.Cells(targetRowToLoad, COL_AD_SIZE_INPUT).Value
+　・備考：targetRowToLoad パラメータに基づきセルの値を参照。代入完了後、ParseZColumnInfo 等の解析関数を介して製造ルートの判定基礎を確立し、最終的に UpdatePreview を実行します。
 Public Sub TriggerClickEvent
 　・概要: フォーム上の実行ボタンのクリックイベントを、プログラム内部から強制的に発火させます。
 　・仕様: ボタンオブジェクトの Value プロパティを True に変更することで、ユーザーが物理的にクリックしたのと同等の挙動をシミュレートします。
@@ -111,12 +111,12 @@ Private Function IsAnyPreviewItemEdited
 　・条件・分岐: ループ内で IsEdited = True の要素が見つかった瞬間に、戻り値を True にして関数を抜ける早期退出（Early Exit）を行います。
 　・技術的ロジック: 0から m_lPreviewProcessCount - 1 までの線形探索。論理和（OR）的な判定を効率的に実行します。
 　・コード引用:
-　　For i = 0 To m_lPreviewProcessCount - 1
-　　    If m_arrPreviewProcesses(i).IsEdited Then
-　　        IsAnyPreviewItemEdited = True
-　　        Exit Function
-　　    End If
-　　Next i
+　　　For i = 0 To m_lPreviewProcessCount - 1
+　　　    If m_arrPreviewProcesses(i).IsEdited Then
+　　　        IsAnyPreviewItemEdited = True
+　　　        Exit Function
+　　　    End If
+　　　Next i
 　・備考：配列長を上限とするループを実行。この戻り値に基づき、自動更新時の警告ダイアログの表示有無が決定されます。
 Private Function ConfirmAndUpdatePreviewIfEdited
 　・概要: 手動修正されたデータの保護を確認するための対話制御を担当します。
@@ -136,9 +136,9 @@ Private Function ClassifyPartBasedOnSizeString
 　・条件・分岐: 最小辺（厚み）が56mm以下、かつ特定の体積以上、かつ辺の比率がプレートの定義に合致するかを評価します。
 　・技術的ロジック: Split 関数で配列化した後、CDbl で数値変換. 3辺をソートして最小値・中間値・最大値を特定。
 　・コード引用:
-　　dimsStr = Split(Trim(sizeString), "*")
-　　d1 = CDbl(dimsStr(0)): d2 = CDbl(dimsStr(1)): d3 = CDbl(dimsStr(2))
-　　ClassifyPartBasedOnSizeString = IIf(dMin <= 56 And volume >= 70000, "+", "-")
+　　　dimsStr = Split(Trim(sizeString), "*")
+　　　d1 = CDbl(dimsStr(0)): d2 = CDbl(dimsStr(1)): d3 = CDbl(dimsStr(2))
+　　　ClassifyPartBasedOnSizeString = IIf(dMin <= 56 And volume >= 70000, "+", "-")
 　・備考：戻り値が + であればプレート、- であればブロックとして扱われます。この判定は熱処理後のSG（研削）回数自動計算に直結します。
 Private Function GetProcessTimes
 　・概要: 工程名に対応する標準工数をマスターから高速に引き当てます。
@@ -146,9 +146,9 @@ Private Function GetProcessTimes
 　・条件・分岐: キーが存在しない場合は False を返し、マスター未登録の状態を呼び出し元に通知します。
 　・技術的ロジック: Dictionary.Exists メソッドによる O(1) での定数時間検索。ハッシュテーブルを利用した高速なデータマッピングです。
 　・コード引用:
-　　If processTimesDict.Exists(lookupKey) Then
- 　　   GetProcessTimes = processTimesDict(lookupKey)
-　　End If
+　　　If processTimesDict.Exists(lookupKey) Then
+ 　　　   GetProcessTimes = processTimesDict(lookupKey)
+　　　End If
 　・備考：戻り値は Variant 型の配列で、前段取、有人、機械、段取、備考の5要素が含まれます。
 Private Function GetOutsourcingSupplierName
 　・概要: 外注コードから正式な業者名称を特定します。
@@ -170,8 +170,8 @@ Private Function NormalizeZText
 　・条件・分岐: 文字列中の「ｺｰﾃｨﾝｸﾞ」や「COATING」などを置換して削除します。
 　・技術的ロジック: StrConv 関数（vbNarrow + vbKatakana）による半角カナ化と、Replace 関数による空白・特定語句の一括削除。
 　・コード引用:
-　　t = StrConv(src, vbNarrow + vbKatakana)
-　　t = UCase(t): t = Replace(t, " ", ""): t = Replace(t, "　", "")
+　　　t = StrConv(src, vbNarrow + vbKatakana)
+　　　t = UCase(t): t = Replace(t, " ", ""): t = Replace(t, "　", "")
 　・備考：これにより設計者ごとの入力の癖を吸収し、安定したキーワード判定を可能にします。
 　Private Function GetShapeFromOptionButtons
 　・概要: フォーム上の形状選択ステータスを文字列として集約取得します。
@@ -179,8 +179,8 @@ Private Function NormalizeZText
 　・条件・分岐: 「レイアウト切り離し後」のチェックが優先され、次に各ラジオボタンの状態を確認する階層的な If 分岐です。
 　・技術的ロジック: 各 UI コントロールの Value プロパティの論理評価。
 　・コード引用:
-　　If Me.CheckBoxLayout.Value Then GetShapeFromOptionButtons = "レイアウト切り離し後"
-　　ElseIf Me.OptionButton5.Value Then GetShapeFromOptionButtons = "プレート"
+　　　If Me.CheckBoxLayout.Value Then GetShapeFromOptionButtons = "レイアウト切り離し後"
+　　　ElseIf Me.OptionButton5.Value Then GetShapeFromOptionButtons = "プレート"
 　・備考：この戻り値が UpdatePreview 内の製造シーケンス分岐の主軸となります。
 Private Function ValidateActiveCell
 　・概要: 出力先となるエクセルのセルが適切に選択されているかを確認します。
@@ -611,7 +611,6 @@ Private Sub Worksheet_Change
 　・仕様: AC列（材質）に変更があった場合、シート2のマスターデータを検索し、Z列（焼き入れ方法）と AE列（焼き硬度）に値を自動セットします。
 　・技術的ロジック:
 　　If Intersect(Target, Me.Range("AC:AC")) Is Nothing Then Exit Sub
-
 　　Intersect 関数で変更箇所が AC 列に含まれるか判定。Application.EnableEvents を False に設定して自己変更による無限ループを防ぎ、VLookup を用いてマスタから 2 列目と 3 列目のデータを取得・転記します。
 　・コード引用:
 　　If Intersect(Target, Me.Range("AC:AC")) Is Nothing Then Exit Sub
@@ -624,6 +623,4 @@ Private Sub Worksheet_Change
 　　    Me.Cells(changedCell.Row, "AE").Value = foundHardness
 　　Next changedCell
 　　Application.EnableEvents = True
-
-
 　・備考：On Error Resume Next により、マスターに存在しない材質が入力された場合のエラー落ちを回避し、その場合は対象セルを空白に更新します。
