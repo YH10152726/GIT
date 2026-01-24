@@ -1,23 +1,235 @@
-改善提案書： 超音波洗浄機 洗浄液交換基準の最適化によるコスト削減
-1. 目的
-金型洗浄機（ソマックス製 超音波洗浄機 T180）の洗浄液交換基準を、現状の「期間（半年ごと）」から、メーカー推奨の「積算使用時間（100時間）」へ変更する。 これにより、高価な液剤（約10万円）の交換頻度を最適化し、ムダなコストを削減する。
-2. 現状の問題点
-1. 基準のミスマッチ: メーカー（営業）が推奨する交換基準は「積算100時間」という性能ベースであるのに対し、我々の管理基準は「半年に一回」という期間ベースになっている。
-2. ムダなコストの発生: 1回の使用は約1時間であり、使用頻度にムラがあるため、半年経過時点での積算使用時間は100時間を大幅に下回っている。 「まだ十分に使える（100時間に達していない）高価な洗浄液」を、「半年経ったから」という理由だけで廃棄・交換しており、約10万円の液剤コストが前倒しでムダに発生している。
-3. 改善内容
-洗浄液の交換基準を「期間（半年）」から「積算使用時間（100時間）」へ変更する。
-具体的な管理方法:
-1. 洗浄機本体の操作パネル等に**「アワーメーター（積算時間計）」**の有無を確認する。
-2. （アワーメーターがある場合） 前回交換時の積算時間を基点とし、次回交換は「基点＋100時間」に達した時点とする。
-3. （アワーメーターが無い場合） 洗浄機本体に「使用時間 管理シート」をラミネートして貼り付ける。 作業者は使用のたびに「日付」「使用時間（例：1H）」を記入し、管理者が積算時間を管理する。
-4. 期待される効果（コスト削減試算）
-現状の運用（1回1H、半年に1回交換）が、仮に「半年に30回（＝30時間）使用」のペースであったと仮定して試算する。
-従来（期間管理）:
-半年に1回（30時間使用時点）で交換 ＝ 10万円/回
-年間コスト： 20万円
-改善後（時間管理）:
-100時間で交換。
-（30時間/半年のペースだと、100時間に達するのは約1年8ヶ月後）
-10万円 ÷ 1.66年（20ヶ月） ＝ 年間コスト（換算）： 約6万円
-削減効果（試算）:
-20万円/年 - 6万円/年 ＝ 年間 約14万円 のコスト削減
+Option Explicit
+
+' --- メイン処理 ---
+Public Sub AddlexProcessinterval()
+
+    ' ---- 定数定義 ----
+    Const SHEET_NAME As String = "P000" ' 対象シート名
+    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
+    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
+    Const TAP_OUTPUT_CELL As String = "Z5" ' タップ出力を入力するセル
+    Const START_ROW As Long = 3 ' データ開始行
+    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
+    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
+    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
+    Const END_MARKER As String = "END" ' データ終了マーカー
+
+    Const COL_WEIGHT_OUTPUT As String = "AB" ' 重量（出力先）
+    Const COL_MATERIAL As String = "AC" ' 材質（入力）
+    Const COL_DIMENSIONS As String = "AD" ' 寸法（入力）
+
+    ' ---- 光陽産業向け処理の定数 ----
+    Const COL_HEAT_SUPPLIER As String = "AL" ' 熱処理先が入力されている列
+    Const COL_TAP_OUTPUT As String = "BF" ' 「2」を出力する列
+    Const VAL_KOUYOU As String = "光陽産業" ' 条件となる業者名
+    Const PROC_TAP As String = "穴あけ タップ" ' 条件となる工程名
+
+    ' ---- 変数定義 ----
+    Dim ws As Worksheet
+    Dim wsSettings As Worksheet
+    Dim lastRow As Long
+    Dim blockStartRow As Long
+    Dim blockEndRow As Long
+    Dim i As Long
+    Dim intervalValue As Long
+    Dim tapOutputValue As Long
+    Dim valFromCell As Variant
+    Dim materialValue As String
+    Dim dimensionsValue As String
+
+    ' ---- 初期設定 ----
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
+    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
+    On Error GoTo 0
+
+    If ws Is Nothing Then
+        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+
+    If wsSettings Is Nothing Then
+        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
+        Exit Sub
+    End If
+
+    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
+
+    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
+        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & INTERVAL_CELL & "」セルに、" & _
+               vbCrLf & "「次工程間隔として有効な正の数値を入力してください。」", vbCritical, "設定エラー"
+        Exit Sub
+    End If
+
+    intervalValue = CLng(valFromCell)
+    tapOutputValue = wsSettings.Range(TAP_OUTPUT_CELL).Value
+
+    If Not IsNumeric(tapOutputValue) Then
+        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & TAP_OUTPUT_CELL & "」セルに、" & _
+               vbCrLf & "「有効な数値を入力してください。」", vbCritical, "設定エラー"
+        Exit Sub
+    End If
+
+    ' ---- 処理 ----
+    Application.ScreenUpdating = False
+
+    On Error GoTo FindErrorHandler
+    lastRow = ws.Columns("AG").Find(What:=END_MARKER, LookIn:=xlValues, LookAt:=xlWhole).Row
+    On Error GoTo 0
+
+    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
+    ws.Range(ws.Cells(START_ROW, COL_TAP_OUTPUT), ws.Cells(lastRow, COL_TAP_OUTPUT)).ClearContents
+    ws.Range(ws.Cells(START_ROW, COL_WEIGHT_OUTPUT), ws.Cells(lastRow, COL_WEIGHT_OUTPUT)).ClearContents
+
+    blockStartRow = START_ROW
+
+    For i = START_ROW To lastRow
+        materialValue = CStr(ws.Cells(i, COL_MATERIAL).Value)
+        dimensionsValue = CStr(ws.Cells(i, COL_DIMENSIONS).Value)
+
+        If dimensionsValue <> "" Then
+            ws.Cells(i, COL_WEIGHT_OUTPUT).Value = weight(materialValue, dimensionsValue)
+        End If
+
+        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
+            blockEndRow = i - 1
+            If blockEndRow >= blockStartRow Then
+                ' ブロック処理呼び出し
+                Call ProcessOneBlock(ws, blockStartRow, blockEndRow, _
+                                     COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue, _
+                                     COL_HEAT_SUPPLIER, COL_TAP_OUTPUT, VAL_KOUYOU, _
+                                     PROC_TAP, tapOutputValue)
+            End If
+            blockStartRow = i
+        End If
+    Next i
+
+    Application.ScreenUpdating = True
+    MsgBox "次工程間隔、日数、および重量計算を完了しました。", vbInformation
+    Exit Sub
+
+FindErrorHandler:
+    MsgBox "最終行マーカー「" & END_MARKER & "」が AG 列に見つかりませんでした。", vbCritical
+    Application.ScreenUpdating = True
+End Sub
+
+' ★ここを大幅に修正しました
+Private Sub ProcessSingleBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
+                               ByVal processCol As String, ByVal outputCol As String, ByVal valueToSet As Long)
+    
+    Dim i As Long
+    Dim currentProcess As String
+    Dim nextProcess As String
+    Dim hasShotBlast As Boolean
+    
+    ' 1. まず、このブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」が含まれているかチェックする
+    hasShotBlast = False
+    For i = startRow To endRow
+        If Trim(CStr(ws.Cells(i, processCol).Value)) = "ｼｮｯﾄﾌﾞﾗｽﾄ" Then
+            hasShotBlast = True
+            Exit For
+        End If
+    Next i
+    
+    ' 2. 各行の処理
+    For i = startRow To endRow - 1
+        currentProcess = Trim(CStr(ws.Cells(i, processCol).Value))
+        nextProcess = Trim(CStr(ws.Cells(i + 1, processCol).Value))
+        
+        ' 工程が変わるタイミングで出力判定
+        If currentProcess <> nextProcess Then
+            
+            ' --- 条件分岐 ---
+            If currentProcess = "磨き" Then
+                ' 現在が「磨き」の場合：
+                ' ブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」があるなら出力しない（ｼｮｯﾄﾌﾞﾗｽﾄ側に譲る）
+                ' ブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」がないなら出力する
+                If hasShotBlast = False Then
+                    ws.Cells(i, outputCol).Value = valueToSet
+                End If
+                
+            ElseIf IsExcludedProcess(currentProcess) Then
+                ' 例外工程（主材購入など）は何もしない
+                
+            Else
+                ' その他の工程（ｼｮｯﾄﾌﾞﾗｽﾄを含む）は通常通り出力
+                ws.Cells(i, outputCol).Value = valueToSet
+            End If
+            ' ----------------
+            
+        End If
+    Next i
+End Sub
+
+    ' 3. ブロック最終行の処理
+    currentProcess = Trim(ws.Cells(endRow, processCol).Value)
+    nextProcess = Trim(ws.Cells(endRow + 1, processCol).Value)
+    nextHeatSupplier = Trim(ws.Cells(endRow + 1, heatSupplierCol).Value)
+
+    If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
+        ws.Cells(endRow, tapOutputCol).Value = tapOutputValue
+    ElseIf currentProcess <> nextProcess And currentProcess <> "" Then
+        
+        Dim isPolishingEnd As Boolean
+        isPolishingEnd = (InStr(currentProcess, "磨き") > 0)
+        
+        If isPolishingEnd Then
+            If Not hasShotBlast Then
+                ws.Cells(endRow, intervalOutputCol).Value = valueToSet
+            End If
+        Else
+            ws.Cells(endRow, intervalOutputCol).Value = valueToSet
+        End If
+    End If
+
+End Sub
+
+' --- 重量表示関数 (変更なし) ---
+Function weight(material As String, dimensions As String) As String
+    Dim SpecificGravity As Double
+    Dim Formula As String
+    Dim Volume As Double
+    Dim DimArray As Variant
+    Dim calculatedWeight As Double
+
+    Formula = dimensions
+    If Formula Like "t*" Or Formula Like "T*" Then Formula = Mid(Formula, 2)
+
+    Select Case True
+        Case Formula Like "*#*#*"
+            DimArray = Split(Formula, "*")
+            If UBound(DimArray) = 2 Then
+                On Error Resume Next
+                Volume = CDbl(DimArray(0)) * CDbl(DimArray(1)) * CDbl(DimArray(2))
+                If Err.Number <> 0 Then weight = "": Exit Function
+                On Error GoTo 0
+            Else
+                weight = "": Exit Function
+            End If
+        Case Formula Like "φ*#*#*" Or Formula Like "f*#*#*"
+            Formula = Mid(Formula, 2)
+            DimArray = Split(Formula, "*")
+            If UBound(DimArray) = 1 Then
+                On Error Resume Next
+                Volume = 3.14159 * (CDbl(DimArray(0)) / 2) ^ 2 * CDbl(DimArray(1))
+                If Err.Number <> 0 Then weight = "": Exit Function
+                On Error GoTo 0
+            Else
+                weight = "": Exit Function
+            End If
+        Case Else
+            weight = "": Exit Function
+    End Select
+
+    Select Case True
+        Case material Like "A*": SpecificGravity = 2.81
+        Case material Like "C*": SpecificGravity = 8.81
+        Case material Like "超硬*": SpecificGravity = 14.5
+        Case material = "": weight = " 【 ●●材質未指定●● 】 ": Exit Function
+        Case Else: SpecificGravity = 7.85
+    End Select
+
+    calculatedWeight = (Volume / 1000) * SpecificGravity / 1000
+    calculatedWeight = Application.WorksheetFunction.RoundUp(calculatedWeight, 1)
+    weight = " 【 " & calculatedWeight & " 】 "
+End Function
