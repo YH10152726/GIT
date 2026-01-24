@@ -1,3 +1,59 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Option Explicit
 
 ' --- メイン処理 ---
@@ -112,9 +168,8 @@ FindErrorHandler:
     MsgBox "最終行マーカー「" & END_MARKER & "」が AG 列に見つかりませんでした。", vbCritical
     Application.ScreenUpdating = True
 End Sub
-
 ' ---- 1つのブロックを処理するサブルーチン ----
-' 「磨き」の判定をより確実にし、ｼｮｯﾄﾌﾞﾗｽﾄがない場合は必ず出力するよう修正
+' 磨き工程の後にショットブラストがない場合、確実にBK列を出力するよう修正
 Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
                             ByVal processCol As String, ByVal intervalOutputCol As String, ByVal valueToSet As Long, _
                             ByVal heatSupplierCol As String, ByVal tapOutputCol As String, ByVal kouyouName As String, _
@@ -127,8 +182,7 @@ Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal
     Dim tapOutputFlag As Boolean
     Dim hasShotBlast As Boolean
     
-    ' 1. ブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」が含まれるか事前チェック
-    ' ※全角・半角どちらの「ショットブラスト」にも対応
+    ' 1. ブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」が含まれるか事前チェック（全角・半角両対応）
     hasShotBlast = False
     For i = startRow To endRow
         Dim procText As String
@@ -154,14 +208,12 @@ Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal
         End If
 
         ' BK列（次工程間隔）の判定
-        If currentProcess <> nextProcess And currentProcess <> "" And nextProcess <> "" And Not tapOutputFlag Then
+        ' 修正点：nextProcess <> "" の条件を外し、工程が変われば判定対象にする
+        If currentProcess <> nextProcess And currentProcess <> "" And Not tapOutputFlag Then
             
-            ' --- 条件分岐の再構築 ---
-            Dim isPolishing As Boolean
-            isPolishing = (InStr(currentProcess, "磨き") > 0) ' 「磨き」が含まれているか
-            
-            If isPolishing Then
-                ' 磨き工程の場合：ショットブラストが「ない」時だけ出力
+            ' 「磨き」という文字が含まれているか判定
+            If InStr(currentProcess, "磨き") > 0 Then
+                ' 磨きの場合：ショットブラストがブロック内に「ない」時だけ出力
                 If Not hasShotBlast Then
                     ws.Cells(i, intervalOutputCol).Value = valueToSet
                 End If
@@ -169,24 +221,21 @@ Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal
                 ' 磨き以外の工程：通常通り出力（ショットブラスト自体もここに含まれる）
                 ws.Cells(i, intervalOutputCol).Value = valueToSet
             End If
-            ' -----------------------
             
         End If
     Next i
 
     ' 3. ブロック最終行の処理
     currentProcess = Trim(ws.Cells(endRow, processCol).Value)
+    ' 最終行の次（ブロック外）の工程名を取得
     nextProcess = Trim(ws.Cells(endRow + 1, processCol).Value)
     nextHeatSupplier = Trim(ws.Cells(endRow + 1, heatSupplierCol).Value)
 
     If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
         ws.Cells(endRow, tapOutputCol).Value = tapOutputValue
     ElseIf currentProcess <> nextProcess And currentProcess <> "" Then
-        
-        Dim isPolishingEnd As Boolean
-        isPolishingEnd = (InStr(currentProcess, "磨き") > 0)
-        
-        If isPolishingEnd Then
+        ' 最終行も同様に、磨きかつショットブラストなしなら出力
+        If InStr(currentProcess, "磨き") > 0 Then
             If Not hasShotBlast Then
                 ws.Cells(endRow, intervalOutputCol).Value = valueToSet
             End If
@@ -246,4 +295,6 @@ Function weight(material As String, dimensions As String) As String
     calculatedWeight = Application.WorksheetFunction.RoundUp(calculatedWeight, 1)
     weight = " 【 " & calculatedWeight & " 】 "
 End Function
+
+
 
