@@ -54,7 +54,6 @@
 
 
 
-
 Option Explicit
 
 ' --- メイン処理 ---
@@ -79,7 +78,7 @@ Public Sub AddlexProcessinterval()
     Const COL_HEAT_SUPPLIER As String = "AL" ' 熱処理先が入力されている列
     Const COL_TAP_OUTPUT As String = "BF" ' 「2」を出力する列
     Const VAL_KOUYOU As String = "光陽産業" ' 条件となる業者名
-    Const PROC_TAP As String = "穴あけ タップ" ' 条件となる工程名
+    Const PROC_TAP As String = "穴あけ ﾀｯﾌﾟ" ' 条件となる工程名
 
     ' ---- 変数定義 ----
     Dim ws As Worksheet
