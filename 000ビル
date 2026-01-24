@@ -167,14 +167,13 @@ Public Sub AddlexProcessinterval()
 
         ' 寸法が入力されている場合のみ重量を計算
         If dimensionsValue <> "" Then
-            ' ※weight関数は別途定義されている必要があります
             ws.Cells(i, COL_WEIGHT_OUTPUT).Value = weight(materialValue, dimensionsValue)
         End If
 
         ' AH列に「品名」または「END」があるかチェック
         If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
 
-            ' 現在のブロックの終了行を設定（品名/ENDの1つ前の行）
+            ' 現在のブロックの終了行を設定（品名ENDの1つ前の行）
             blockEndRow = i - 1
 
             ' 前のブロックが存在すれば処理を実行
@@ -212,7 +211,7 @@ Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal
     Dim nextHeatSupplier As String
     Dim tapOutputFlag As Boolean
 
-    For i = startRow To endRow
+    For i = startRow To endRow - 1
         currentProcess = Trim(ws.Cells(i, processCol).Value)
         nextProcess = Trim(ws.Cells(i + 1, processCol).Value)
 
@@ -245,4 +244,90 @@ Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal
     End If
 
 End Sub
+
+' ********************************************************************************
+' 重量表示関数
+' 材質と外形寸法を元に、重量を計算する
+' 【引数】material   材質 文字列形式
+'         dimensions 外形寸法(mm) 「○*○*○」の文字列形式
+' 【戻り値】重量（文字列形式, kg単位, 小数点以下第1位を切り上げる）
+' ********************************************************************************
+Function weight(material As String, dimensions As String) As String
+    Dim SpecificGravity As Double
+    Dim Formula As String
+    Dim Volume As Double
+    Dim DimArray As Variant
+    Dim calculatedWeight As Double
+
+    Formula = dimensions
+
+    ' 材料寸法の先頭に"t"（板厚を示す記号）がある場合は削除し、計算を継続する
+    If Formula Like "t*" Or Formula Like "T*" Then
+        Formula = Mid(Formula, 2)
+    End If
+
+    ' 体積の計算を行う
+    Select Case True
+        Case Formula Like "*#*#*" ' 角材や板の場合（例：10*20*30）
+            DimArray = Split(Formula, "*")
+            If UBound(DimArray) = 2 Then
+                On Error Resume Next ' 数値変換エラーを無視
+                Volume = CDbl(DimArray(0)) * CDbl(DimArray(1)) * CDbl(DimArray(2))
+                If Err.Number <> 0 Then
+                    weight = "" ' エラー時
+                    Exit Function
+                End If
+                On Error GoTo 0
+            Else
+                weight = "" ' 形式が不正
+                Exit Function
+            End If
+
+        Case Formula Like "φ*#*#*" Or Formula Like "f*#*#*" ' 丸棒の場合（例：φ10*100）
+            Formula = Mid(Formula, 2)
+            DimArray = Split(Formula, "*")
+            If UBound(DimArray) = 1 Then
+                ' 体積 = π * (直径/2)^2 * 長さ
+                On Error Resume Next ' 数値変換エラーを無視
+                Volume = 3.14159 * (CDbl(DimArray(0)) / 2) ^ 2 * CDbl(DimArray(1))
+                If Err.Number <> 0 Then
+                    weight = "" ' エラー時
+                    Exit Function
+                End If
+                On Error GoTo 0
+            Else
+                weight = "" ' 形式が不正
+                Exit Function
+            End If
+
+        Case Else
+            ' 体積計算式として解釈できない場合は終了
+            weight = ""
+            Exit Function
+    End Select
+
+    ' 材質に合わせて比重を設定する
+    Select Case True
+        Case material Like "A*" ' アルミ
+            SpecificGravity = 2.81
+        Case material Like "C*" ' 銅
+            SpecificGravity = 8.81
+        Case material Like "超硬*" ' 超硬
+            SpecificGravity = 14.5
+        Case material = "" ' 材質が設定されていない場合は警告表示
+            weight = " 【 ●●材質未指定●● 】 "
+            Exit Function
+        Case Else ' 上記以外は全て鉄とみなす
+            SpecificGravity = 7.85
+    End Select
+
+    ' 重量をkg単位で得る (体積:mm3 * 比重:g/cm3 -> 体積/1000 * 比重 / 1000 = kg)
+    calculatedWeight = (Volume / 1000) * SpecificGravity / 1000
+
+    ' 小数点以下を切り上げ
+    calculatedWeight = Application.WorksheetFunction.RoundUp(calculatedWeight, 1)
+
+    weight = " 【 " & calculatedWeight & " 】 "
+
+End Function
 
