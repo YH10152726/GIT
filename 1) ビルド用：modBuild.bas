@@ -1,235 +1,154 @@
-Option Explicit
 
-' --- メイン処理 ---
-Public Sub AddlexProcessinterval()
 
-    ' ---- 定数定義 ----
-    Const SHEET_NAME As String = "P000" ' 対象シート名
-    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
-    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
-    Const TAP_OUTPUT_CELL As String = "Z5" ' タップ出力を入力するセル
-    Const START_ROW As Long = 3 ' データ開始行
-    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
-    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
-    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
-    Const END_MARKER As String = "END" ' データ終了マーカー
 
-    Const COL_WEIGHT_OUTPUT As String = "AB" ' 重量（出力先）
-    Const COL_MATERIAL As String = "AC" ' 材質（入力）
-    Const COL_DIMENSIONS As String = "AD" ' 寸法（入力）
 
-    ' ---- 光陽産業向け処理の定数 ----
-    Const COL_HEAT_SUPPLIER As String = "AL" ' 熱処理先が入力されている列
-    Const COL_TAP_OUTPUT As String = "BF" ' 「2」を出力する列
-    Const VAL_KOUYOU As String = "光陽産業" ' 条件となる業者名
-    Const PROC_TAP As String = "穴あけ タップ" ' 条件となる工程名
 
-    ' ---- 変数定義 ----
-    Dim ws As Worksheet
-    Dim wsSettings As Worksheet
-    Dim lastRow As Long
-    Dim blockStartRow As Long
-    Dim blockEndRow As Long
-    Dim i As Long
-    Dim intervalValue As Long
-    Dim tapOutputValue As Long
-    Dim valFromCell As Variant
-    Dim materialValue As String
-    Dim dimensionsValue As String
 
-    ' ---- 初期設定 ----
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
-    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
-    On Error GoTo 0
 
-    If ws Is Nothing Then
-        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
 
-    If wsSettings Is Nothing Then
-        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
 
-    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
 
-    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & INTERVAL_CELL & "」セルに、" & _
-               vbCrLf & "「次工程間隔として有効な正の数値を入力してください。」", vbCritical, "設定エラー"
-        Exit Sub
-    End If
 
-    intervalValue = CLng(valFromCell)
-    tapOutputValue = wsSettings.Range(TAP_OUTPUT_CELL).Value
 
-    If Not IsNumeric(tapOutputValue) Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & TAP_OUTPUT_CELL & "」セルに、" & _
-               vbCrLf & "「有効な数値を入力してください。」", vbCritical, "設定エラー"
-        Exit Sub
-    End If
 
-    ' ---- 処理 ----
-    Application.ScreenUpdating = False
 
-    On Error GoTo FindErrorHandler
-    lastRow = ws.Columns("AG").Find(What:=END_MARKER, LookIn:=xlValues, LookAt:=xlWhole).Row
-    On Error GoTo 0
 
-    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
-    ws.Range(ws.Cells(START_ROW, COL_TAP_OUTPUT), ws.Cells(lastRow, COL_TAP_OUTPUT)).ClearContents
-    ws.Range(ws.Cells(START_ROW, COL_WEIGHT_OUTPUT), ws.Cells(lastRow, COL_WEIGHT_OUTPUT)).ClearContents
 
-    blockStartRow = START_ROW
 
-    For i = START_ROW To lastRow
-        materialValue = CStr(ws.Cells(i, COL_MATERIAL).Value)
-        dimensionsValue = CStr(ws.Cells(i, COL_DIMENSIONS).Value)
 
-        If dimensionsValue <> "" Then
-            ws.Cells(i, COL_WEIGHT_OUTPUT).Value = weight(materialValue, dimensionsValue)
-        End If
 
-        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
-            blockEndRow = i - 1
-            If blockEndRow >= blockStartRow Then
-                ' ブロック処理呼び出し
-                Call ProcessOneBlock(ws, blockStartRow, blockEndRow, _
-                                     COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue, _
-                                     COL_HEAT_SUPPLIER, COL_TAP_OUTPUT, VAL_KOUYOU, _
-                                     PROC_TAP, tapOutputValue)
-            End If
-            blockStartRow = i
-        End If
-    Next i
 
-    Application.ScreenUpdating = True
-    MsgBox "次工程間隔、日数、および重量計算を完了しました。", vbInformation
-    Exit Sub
 
-FindErrorHandler:
-    MsgBox "最終行マーカー「" & END_MARKER & "」が AG 列に見つかりませんでした。", vbCritical
-    Application.ScreenUpdating = True
-End Sub
 
-' ★ここを大幅に修正しました
-Private Sub ProcessSingleBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
-                               ByVal processCol As String, ByVal outputCol As String, ByVal valueToSet As Long)
-    
-    Dim i As Long
-    Dim currentProcess As String
-    Dim nextProcess As String
-    Dim hasShotBlast As Boolean
-    
-    ' 1. まず、このブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」が含まれているかチェックする
-    hasShotBlast = False
-    For i = startRow To endRow
-        If Trim(CStr(ws.Cells(i, processCol).Value)) = "ｼｮｯﾄﾌﾞﾗｽﾄ" Then
-            hasShotBlast = True
-            Exit For
-        End If
-    Next i
-    
-    ' 2. 各行の処理
-    For i = startRow To endRow - 1
-        currentProcess = Trim(CStr(ws.Cells(i, processCol).Value))
-        nextProcess = Trim(CStr(ws.Cells(i + 1, processCol).Value))
-        
-        ' 工程が変わるタイミングで出力判定
-        If currentProcess <> nextProcess Then
-            
-            ' --- 条件分岐 ---
-            If currentProcess = "磨き" Then
-                ' 現在が「磨き」の場合：
-                ' ブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」があるなら出力しない（ｼｮｯﾄﾌﾞﾗｽﾄ側に譲る）
-                ' ブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」がないなら出力する
-                If hasShotBlast = False Then
-                    ws.Cells(i, outputCol).Value = valueToSet
-                End If
-                
-            ElseIf IsExcludedProcess(currentProcess) Then
-                ' 例外工程（主材購入など）は何もしない
-                
-            Else
-                ' その他の工程（ｼｮｯﾄﾌﾞﾗｽﾄを含む）は通常通り出力
-                ws.Cells(i, outputCol).Value = valueToSet
-            End If
-            ' ----------------
-            
-        End If
-    Next i
-End Sub
 
-    ' 3. ブロック最終行の処理
-    currentProcess = Trim(ws.Cells(endRow, processCol).Value)
-    nextProcess = Trim(ws.Cells(endRow + 1, processCol).Value)
-    nextHeatSupplier = Trim(ws.Cells(endRow + 1, heatSupplierCol).Value)
 
-    If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
-        ws.Cells(endRow, tapOutputCol).Value = tapOutputValue
-    ElseIf currentProcess <> nextProcess And currentProcess <> "" Then
-        
-        Dim isPolishingEnd As Boolean
-        isPolishingEnd = (InStr(currentProcess, "磨き") > 0)
-        
-        If isPolishingEnd Then
-            If Not hasShotBlast Then
-                ws.Cells(endRow, intervalOutputCol).Value = valueToSet
-            End If
-        Else
-            ws.Cells(endRow, intervalOutputCol).Value = valueToSet
-        End If
-    End If
 
-End Sub
 
-' --- 重量表示関数 (変更なし) ---
-Function weight(material As String, dimensions As String) As String
-    Dim SpecificGravity As Double
-    Dim Formula As String
-    Dim Volume As Double
-    Dim DimArray As Variant
-    Dim calculatedWeight As Double
 
-    Formula = dimensions
-    If Formula Like "t*" Or Formula Like "T*" Then Formula = Mid(Formula, 2)
 
-    Select Case True
-        Case Formula Like "*#*#*"
-            DimArray = Split(Formula, "*")
-            If UBound(DimArray) = 2 Then
-                On Error Resume Next
-                Volume = CDbl(DimArray(0)) * CDbl(DimArray(1)) * CDbl(DimArray(2))
-                If Err.Number <> 0 Then weight = "": Exit Function
-                On Error GoTo 0
-            Else
-                weight = "": Exit Function
-            End If
-        Case Formula Like "φ*#*#*" Or Formula Like "f*#*#*"
-            Formula = Mid(Formula, 2)
-            DimArray = Split(Formula, "*")
-            If UBound(DimArray) = 1 Then
-                On Error Resume Next
-                Volume = 3.14159 * (CDbl(DimArray(0)) / 2) ^ 2 * CDbl(DimArray(1))
-                If Err.Number <> 0 Then weight = "": Exit Function
-                On Error GoTo 0
-            Else
-                weight = "": Exit Function
-            End If
-        Case Else
-            weight = "": Exit Function
-    End Select
 
-    Select Case True
-        Case material Like "A*": SpecificGravity = 2.81
-        Case material Like "C*": SpecificGravity = 8.81
-        Case material Like "超硬*": SpecificGravity = 14.5
-        Case material = "": weight = " 【 ●●材質未指定●● 】 ": Exit Function
-        Case Else: SpecificGravity = 7.85
-    End Select
 
-    calculatedWeight = (Volume / 1000) * SpecificGravity / 1000
-    calculatedWeight = Application.WorksheetFunction.RoundUp(calculatedWeight, 1)
-    weight = " 【 " & calculatedWeight & " 】 "
-End Function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DR構造説明別紙参照
+
+
+以下議論内容
+1. 金型寸法と修正対応の検討
+• 寸法調整が可能なように、基本的には削り方向で修正できるよう、金型側には肉付けをした状態での設計を検討している。
+反りに関して、100mmに対して0.15mmの内反りしたので太鼓形にする事で、反りが改善した実績があり。との情報を得た。
+• プレスフィット部品のピッチに関しても、現行の金型寸法を確認し、狙い値を折り込めるのがベストだが、こちらも修正対応できるように製品部への肉付けを検討している。懸念点としてプレスフィットのピッチ関係の修正は、あらかじめ余肉を付けた後に削って修正を検討しているが、駒の裏が薄く未充填になりやすい。あらかじめ余肉を付ける設計だと未充填に拍車をかけるのではないか？削り代での設計で対応するのか要検討。
+
+2. 形状・構造上の懸念事項
+• タブの部分がナットやボルトの逃がし穴に入る構造について、現状のタブでは入らない寸法なので対策は不要。
+• 金型の厚みが増した点について、上型が厚くなっているが、インサートの挿入などの作業性に邪魔にならないか確認が行われた。全体的にコンパクトになっているため、問題ないとの見解である。
+• 金型が長方形で反りの影響を受けやすいため、長手方向の寸法をコンパクトにしてアスペクト比を改善し、反りの影響を抑える設計としている。
+3. PPS樹脂に関連する摩耗とガス対策
+• ランナーロックピン等の形状について、PPS樹脂を使用するため摩耗が激しいという指摘があった。
+• 過去の事例でアンダーカット量が原因でピンが折れそうになった経験があるため、アンダーカット量の調整が検討された。(現行に合わせてアンダーカット量は2°で設計する)
+• PPSはガスによる詰まりが発生しやすいため、コールドスラグウェル直下やランナーの末端にガス抜きピンを設置し、ガスを逃がす構造について議論された。コールドスラグウェル直下のガス抜きに関してはガストースでのガス抜きではなくフチから逃す構造とする。(PPSなのですぐに詰まってしまう)
+4. 誤組み立て防止策
+• Eピン（エジェクタピン）の誤組み立てを防止するため、基本的には刻印やアイマークで対応する予定である。
+• ピンの本数が多いため、すべてのツバをDカットしてキーを入れるような複雑な構造は難しいが、誤組みが発生しやすい箇所については事前に教示を受け、ポカヨケ構造を検討する。
+• 部品の合い番間違いを防ぐため、同じ形状の部品でも右には入るが左には入らないような、形状の非対称化による物理的なポカヨケの必要性が議論された。ツバ部の形状変更にて対応する。
+5. 成形時の不具合対策（ドローリング等）
+• 縦型成形機特有のドローリング対策について、ノズル温度の管理や、金型側での冷え防止策が検討された。(冷電へのヒヤリングを行なっていただく)
+• インサート部への挿入性を高めるため、入り口付近の角部へ面取り処理を行い、作業者による挿入時に傷がつかないよう配慮する。
+6. その他・確認事項
+• ガイドピンの位置が、ヒーター棒との干渉を避けるために中央寄りに配置されている点を確認した。
+• 受板の厚みは40mmと35mmで、現行の金型と同等の強度を確保している。　　　
+・挿入確認用の端子について
+挿入確認部品はMAX、minimum品ではなく、ロット毎(20ショット)に提供していただく。確認用に使用した端子は山電にて保管しておく。調整は型温を昇温した状態(130°)で行う。
+どの様に作ったのか情報を残しておくことが重要。反り対策の狙い値なども含め。
+
+現場確認事項の回答と検討
+現場での確認結果に基づき、資料の各項目について1つずつ回答と合議が行われた。
+1. 現物型の突き出し仕様
+• 確認結果: 現地で問題なく確認完了。
+2. 断熱板を含む取り付け部の板厚
+• 内容: 断熱板を含め、取り付けに必要な板厚を満たしていることを確認。
+• 補足:成型機へはクランプで固定している。
+3. 断熱板の設置（可動・固定）
+• 確認結果: 取り付けプレートへの設置について問題なし。
+4. ヒーター棒のピッチ
+• 確認結果: 現地にて写真撮影および測定を実施済み。
+5. 下型中央のヒーター棒（止まり穴仕様）
+• 確認結果: 現地にて止まり穴仕様を確認。ヒーター棒の長さも測定済み。
+6. ランナーサンプルの送付
+• 予定: 明日の成形後にサンプリングし、今週末に送付予定。
+• 補足: バリを取らずにそのままの状態（どこにバリが出ているか確認するため）で1個送付する。
+7. ランナー落下防止の仕様
+• 確認結果: ランナープレートへボスを設置してランナー落下防止を実施する。現行同様の仕様とする。
+8. インサート挿入部開口のガス抜き（ガスベント）
+• 確認結果: 現物を確認。写真撮影済み。ガスベントの狙い値やランドの長さについては別途相談。
+9. 下型取り付け板の「けがき線」
+• 内容: 対象の金型には入っていなかったが、今回は下型取り付け板のXY中心に目印となる線を対応させる。
+10. 指示なき角のR0.3
+• 検討: 製品図面に指示はないが、基本はモデル通りとする。R0.5以下であれば許容されるケースもあり、効率化できる箇所があれば別途相談。
+11. ミスマッチ付加による形状変更について
+・回答無かった為、再度確認する。
+12. コールドスラッグ直下のガス抜き
+• 判断: 現時点では不要。ただし、後から追加加工することも可能。
+13. ランナー部の長さ
+• 内容: 170mm想定で問題なし。
+• 追加: ロケート位置の調整、スプルーゲートの全長見直しが必要。(一次スプルーを10〜15mm掘り込む)バンドヒーターや配線との干渉がないか確認し情報を展開する。
+14. バリ切り部の寸法測定
+• 内容: 金型寸法を測定機での詳細測定が必要。今週中に測定が必要な箇所の資料を作成し、依頼する。
+15. K改訂以前の改訂内容について
+• 内容:図面開示が可能か、現在確認中。
+今後の予定
+• 追加検討: 設計を進める中で追加の確認事項が出てくる可能性があるため、随時相談とする。
+
+
+電極修正の検討
+1. 電極修正の背景と現状課題
+• 老朽更新：今回の更新に合わせ、電極関係の修正を行いDXPLの品質向上を図る。
+• 薄肉部の成形不良：製品の特定箇所が0.8mmと非常に薄肉であり、電極の図面公差の中央を狙いすぎた結果、未充填が発生しやすい。
+• バリの発生：未充填を防ぐために過充填気味の成形を強いられており、ガスベントや電極挿入部からバリが発生している。
+• プレートの反り：ドローリングによってプレート間に挟まった樹脂が圧死し、パーティングに反りが生じている。これにより、外側ほど型締まりが甘くなりバリを助長させている。
+2. 電極および寸法の改善案
+• コイニング幅の変更：現行の2.5mm幅を1.5mmに変更。電極を曲げるための必要最小限の幅に抑えることで、バリ切り量を延長しバリ抑制につなげる。
+• 狙い寸法の見直し：現行の0.8mm狙いを交差上限付近の1.05mm狙いへ変更。50ミクロンのマージンを確保。成形性を改善する。
+• トータル寸法の調整：10.95±0.5mmの箇所を短縮する方向で調整を行う。
+3. 順送型（プレス型）への展開
+• 型修正の可否：現行順送型において、コイニングの短縮およびパーツ交換による寸法変更が可能であることを確認済み。
+• 運用の切り替え：部材認定が通った時点で切り替える。それまでの型合わせや調整には、今の電極も使用可能。
+4. 検討事項および合意内容
+• 関係各所の了解：MEEからは、今回の金型微修正について了承を得ている。
+• 金型インサートの合わせ：現行電極との挿入性問題を避けるため、順送型の修正が完了した後に、金型インサートとの現物合わせを再度行う。
+5. 今後の段取り
+• 詳細測定の実施：インサートが入る開口部のピッチ寸法を、三次元測定機にて測定する。
