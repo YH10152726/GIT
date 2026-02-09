@@ -64,270 +64,36 @@
 
 
 
-Option Explicit
+目標項目1：変化に追従出来る協力体制の構築 自己評価：3 
+定量的な成果：モールド仕上げ業務のプレス仕上げ担当者への技能移管を計画通り遂行。突発的な修理依頼に対しても、進捗管理の共有により納期遅延ゼロを維持。 
+行動内容：自身の異動および組織体制の変化を見据え、後任者が迷わず作業できる環境整備を行いました。具体的には、作業の優先順位判断基準を明文化し、プレス仕上げ担当者が兼任でも効率的に動ける体制を構築しました。 
+評価理由：計画された技能移管を完了させ、体制変更後も現場の生産性を落とすことなく運用できているため、目標を十分に達成したと判断しました。
 
-' --- メイン処理 ---
-' このサブルーチンをボタンなどに登録して実行します
-Public Sub AddlexProcessinterval()
+目標項目2：技術ノウハウを見える化 自己評価：4 
+定量的な成果：主観動画による教育資料の整備により、指導工数を従来比で約40パーセント削減。 
+行動内容：モールド仕上げ特有の「力加減」や「音やスピード」といった、従来の静止画マニュアルでは伝わりにくい感覚値を、主観カメラを用いた動画で可視化しました。これにより、後任者が自学自習できる環境を整え、指導者がつきっきりになる時間を大幅に削減しました。 
+評価理由：単なるマニュアル作成に留まらず、教育プロセスそのものを効率化する新しい手法を確立し、組織の育成スピード向上に大きく貢献したため、目標を上回る成果と判断しました。
 
-    ' ---- 定数定義 ----
-    Const SHEET_NAME As String = "P000" ' 対象シート名
-    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
-    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
-    Const TAP_OUTPUT_CELL As String = "Z5" ' タップ出力を入力するセル
-    Const START_ROW As Long = 3 ' データ開始行
-    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
-    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
-    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
-    Const END_MARKER As String = "END" ' データ終了マーカー
+目標項目3：加工技術向上 自己評価：2 
+定量的な成果：ワックス試験の技術検証を実施。幾何学的な干渉確認には有効である一方、バリやヒケの判定には限界があることを特定。 
+行動内容：株式会社サイタ製作所と連携し、金型のT1トライ前に不具合を予見するためのワックス試験を検証しました。実証実験を通じて、現行の設備環境における導入メリットと運用課題をレポートとしてまとめました。 
+評価理由：検証自体は完了し、技術的な知見は整理できましたが、現場への本格導入や具体的な品質向上への寄与は次期以降の課題となったため、標準的な進捗に留まったと判断しました。
 
-    Const COL_WEIGHT_OUTPUT As String = "AB" ' 重量（出力先）
-    Const COL_MATERIAL As String = "AC" ' 材質（入力）
-    Const COL_DIMENSIONS As String = "AD" ' 寸法（入力）
+目標項目4：効率的な段取り加工方法への挑戦 自己評価：4 
+定量的な成果：VCI（気化性防錆剤）導入による水管清掃工数の削減。不具合1件あたり約6から7時間の突発工数を削減。 
+行動内容：金型保管時の冷却水管内の錆による詰まりを防止するため、VCIを用いた予防保全を提案・導入しました。これにより、従来発生していた緊急のウォーターリーマ作業を未然に防ぎ、生産ラインの停止リスク低減と工数削減を同時に実現しました。 
+評価理由：現状の課題に対して予防保全の観点から仕組みを導入し、現場の負担を確実に軽減させた実績は、組織の生産性向上に直結する高い成果であると判断しました。
 
-    ' ---- 光陽産業向け処理の定数 ----
-    Const COL_HEAT_SUPPLIER As String = "AL" ' 熱処理先が入力されている列
-    Const COL_TAP_OUTPUT As String = "BF" ' 「2」を出力する列
-    Const VAL_KOUYOU As String = "光陽産業" ' 条件となる業者名
-    Const PROC_TAP As String = "穴あけ タップ" ' 条件となる工程名
+目標項目5：ツール作成 自己評価：4 
+定量的な成果：TS設定および工程作成の自動化により、作成工数を90パーセント削減。年間で約100時間の工数削減を達成。 
+行動内容：個人で開発したTS算出ロジックを、係の標準ツールへ移植・統合しました。入力負荷が大きく形骸化しつつあった標準ツールに、VBAを用いた自動読み込み機能を実装することで、誰が担当しても短時間で高精度なTS設定ができる環境を構築しました。 
+評価理由：個人の開発成果を組織全体の標準ツールへと昇華させ、係全体の業務効率と設定精度の均一化を劇的に改善したため、極めて高い貢献と判断しました。
 
-    ' ---- 変数定義 ----
-    Dim ws As Worksheet
-    Dim wsSettings As Worksheet
-    Dim lastRow As Long
-    Dim blockStartRow As Long
-    Dim blockEndRow As Long
-    Dim i As Long
-    Dim intervalValue As Long
-    Dim tapOutputValue As Long
-    Dim valFromCell As Variant
-    Dim materialValue As String
-    Dim dimensionsValue As String
 
-    ' ---- 初期設定 ----
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
-    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
-    On Error GoTo 0
+1. 行動指針（コアバリュー）に対する取り組み
+2. かえる（変革・挑戦） 経験と勘に頼っていたTS設定・工程作成や技能伝承を、デジタルツールや動画を活用した「論理的で再現性のある仕組み」へと変革しました。従来のやり方に固執せず、自らVBA等のスキルを習得し、現場の課題(工数過多・属人化）を解消する活動を推進しました。
+3. ささえる（貢献・次世代育成） 自身の知見を自分だけのものにせず、後任者が最短で成長できるよう、主観動画などの教育インフラを整備しました。また、標準ツールの改良を通じて、後輩や他担当者がミスなく業務を遂行できる「組織としての底上げ」を支える活動に注力しました。
+4. つながる（連携・共創） ツールの開発にあたっては、工程グループや関係者と密なコミュニケーションを図り、現場のニーズを反映した実用性の高い機能を実装しました。また、外部メーカーとの連携による技術検証を通じて、社外の知見を取り込み、組織内の技術力向上を図りました。
 
-    If ws Is Nothing Then
-        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
-
-    If wsSettings Is Nothing Then
-        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
-
-    ' シート2のZ2セルから値を取得
-    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
-
-    ' 値が有効か（正の数値か）をチェック
-    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & INTERVAL_CELL & "」セルに、" & _
-               vbCrLf & "「次工程間隔として有効な正の数値を入力してください。」", vbCritical, "設定エラー"
-        Exit Sub
-    End If
-
-    ' Long型に変換して変数に格納
-    intervalValue = CLng(valFromCell)
-
-    ' シート2のZ5セルからタップ出力値を取得
-    tapOutputValue = wsSettings.Range(TAP_OUTPUT_CELL).Value
-
-    ' 値が有効か（数値か）をチェック
-    If Not IsNumeric(tapOutputValue) Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & TAP_OUTPUT_CELL & "」セルに、" & _
-               vbCrLf & "「有効な数値を入力してください。」", vbCritical, "設定エラー"
-        Exit Sub
-    End If
-
-    ' ---- 処理 ----
-    Application.ScreenUpdating = False
-
-    ' 最終行を取得（ENDマーカー基準）
-    On Error GoTo FindErrorHandler
-    lastRow = ws.Columns("AG").Find(What:=END_MARKER, LookIn:=xlValues, LookAt:=xlWhole).Row
-    On Error GoTo 0
-
-    ' BK列、BF列、AB列をクリア
-    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
-    ws.Range(ws.Cells(START_ROW, COL_TAP_OUTPUT), ws.Cells(lastRow, COL_TAP_OUTPUT)).ClearContents
-    ws.Range(ws.Cells(START_ROW, COL_WEIGHT_OUTPUT), ws.Cells(lastRow, COL_WEIGHT_OUTPUT)).ClearContents
-
-    ' ブロックの開始行をセット
-    blockStartRow = START_ROW
-
-    ' 3行目から最終行までループ
-    For i = START_ROW To lastRow
-
-        materialValue = CStr(ws.Cells(i, COL_MATERIAL).Value)
-        dimensionsValue = CStr(ws.Cells(i, COL_DIMENSIONS).Value)
-
-        ' 寸法が入力されている場合のみ重量を計算
-        If dimensionsValue <> "" Then
-            ws.Cells(i, COL_WEIGHT_OUTPUT).Value = weight(materialValue, dimensionsValue)
-        End If
-
-        ' AH列に「品名」または「END」があるかチェック
-        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
-
-            ' 現在のブロックの終了行を設定（品名ENDの1つ前の行）
-            blockEndRow = i - 1
-
-            ' 前のブロックが存在すれば処理を実行
-            If blockEndRow >= blockStartRow Then
-                Call ProcessOneBlock(ws, blockStartRow, blockEndRow, _
-                                     COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue, _
-                                     COL_HEAT_SUPPLIER, COL_TAP_OUTPUT, VAL_KOUYOU, _
-                                     PROC_TAP, tapOutputValue)
-            End If
-
-            ' 次のブロックの開始行を更新
-            blockStartRow = i
-        End If
-
-    Next i
-
-    Application.ScreenUpdating = True
-    MsgBox "次工程間隔、日数、および重量計算を完了しました。", vbInformation
-    Exit Sub
-
-FindErrorHandler:
-    MsgBox "最終行マーカー「" & END_MARKER & "」が AG 列に見つかりませんでした。", vbCritical
-    Application.ScreenUpdating = True
-End Sub
-
-' ---- 1つのブロックを処理するサブルーチン ----
-Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
-                            ByVal processCol As String, ByVal intervalOutputCol As String, ByVal valueToSet As Long, _
-                            ByVal heatSupplierCol As String, ByVal tapOutputCol As String, ByVal kouyouName As String, _
-                            ByVal tapProcessName As String, ByVal tapOutputValue As Long)
-
-    Dim i As Long
-    Dim currentProcess As String
-    Dim nextProcess As String
-    Dim nextHeatSupplier As String
-    Dim tapOutputFlag As Boolean
-
-    For i = startRow To endRow - 1
-        currentProcess = Trim(ws.Cells(i, processCol).Value)
-        nextProcess = Trim(ws.Cells(i + 1, processCol).Value)
-
-        ' 次の行の熱処理先を取得
-        nextHeatSupplier = Trim(ws.Cells(i + 1, heatSupplierCol).Value)
-
-        ' 現在の行が穴あけタップで、かつ次の行の熱処理先に「光陽産業」が含まれる場合
-        If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
-            ws.Cells(i, tapOutputCol).Value = tapOutputValue
-            tapOutputFlag = True
-        Else
-            tapOutputFlag = False
-        End If
-
-        ' 次工程間隔の処理
-        If currentProcess <> nextProcess And currentProcess <> "" And nextProcess <> "" And Not tapOutputFlag Then
-            ws.Cells(i, intervalOutputCol).Value = valueToSet
-        End If
-    Next i
-
-    ' ブロックの最終行で次工程間隔処理
-    currentProcess = Trim(ws.Cells(endRow, processCol).Value)
-    nextProcess = Trim(ws.Cells(endRow + 1, processCol).Value)
-    nextHeatSupplier = Trim(ws.Cells(endRow + 1, heatSupplierCol).Value)
-
-    If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
-        ws.Cells(endRow, tapOutputCol).Value = tapOutputValue
-    ElseIf currentProcess <> nextProcess Then
-        ws.Cells(endRow, intervalOutputCol).Value = valueToSet
-    End If
-
-End Sub
-
-' ********************************************************************************
-' 重量表示関数
-' 材質と外形寸法を元に、重量を計算する
-' 【引数】material   材質 文字列形式
-'         dimensions 外形寸法(mm) 「○*○*○」の文字列形式
-' 【戻り値】重量（文字列形式, kg単位, 小数点以下第1位を切り上げる）
-' ********************************************************************************
-Function weight(material As String, dimensions As String) As String
-    Dim SpecificGravity As Double
-    Dim Formula As String
-    Dim Volume As Double
-    Dim DimArray As Variant
-    Dim calculatedWeight As Double
-
-    Formula = dimensions
-
-    ' 材料寸法の先頭に"t"（板厚を示す記号）がある場合は削除し、計算を継続する
-    If Formula Like "t*" Or Formula Like "T*" Then
-        Formula = Mid(Formula, 2)
-    End If
-
-    ' 体積の計算を行う
-    Select Case True
-        Case Formula Like "*#*#*" ' 角材や板の場合（例：10*20*30）
-            DimArray = Split(Formula, "*")
-            If UBound(DimArray) = 2 Then
-                On Error Resume Next ' 数値変換エラーを無視
-                Volume = CDbl(DimArray(0)) * CDbl(DimArray(1)) * CDbl(DimArray(2))
-                If Err.Number <> 0 Then
-                    weight = "" ' エラー時
-                    Exit Function
-                End If
-                On Error GoTo 0
-            Else
-                weight = "" ' 形式が不正
-                Exit Function
-            End If
-
-        Case Formula Like "φ*#*#*" Or Formula Like "f*#*#*" ' 丸棒の場合（例：φ10*100）
-            Formula = Mid(Formula, 2)
-            DimArray = Split(Formula, "*")
-            If UBound(DimArray) = 1 Then
-                ' 体積 = π * (直径/2)^2 * 長さ
-                On Error Resume Next ' 数値変換エラーを無視
-                Volume = 3.14159 * (CDbl(DimArray(0)) / 2) ^ 2 * CDbl(DimArray(1))
-                If Err.Number <> 0 Then
-                    weight = "" ' エラー時
-                    Exit Function
-                End If
-                On Error GoTo 0
-            Else
-                weight = "" ' 形式が不正
-                Exit Function
-            End If
-
-        Case Else
-            ' 体積計算式として解釈できない場合は終了
-            weight = ""
-            Exit Function
-    End Select
-
-    ' 材質に合わせて比重を設定する
-    Select Case True
-        Case material Like "A*" ' アルミ
-            SpecificGravity = 2.81
-        Case material Like "C*" ' 銅
-            SpecificGravity = 8.81
-        Case material Like "超硬*" ' 超硬
-            SpecificGravity = 14.5
-        Case material = "" ' 材質が設定されていない場合は警告表示
-            weight = " 【 ●●材質未指定●● 】 "
-            Exit Function
-        Case Else ' 上記以外は全て鉄とみなす
-            SpecificGravity = 7.85
-    End Select
-
-    ' 重量をkg単位で得る (体積:mm3 * 比重:g/cm3 -> 体積/1000 * 比重 / 1000 = kg)
-    calculatedWeight = (Volume / 1000) * SpecificGravity / 1000
-
-    ' 小数点以下を切り上げ
-    calculatedWeight = Application.WorksheetFunction.RoundUp(calculatedWeight, 1)
-
-    weight = " 【 " & calculatedWeight & " 】 "
-
-End Function
-
+1. 全体を通してのコメント
+本年度は、金型製作の現場実務を確実に遂行しながら、個人の技術やノウハウを組織の標準として残すための仕組み作りに重点を置きました。 特に、自動化ツールの開発や教育手法の刷新により、年間160時間を超える工数削減と育成効率の向上を実現できたことは、組織の生産性向上に寄与できたと考えております。 検証段階にある技術についても、その限界と可能性を明確にしたことで、次なる改善への道筋を立てることができました。今後も、自身の設計・技術スキルを高めつつ、得られた知見を積極的に組織へ還元し、より強固な製造プロセスの構築に貢献してまいります。
