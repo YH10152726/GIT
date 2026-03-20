@@ -1,16 +1,29 @@
+1. 機能の概要												
+熱処理前MCの工程において、部品の重さによって生じる段取りの手間や加工時間の増大を、自動で工数に反映させる機能です。												
+入力された 寸法 と 材質 からワークの重量を自動算出し、あらかじめ設定した重量のボーダーラインを超えた場合、基本のマス												
+ター工数に対して特定の時間を加算します。												
+2. 自動計算の仕組み												
+1.Sheet（P000）のAD列の「寸法（例：20*20*34）」から体積を計算し、「材質（例：鉄系、アルミ、超硬など）」ごとの比重を												
+　掛けることで、ワークの重量（kg）を算出します。												
+2. 算出された重量を、「シート2」に設定された重量表と突き合わせます。												
+3. 該当する重量表に設定されている「前段取」「有人」「機械」「後段取」の加算時間を、基本のマスター工数に上乗せしてプレビューに表示・出力します。												
+												
+3.実装手順												
+下記の表をシート２のAG1セルへ貼り付けてください。（シート２で下記表の数値を変更して調整してください。）												
 重量下限(kg以上)	前段取(加算)	有人(加算)	機械(加算)	後段取(加算)	備考（メモ用）							
-100	1	0.5	0	0.5	100kg以上（特大）							
-50	0.5	0.2	0	0.2	50kg以上（クレーン必須）							
+50	1	0.5	0	0.5	100kg以上							
+30	0.5	0.2	0	0.2	30kg以上（クレーン必須）							
 20	0.2	0.1	0	0.1	20kg以上							
 0	0	0	0	0	20kg未満（加算なし）							
 												
+下記のコードを変更・追加してください。（UserForm内のコードでAlt＋Fで赤文字を検索してください。）												
 ① モジュールレベル変数の追加 												
-コードの一番上の方にある Private m_bIsProgrammaticChange As Boolean などの変数宣言が集まっている場所に、以下の2行を追加												
+コードの一番上の方にあるPrivate m_bIsProgrammaticChange As Booleanなどの変数宣言が集まっている場所に、以下の2行を追加												
 Private m_arrWeightMaster() As Variant												
 Private m_lWeightMasterCount As Long												
 												
 ② ユーザーフォーム初期化処理の変更												
-【変更箇所】Private Sub UserForm_Initialize() の中盤、各種マスターを読み込んでいる部分												
+【変更箇所Private Sub UserForm_Initialize()の中盤、各種マスターを読み込んでいる部分												
 【変更前】												
 Call LoadProcessTimes												
 Call LoadMaterialInfo												
@@ -23,14 +36,12 @@ Call LoadOutsourcingInfo
 Call LoadZKeywords												
 Call LoadWeightMaster												
 												
-③Private Sub UpdatePreview() の呼び出し部分の変更												
+③Private Sub UpdatePreview()の呼び出し部分の変更												
 【変更前】												
-Else												
     Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)												
     Call PreviewAddMCBeforeHeatTreatment(shape)												
     Call PreviewAddTapHole(hasSubZero)												
 【変更後】下記に置き換え												
-Else												
     Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)												
     Call PreviewAddMCBeforeHeatTreatment(shape, materialCode, sizeStrPreview)												
     Call PreviewAddTapHole(hasSubZero)												
@@ -62,12 +73,19 @@ Private Sub PreviewAddMCBeforeHeatTreatment(shapePreview As String, materialCode
     partWeight = GetWeightNum(materialCodePreview, sizeStrPreview)												
     Call AdjustMCTimesByWeight(partWeight, maeDandori, yTime, mTime, sTimeBase)												
 												
-    loopCount = 2												
+loopCount = 2												
     For i = 1 To loopCount												
         sTimeFinal = IIf(i = loopCount, sTimeBase, "")												
         Call AddItemToPreviewList(mcProcessName, "", maeDandori, yTime, mTime, sTimeFinal, remarksFromSheetF)												
+        												
+        If i = loopCount Then												
+            m_arrPreviewProcesses(m_lPreviewProcessCount - 1).IsGoDandoriUserEdited = True												
+            m_arrPreviewProcesses(m_lPreviewProcessCount - 1).UserEditedGoDandori = sTimeFinal												
+        End If												
     Next i												
 End Sub												
+												
+												
 												
 ⑤新規プロシージャ追加												
 どこでもいいですが、一番最後尾が分かりやすいです												
@@ -178,3 +196,16 @@ Private Sub AdjustMCTimesByWeight(ByVal weight As Double, ByRef maeDandori As St
     If valMachine > 0 Then machine = CStr(valMachine) Else machine = ""												
     If valGo > 0 Then goDandori = CStr(valGo) Else goDandori = ""												
 End Sub												
+												
+												
+これまで、工程表作成ツールの機能を追加・修正した際は、更新したExcelファイルをそのまま皆さんに再配布していました。 しかし、現在では皆さんがそれぞれ使い勝手に合わせて、独自にツールをカスタマイズして活用してくれていると聞いています。私が新しいファイルをそのまま上書き配布してしまうと、せっかく個別で設定した調整が消えてしまうため、今回からアップデートの運用方法を以下のように変更したいと思います。												
+■ 今回の配布物												
+・新機能の実装手順書												
+・最新のマスターデータ												
+■ アップデートのお願い 												
+お手数ですが、各自が現在使用している工程表ファイルに対して、以下の手順で機能の追加をお願いします。 												
+・添付の「実装手順書」を見ながら、指定の箇所にVBAコードの追加（コピペ）を行う。												
+■ 今回のアップデート内容												
+「ワークの重量に応じた、工数の自動加算機能」 入力された寸法と材質から自動で重量を算出し、一定の重さを超えた場合に、熱処理前MCの段取り・加工時間を自動で割り増しする機能です。 ※シート2の表の数値を書き換えるだけで、自由に「何kgから、何hプラスするか」を調整できる仕様にしています。												
+VBAの貼り付け場所が分からない、実行したらコンパイルエラーが出た、など、上手くいかないことがあれば遠慮なく声をかけてください。												
+よろしくお願いします。												
