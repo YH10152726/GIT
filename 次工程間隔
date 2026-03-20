@@ -1,97 +1,180 @@
-ステップ1：RPTファイル（レポートの設計図）の作成
-これがレポート作成の心臓部です。まずは、このファイルから作成します。
- * メモ帳を開く:
-   Windowsの「メモ帳（Notepad）」を起動してください。
- * 以下のテキストをコピーして貼り付ける:
-
-
-
-
-
-
-
-' --- レポート基本設定 ---
-Title, ゲート位置別 解析結果比較レポート
-
-' ★★★ 出力先のフォルダを指定するコマンド ★★★
-Option, ReportPath, "C:\Users\YourName\Desktop\解析レポート置き場"
-
-' 会社のロゴなどが入ったPowerPointテンプレートがあれば、ここにフルパスを記述します。
-' Template, C:\Your\Template\Path\MyTemplate.pptx
-
-
-' --- レポート内容 ---
-
-' ## 1. 充填時間 (アニメーション) ##
-' 英語の "Fill time" を日本語の「充填時間」に修正
-StartAnimation, 充填時間
-View, isometric
-StopAnimation
-
-' ## 2. 射出位置の圧力 (XYプロット) ##
-' ★質問1: こちらは日本語での正式な結果名を必ずご確認ください。
-OnePlot, 射出位置の圧力: XYプロット
-
-' ## 3. 平均体積収縮 ##
-' 英語から日本語に修正
-OnePlot, 平均体積収縮
-
-' ## 4. エアトラップ ##
-' カタカナ表記に修正
-OnePlot, エアトラップ
-
-' ## 5. ウェルドサーフェス (3D) ##
-' カタカナ表記に修正。「ウェルドライン」の場合もあります。
-OnePlot, ウェルドサーフェス(3D)
-
-' ## 6. 反り解析 (4分割ビュー) ##
-' 階層を持つ結果名の日本語表記例です。
-' ★質問2: こちらも日本語での正式な結果名を必ずご確認ください。
-FourView, 反り解析、全原因: 変位, 総量
-View, front, top, left, isometric
-
-
-' --- レポート終了 ---
-Stop
-
-
-
-
-
-
- * ファイルを保存する:
-   * メニューの「ファイル」 -> 「名前を付けて保存」を選びます。
-   * 「ファイルの種類」を「すべてのファイル (*.*)」に変更します。 ← これが重要です！
-   * ファイル名を「MyReport.rpt」として、ご自身のプロジェクトフォルダなど、分かりやすい場所に保存してください。
-これで「設計図」は完成です。
-
-
-
-ステップ2：VBSファイル（命令書）の準備
-次に、このRPTファイルを実行するための「命令書」であるVBSファイルですが、これは自分でゼロから作成する必要はありません。
-動画で説明されていた通り、Moldflowには標準でcustom_report.vbsというスクリプトが用意されています。私たちはこれを呼び出すだけでOKです。
-
-
-ステップ3：Moldflowで実行する
-いよいよ実行です。
- * Moldflowを起動し、解析結果のあるスタディファイルを開きます。
- * コマンドラインを表示する:
-   Moldflowのメニューから 「表示」タブ > 「ユーザーインターフェース」 > 「コマンドライン」 をクリックします。画面の下部に文字を入力する欄が表示されます。
- * コマンドを入力する:
-   表示されたコマンドラインに、以下のように入力します。custom_reportと、先ほど保存したRPTファイルの場所（フルパス）の間には、半角スペースを入れてください。
-   custom_report "C:\MyProject\Mold\MyReport.rpt"
-   【注意】:
-   * "C:\MyProject\Mold\MyReport.rpt" の部分は、あなたがステップ1で保存した実際のファイルの場所に書き換えてください。
-   * ファイルのパスにスペースが含まれる可能性があるため、パス全体を "（ダブルクォーテーション）で囲むのが確実です。
- * Enterキーを押す:
-   コマンドが実行され、自動でPowerPointの生成が始まります。完了すると、スタディファイルと同じ場所にPowerPointファイルが作成されているはずです。
-
-
-次のステップ（カスタマイズに向けて）
-まずはこの簡単なレポートが作れるか試してみてください。成功したら、次のステップとしてMyReport.rptファイルを色々編集してみましょう。
- * 結果を追加する:
-   Moldflowの解析結果ツリーに表示されている結果名（例: Weld lines）をOnePlot, の後に追加してみましょう。
- * アングルを指定する:
-   OnePlot, Filling time の次の行に View, isometric や View, front と追記すると、指定したアングルで画像が生成されます。
- * 会社のテンプレートを使う:
-   ' Template, ... の行の先頭の'を消して、実際のPowerPointテンプレートのパスを記述してみましょう。
+重量下限(kg以上)	前段取(加算)	有人(加算)	機械(加算)	後段取(加算)	備考（メモ用）							
+100	1	0.5	0	0.5	100kg以上（特大）							
+50	0.5	0.2	0	0.2	50kg以上（クレーン必須）							
+20	0.2	0.1	0	0.1	20kg以上							
+0	0	0	0	0	20kg未満（加算なし）							
+												
+① モジュールレベル変数の追加 												
+コードの一番上の方にある Private m_bIsProgrammaticChange As Boolean などの変数宣言が集まっている場所に、以下の2行を追加												
+Private m_arrWeightMaster() As Variant												
+Private m_lWeightMasterCount As Long												
+												
+② ユーザーフォーム初期化処理の変更												
+【変更箇所】Private Sub UserForm_Initialize() の中盤、各種マスターを読み込んでいる部分												
+【変更前】												
+Call LoadProcessTimes												
+Call LoadMaterialInfo												
+Call LoadOutsourcingInfo												
+Call LoadZKeywords												
+【変更後】下記に置き換え												
+Call LoadProcessTimes												
+Call LoadMaterialInfo												
+Call LoadOutsourcingInfo												
+Call LoadZKeywords												
+Call LoadWeightMaster												
+												
+③Private Sub UpdatePreview() の呼び出し部分の変更												
+【変更前】												
+Else												
+    Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)												
+    Call PreviewAddMCBeforeHeatTreatment(shape)												
+    Call PreviewAddTapHole(hasSubZero)												
+【変更後】下記に置き換え												
+Else												
+    Call PreviewAddMaterialPurchase(materialCode, noChamfer, hasLiftingScrew)												
+    Call PreviewAddMCBeforeHeatTreatment(shape, materialCode, sizeStrPreview)												
+    Call PreviewAddTapHole(hasSubZero)												
+												
+④Private Sub PreviewAddMCBeforeHeatTreatment(shapePreview As String) のプロシージャ全体の書き換え												
+【変更後】（以下のコードで上書きしてください）												
+Private Sub PreviewAddMCBeforeHeatTreatment(shapePreview As String, materialCodePreview As String, sizeStrPreview As String)												
+    Dim mcProcessName As String: mcProcessName = IIf(shapePreview = "プレート", "M/C(大)", "M/C（小）")												
+    Dim i As Integer, times As Variant, maeDandori As String, yTime As String, mTime As String, sTimeBase As String, sTimeFinal As String												
+    Dim loopCount As Integer												
+    Dim remarksFromSheetF As String												
+    Dim partWeight As Double												
+												
+    times = GetProcessTimes(mcProcessName, "熱処理前")												
+    If IsArray(times) Then												
+        maeDandori = CStr(times(0))												
+        yTime = CStr(times(1))												
+        mTime = CStr(times(2))												
+        sTimeBase = CStr(times(3))												
+        remarksFromSheetF = CStr(times(4))												
+    Else												
+        maeDandori = ""												
+        yTime = "0.25"												
+        mTime = "0.1"												
+        sTimeBase = "0.1"												
+        remarksFromSheetF = "(※工数/備考未設定)"												
+    End If												
+												
+    partWeight = GetWeightNum(materialCodePreview, sizeStrPreview)												
+    Call AdjustMCTimesByWeight(partWeight, maeDandori, yTime, mTime, sTimeBase)												
+												
+    loopCount = 2												
+    For i = 1 To loopCount												
+        sTimeFinal = IIf(i = loopCount, sTimeBase, "")												
+        Call AddItemToPreviewList(mcProcessName, "", maeDandori, yTime, mTime, sTimeFinal, remarksFromSheetF)												
+    Next i												
+End Sub												
+												
+⑤新規プロシージャ追加												
+どこでもいいですが、一番最後尾が分かりやすいです												
+【追加するコード】												
+Private Sub LoadWeightMaster()												
+    Dim ws As Worksheet												
+    Dim lastRow As Long												
+    Dim i As Long, j As Long, k As Long												
+    Dim temp(0 To 4) As Double												
+    												
+    m_lWeightMasterCount = 0												
+    Erase m_arrWeightMaster												
+    												
+    On Error Resume Next												
+    Set ws = ThisWorkbook.Sheets(SHEET_KOUTEI_TIMES)												
+    On Error GoTo 0												
+    If ws Is Nothing Then Exit Sub												
+    												
+    lastRow = ws.Cells(ws.Rows.Count, 33).End(xlUp).Row												
+    If lastRow < 2 Then Exit Sub ' データなし												
+    												
+    ReDim m_arrWeightMaster(0 To lastRow - 2, 0 To 4)												
+    												
+    For i = 2 To lastRow												
+        m_arrWeightMaster(m_lWeightMasterCount, 0) = Val(ws.Cells(i, 33).Value) ' AG列: 重量												
+        m_arrWeightMaster(m_lWeightMasterCount, 1) = Val(ws.Cells(i, 34).Value) ' AH列: 前段取												
+        m_arrWeightMaster(m_lWeightMasterCount, 2) = Val(ws.Cells(i, 35).Value) ' AI列: 有人												
+        m_arrWeightMaster(m_lWeightMasterCount, 3) = Val(ws.Cells(i, 36).Value) ' AJ列: 機械												
+        m_arrWeightMaster(m_lWeightMasterCount, 4) = Val(ws.Cells(i, 37).Value) ' AK列: 後段取												
+        m_lWeightMasterCount = m_lWeightMasterCount + 1												
+    Next i												
+    												
+    For i = 0 To m_lWeightMasterCount - 2												
+        For j = i + 1 To m_lWeightMasterCount - 1												
+            If m_arrWeightMaster(i, 0) < m_arrWeightMaster(j, 0) Then												
+                For k = 0 To 4												
+                    temp(k) = m_arrWeightMaster(i, k)												
+                    m_arrWeightMaster(i, k) = m_arrWeightMaster(j, k)												
+                    m_arrWeightMaster(j, k) = temp(k)												
+                Next k												
+            End If												
+        Next j												
+    Next i												
+End Sub												
+												
+Private Function GetWeightNum(material As String, dimensions As String) As Double												
+    Dim SpecificGravity As Double												
+    Dim Formula As String												
+    Dim Volume As Double												
+    Dim DimArray As Variant												
+    Dim calculatedWeight As Double												
+    												
+    Formula = dimensions												
+    If UCase(Left(Formula, 1)) = "T" Then Formula = Mid(Formula, 2)												
+    												
+    On Error Resume Next ' 寸法フォーマットエラー回避												
+    If Formula Like "*#*#*#*" Then												
+        DimArray = Split(Formula, "*")												
+        If UBound(DimArray) = 2 Then												
+            Volume = CDbl(DimArray(0)) * CDbl(DimArray(1)) * CDbl(DimArray(2))												
+        End If												
+    ElseIf Formula Like "φ*##" Or Formula Like "Φ*##" Then												
+        Formula = Mid(Formula, 2)												
+        DimArray = Split(Formula, "*")												
+        If UBound(DimArray) = 1 Then												
+            Volume = 3.14159 * (CDbl(DimArray(0)) / 2) ^ 2 * CDbl(DimArray(1))												
+        End If												
+    End If												
+    On Error GoTo 0												
+    												
+    Select Case True												
+        Case material Like "A*": SpecificGravity = 2.81												
+        Case material Like "C*": SpecificGravity = 8.81												
+        Case material Like "超硬*": SpecificGravity = 14.5												
+        Case material = "": SpecificGravity = 0												
+        Case Else: SpecificGravity = 7.85 ' 鉄系												
+    End Select												
+    												
+    If Volume > 0 And SpecificGravity > 0 Then												
+        calculatedWeight = (Volume / 1000) * SpecificGravity / 1000												
+        GetWeightNum = Application.WorksheetFunction.RoundUp(calculatedWeight, 1)												
+    Else												
+        GetWeightNum = 0												
+    End If												
+End Function												
+												
+Private Sub AdjustMCTimesByWeight(ByVal weight As Double, ByRef maeDandori As String, ByRef yujin As String, ByRef machine As String, ByRef goDandori As String)												
+    Dim valMae As Double, valYujin As Double, valMachine As Double, valGo As Double												
+    Dim i As Long												
+    												
+    valMae = Val(maeDandori)												
+    valYujin = Val(yujin)												
+    valMachine = Val(machine)												
+    valGo = Val(goDandori)												
+    												
+    For i = 0 To m_lWeightMasterCount - 1												
+        If weight >= m_arrWeightMaster(i, 0) Then												
+            valMae = valMae + m_arrWeightMaster(i, 1)												
+            valYujin = valYujin + m_arrWeightMaster(i, 2)												
+            valMachine = valMachine + m_arrWeightMaster(i, 3)												
+            valGo = valGo + m_arrWeightMaster(i, 4)												
+            Exit For												
+        End If												
+    Next i												
+    												
+    If valMae > 0 Then maeDandori = CStr(valMae) Else maeDandori = ""												
+    If valYujin > 0 Then yujin = CStr(valYujin) Else yujin = ""												
+    If valMachine > 0 Then machine = CStr(valMachine) Else machine = ""												
+    If valGo > 0 Then goDandori = CStr(valGo) Else goDandori = ""												
+End Sub												
