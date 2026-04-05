@@ -1,300 +1,90 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Option Explicit
-
-' --- メイン処理 ---
-Public Sub AddlexProcessinterval()
-
-    ' ---- 定数定義 ----
-    Const SHEET_NAME As String = "P000" ' 対象シート名
-    Const SETTINGS_SHEET_NAME As String = "シート2" ' 設定用シート名
-    Const INTERVAL_CELL As String = "Z2" ' 次工程間隔を入力するセル
-    Const TAP_OUTPUT_CELL As String = "Z5" ' タップ出力を入力するセル
-    Const START_ROW As Long = 3 ' データ開始行
-    Const COL_ITEM_NAME As String = "AH" ' 品名（ブロック定義用）
-    Const COL_PROCESS_NAME As String = "AJ" ' 工程名
-    Const COL_INTERVAL_OUTPUT As String = "BK" ' 次工程間隔（出力先）
-    Const END_MARKER As String = "END" ' データ終了マーカー
-
-    Const COL_WEIGHT_OUTPUT As String = "AB" ' 重量（出力先）
-    Const COL_MATERIAL As String = "AC" ' 材質（入力）
-    Const COL_DIMENSIONS As String = "AD" ' 寸法（入力）
-
-    ' ---- 光陽産業向け処理の定数 ----
-    Const COL_HEAT_SUPPLIER As String = "AL" ' 熱処理先が入力されている列
-    Const COL_TAP_OUTPUT As String = "BF" ' 「2」を出力する列
-    Const VAL_KOUYOU As String = "光陽産業" ' 条件となる業者名
-    Const PROC_TAP As String = "穴あけ ﾀｯﾌﾟ" ' 条件となる工程名
-
-    ' ---- 変数定義 ----
-    Dim ws As Worksheet
-    Dim wsSettings As Worksheet
-    Dim lastRow As Long
-    Dim blockStartRow As Long
-    Dim blockEndRow As Long
-    Dim i As Long
-    Dim intervalValue As Long
-    Dim tapOutputValue As Long
-    Dim valFromCell As Variant
-    Dim materialValue As String
-    Dim dimensionsValue As String
-
-    ' ---- 初期設定 ----
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(SHEET_NAME)
-    Set wsSettings = ThisWorkbook.Sheets(SETTINGS_SHEET_NAME)
-    On Error GoTo 0
-
-    If ws Is Nothing Then
-        MsgBox "シート「" & SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
-
-    If wsSettings Is Nothing Then
-        MsgBox "設定用シート「" & SETTINGS_SHEET_NAME & "」が見つかりません。", vbCritical
-        Exit Sub
-    End If
-
-    valFromCell = wsSettings.Range(INTERVAL_CELL).Value
-
-    If Not IsNumeric(valFromCell) Or valFromCell <= 0 Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & INTERVAL_CELL & "」セルに、" & _
-               vbCrLf & "「次工程間隔として有効な正の数値を入力してください。」", vbCritical, "設定エラー"
-        Exit Sub
-    End If
-
-    intervalValue = CLng(valFromCell)
-    tapOutputValue = wsSettings.Range(TAP_OUTPUT_CELL).Value
-
-    If Not IsNumeric(tapOutputValue) Then
-        MsgBox "「" & SETTINGS_SHEET_NAME & "」の「" & TAP_OUTPUT_CELL & "」セルに、" & _
-               vbCrLf & "「有効な数値を入力してください。」", vbCritical, "設定エラー"
-        Exit Sub
-    End If
-
-    ' ---- 処理 ----
-    Application.ScreenUpdating = False
-
-    On Error GoTo FindErrorHandler
-    lastRow = ws.Columns("AG").Find(What:=END_MARKER, LookIn:=xlValues, LookAt:=xlWhole).Row
-    On Error GoTo 0
-
-    ws.Range(ws.Cells(START_ROW, COL_INTERVAL_OUTPUT), ws.Cells(lastRow, COL_INTERVAL_OUTPUT)).ClearContents
-    ws.Range(ws.Cells(START_ROW, COL_TAP_OUTPUT), ws.Cells(lastRow, COL_TAP_OUTPUT)).ClearContents
-    ws.Range(ws.Cells(START_ROW, COL_WEIGHT_OUTPUT), ws.Cells(lastRow, COL_WEIGHT_OUTPUT)).ClearContents
-
-    blockStartRow = START_ROW
-
-    For i = START_ROW To lastRow
-        materialValue = CStr(ws.Cells(i, COL_MATERIAL).Value)
-        dimensionsValue = CStr(ws.Cells(i, COL_DIMENSIONS).Value)
-
-        If dimensionsValue <> "" Then
-            ws.Cells(i, COL_WEIGHT_OUTPUT).Value = weight(materialValue, dimensionsValue)
-        End If
-
-        If ws.Cells(i, COL_ITEM_NAME).Value <> "" Or i = lastRow Then
-            blockEndRow = i - 1
-            If blockEndRow >= blockStartRow Then
-                ' ブロック処理呼び出し
-                Call ProcessOneBlock(ws, blockStartRow, blockEndRow, _
-                                     COL_PROCESS_NAME, COL_INTERVAL_OUTPUT, intervalValue, _
-                                     COL_HEAT_SUPPLIER, COL_TAP_OUTPUT, VAL_KOUYOU, _
-                                     PROC_TAP, tapOutputValue)
-            End If
-            blockStartRow = i
-        End If
-    Next i
-
-    Application.ScreenUpdating = True
-    MsgBox "次工程間隔、日数、および重量計算を完了しました。", vbInformation
-    Exit Sub
-
-FindErrorHandler:
-    MsgBox "最終行マーカー「" & END_MARKER & "」が AG 列に見つかりませんでした。", vbCritical
-    Application.ScreenUpdating = True
-End Sub
-' ---- 1つのブロックを処理するサブルーチン ----
-' 磨き工程の後にショットブラストがない場合、確実にBK列を出力するよう修正
-Private Sub ProcessOneBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal endRow As Long, _
-                            ByVal processCol As String, ByVal intervalOutputCol As String, ByVal valueToSet As Long, _
-                            ByVal heatSupplierCol As String, ByVal tapOutputCol As String, ByVal kouyouName As String, _
-                            ByVal tapProcessName As String, ByVal tapOutputValue As Long)
-
-    Dim i As Long
-    Dim currentProcess As String
-    Dim nextProcess As String
-    Dim nextHeatSupplier As String
-    Dim tapOutputFlag As Boolean
-    Dim hasShotBlast As Boolean
+import NXOpen
+import NXOpen.UF
+import math
+
+def main():
+    the_session = NXOpen.Session.GetSession()
+    uf_session = NXOpen.UF.UFSession.GetUFSession()
+    work_part = the_session.Parts.Work
     
-    ' 1. ブロック内に「ｼｮｯﾄﾌﾞﾗｽﾄ」が含まれるか事前チェック（全角・半角両対応）
-    hasShotBlast = False
-    For i = startRow To endRow
-        Dim procText As String
-        procText = Trim(ws.Cells(i, processCol).Value)
-        If InStr(procText, "ｼｮｯﾄﾌﾞﾗｽﾄ") > 0 Or InStr(procText, "ショットブラスト") > 0 Then
-            hasShotBlast = True
-            Exit For
-        End If
-    Next i
+    # --- 構成設定 ---
+    MARKER_RADIUS = 0.5   # マーカーの半径 (mm) - 小さめに設定して視認性を向上
+    LD_THRESHOLD = 10.0   # 判定しきい値 (10倍)
+    # ---------------
 
-    ' 2. 各行のループ（最終行の1つ前まで）
-    For i = startRow To endRow - 1
-        currentProcess = Trim(ws.Cells(i, processCol).Value)
-        nextProcess = Trim(ws.Cells(i + 1, processCol).Value)
-        nextHeatSupplier = Trim(ws.Cells(i + 1, heatSupplierCol).Value)
+    if len(work_part.Bodies) == 0:
+        print("No bodies found.")
+        return
+    
+    body = work_part.Bodies[0]
+    
+    # リスティングウィンドウの開始
+    lw = the_session.ListingWindow
+    lw.Open()
+    lw.WriteLine("EDM Recognition starting...")
 
-        ' タップ出力判定（光陽産業）
-        If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
-            ws.Cells(i, tapOutputCol).Value = tapOutputValue
-            tapOutputFlag = True
-        Else
-            tapOutputFlag = False
-        End If
+    # フェーズ1: 3面角 (Red)
+    red_count = detect_3face_corners(work_part, uf_session, body, MARKER_RADIUS)
+    
+    # フェーズ2: 深リブ L/D (Yellow)
+    yellow_count = detect_deep_ribs(work_part, uf_session, body, MARKER_RADIUS, LD_THRESHOLD)
 
-        ' BK列（次工程間隔）の判定
-        ' 修正点：nextProcess <> "" の条件を外し、工程が変われば判定対象にする
-        If currentProcess <> nextProcess And currentProcess <> "" And Not tapOutputFlag Then
+    lw.WriteLine(f"Check Complete.")
+    lw.WriteLine(f" - Phase 1 (3-face corners): {red_count} markers.")
+    lw.WriteLine(f" - Phase 2 (Deep Ribs L/D>{LD_THRESHOLD}): {yellow_count} markers.")
+
+def detect_3face_corners(work_part, uf_session, body, radius):
+    count = 0
+    for v in body.GetVertices():
+        edges = v.GetEdges()
+        if len(edges) < 3: continue
+        concave_count = sum(1 for e in edges if uf_session.Modl.AskEdgeType(e.Tag) == 3004)
+        if concave_count >= 3:
+            create_marker(work_part, v.Location, radius, 186) # Red
+            count += 1
+    return count
+
+def detect_deep_ribs(work_part, uf_session, body, radius, threshold):
+    count = 0
+    faces = body.GetFaces()
+    processed = set()
+
+    for i, f1 in enumerate(faces):
+        if f1.Tag in processed: continue
+        bbox1 = f1.GetBoundingBox()
+        L = bbox1.Max[2] - bbox1.Min[2] # Z方向の高さ
+        if L < 1.0: continue # 浅すぎる面はスキップ
+
+        for j in range(i + 1, len(faces)):
+            f2 = faces[j]
+            if f2.Tag in processed: continue
             
-            ' 「磨き」という文字が含まれているか判定
-            If InStr(currentProcess, "磨き") > 0 Then
-                ' 磨きの場合：ショットブラストがブロック内に「ない」時だけ出力
-                If Not hasShotBlast Then
-                    ws.Cells(i, intervalOutputCol).Value = valueToSet
-                End If
-            Else
-                ' 磨き以外の工程：通常通り出力（ショットブラスト自体もここに含まれる）
-                ws.Cells(i, intervalOutputCol).Value = valueToSet
-            End If
+            # 高速フィルタ: バウンディングボックスが近くにあるか？
+            bbox2 = f2.GetBoundingBox()
+            if abs(bbox1.Min[2] - bbox2.Min[2]) > 1.0: continue # 高さが違いすぎる
             
-        End If
-    Next i
+            # 最短距離計測 (D)
+            dist, p1, p2 = uf_session.Modl.AskMinimumDist(f1.Tag, f2.Tag, 0, None, 0, None)
+            if 0.1 < dist < (L / threshold): # L/D判定
+                # 溝の最深部にマーカーを置く
+                pos = NXOpen.Point3d((p1[0]+p2[0])/2, (p1[1]+p2[1])/2, min(p1[2], p2[2]))
+                create_marker(work_part, pos, radius, 6) # Yellow
+                processed.add(f1.Tag)
+                processed.add(f2.Tag)
+                count += 1
+                break
+    return count
 
-    ' 3. ブロック最終行の処理
-    currentProcess = Trim(ws.Cells(endRow, processCol).Value)
-    ' 最終行の次（ブロック外）の工程名を取得
-    nextProcess = Trim(ws.Cells(endRow + 1, processCol).Value)
-    nextHeatSupplier = Trim(ws.Cells(endRow + 1, heatSupplierCol).Value)
+def create_marker(work_part, pos, radius, color):
+    sphere_builder = work_part.Features.CreateSphereBuilder(NXOpen.Features.Feature.Null)
+    sphere_builder.CenterPoint = work_part.Points.CreatePoint(pos)
+    sphere_builder.Diameter.RightHandSide = str(radius * 2)
+    sphere_builder.BooleanOption.Type = NXOpen.GeometricUtilities.BooleanOperation.BooleanType.Create
+    feat = sphere_builder.Commit()
+    sphere_builder.Destroy()
+    for b in feat.GetBodies():
+        b.Color = color
+        b.RedisplayObject()
 
-    If currentProcess = tapProcessName And InStr(nextHeatSupplier, kouyouName) > 0 Then
-        ws.Cells(endRow, tapOutputCol).Value = tapOutputValue
-    ElseIf currentProcess <> nextProcess And currentProcess <> "" Then
-        ' 最終行も同様に、磨きかつショットブラストなしなら出力
-        If InStr(currentProcess, "磨き") > 0 Then
-            If Not hasShotBlast Then
-                ws.Cells(endRow, intervalOutputCol).Value = valueToSet
-            End If
-        Else
-            ws.Cells(endRow, intervalOutputCol).Value = valueToSet
-        End If
-    End If
-
-End Sub
-
-' --- 重量表示関数 (変更なし) ---
-Function weight(material As String, dimensions As String) As String
-    Dim SpecificGravity As Double
-    Dim Formula As String
-    Dim Volume As Double
-    Dim DimArray As Variant
-    Dim calculatedWeight As Double
-
-    Formula = dimensions
-    If Formula Like "t*" Or Formula Like "T*" Then Formula = Mid(Formula, 2)
-
-    Select Case True
-        Case Formula Like "*#*#*"
-            DimArray = Split(Formula, "*")
-            If UBound(DimArray) = 2 Then
-                On Error Resume Next
-                Volume = CDbl(DimArray(0)) * CDbl(DimArray(1)) * CDbl(DimArray(2))
-                If Err.Number <> 0 Then weight = "": Exit Function
-                On Error GoTo 0
-            Else
-                weight = "": Exit Function
-            End If
-        Case Formula Like "φ*#*#*" Or Formula Like "f*#*#*"
-            Formula = Mid(Formula, 2)
-            DimArray = Split(Formula, "*")
-            If UBound(DimArray) = 1 Then
-                On Error Resume Next
-                Volume = 3.14159 * (CDbl(DimArray(0)) / 2) ^ 2 * CDbl(DimArray(1))
-                If Err.Number <> 0 Then weight = "": Exit Function
-                On Error GoTo 0
-            Else
-                weight = "": Exit Function
-            End If
-        Case Else
-            weight = "": Exit Function
-    End Select
-
-    Select Case True
-        Case material Like "A*": SpecificGravity = 2.81
-        Case material Like "C*": SpecificGravity = 8.81
-        Case material Like "超硬*": SpecificGravity = 14.5
-        Case material = "": weight = " 【 ●●材質未指定●● 】 ": Exit Function
-        Case Else: SpecificGravity = 7.85
-    End Select
-
-    calculatedWeight = (Volume / 1000) * SpecificGravity / 1000
-    calculatedWeight = Application.WorksheetFunction.RoundUp(calculatedWeight, 1)
-    weight = " 【 " & calculatedWeight & " 】 "
-End Function
-
-
-
+if __name__ == "__main__":
+    main()
