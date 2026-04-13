@@ -1,90 +1,18 @@
-import NXOpen
-import NXOpen.UF
-import math
+# Role: 
+あなたは金型設計エンジニアの秘書です。
 
-def main():
-    the_session = NXOpen.Session.GetSession()
-    uf_session = NXOpen.UF.UFSession.GetUFSession()
-    work_part = the_session.Parts.Work
-    
-    # --- 構成設定 ---
-    MARKER_RADIUS = 0.5   # マーカーの半径 (mm) - 小さめに設定して視認性を向上
-    LD_THRESHOLD = 10.0   # 判定しきい値 (10倍)
-    # ---------------
+# Task:
+365検索を使用し、OutlookとTeamsから直近24時間の情報を検索して、私のタスクを抽出・整理してください。
 
-    if len(work_part.Bodies) == 0:
-        print("No bodies found.")
-        return
-    
-    body = work_part.Bodies[0]
-    
-    # リスティングウィンドウの開始
-    lw = the_session.ListingWindow
-    lw.Open()
-    lw.WriteLine("EDM Recognition starting...")
+# Keywords:
+金型, 成立性, DFM, 流動解析, ゲート, アンダーカット, 成形, 試作, 図面確認
 
-    # フェーズ1: 3面角 (Red)
-    red_count = detect_3face_corners(work_part, uf_session, body, MARKER_RADIUS)
-    
-    # フェーズ2: 深リブ L/D (Yellow)
-    yellow_count = detect_deep_ribs(work_part, uf_session, body, MARKER_RADIUS, LD_THRESHOLD)
+# Output Format:
+以下の項目を必ず「|（縦棒）」で区切り、1行1タスクで出力してください。挨拶や説明は不要です。
+分類|期限|件名|話の流れ|回答案ドラフト|着手予定日
 
-    lw.WriteLine(f"Check Complete.")
-    lw.WriteLine(f" - Phase 1 (3-face corners): {red_count} markers.")
-    lw.WriteLine(f" - Phase 2 (Deep Ribs L/D>{LD_THRESHOLD}): {yellow_count} markers.")
-
-def detect_3face_corners(work_part, uf_session, body, radius):
-    count = 0
-    for v in body.GetVertices():
-        edges = v.GetEdges()
-        if len(edges) < 3: continue
-        concave_count = sum(1 for e in edges if uf_session.Modl.AskEdgeType(e.Tag) == 3004)
-        if concave_count >= 3:
-            create_marker(work_part, v.Location, radius, 186) # Red
-            count += 1
-    return count
-
-def detect_deep_ribs(work_part, uf_session, body, radius, threshold):
-    count = 0
-    faces = body.GetFaces()
-    processed = set()
-
-    for i, f1 in enumerate(faces):
-        if f1.Tag in processed: continue
-        bbox1 = f1.GetBoundingBox()
-        L = bbox1.Max[2] - bbox1.Min[2] # Z方向の高さ
-        if L < 1.0: continue # 浅すぎる面はスキップ
-
-        for j in range(i + 1, len(faces)):
-            f2 = faces[j]
-            if f2.Tag in processed: continue
-            
-            # 高速フィルタ: バウンディングボックスが近くにあるか？
-            bbox2 = f2.GetBoundingBox()
-            if abs(bbox1.Min[2] - bbox2.Min[2]) > 1.0: continue # 高さが違いすぎる
-            
-            # 最短距離計測 (D)
-            dist, p1, p2 = uf_session.Modl.AskMinimumDist(f1.Tag, f2.Tag, 0, None, 0, None)
-            if 0.1 < dist < (L / threshold): # L/D判定
-                # 溝の最深部にマーカーを置く
-                pos = NXOpen.Point3d((p1[0]+p2[0])/2, (p1[1]+p2[1])/2, min(p1[2], p2[2]))
-                create_marker(work_part, pos, radius, 6) # Yellow
-                processed.add(f1.Tag)
-                processed.add(f2.Tag)
-                count += 1
-                break
-    return count
-
-def create_marker(work_part, pos, radius, color):
-    sphere_builder = work_part.Features.CreateSphereBuilder(NXOpen.Features.Feature.Null)
-    sphere_builder.CenterPoint = work_part.Points.CreatePoint(pos)
-    sphere_builder.Diameter.RightHandSide = str(radius * 2)
-    sphere_builder.BooleanOption.Type = NXOpen.GeometricUtilities.BooleanOperation.BooleanType.Create
-    feat = sphere_builder.Commit()
-    sphere_builder.Destroy()
-    for b in feat.GetBodies():
-        b.Color = color
-        b.RedisplayObject()
-
-if __name__ == "__main__":
-    main()
+# Rules:
+1. 期限：本文から日付を特定（不明なら"未定"）
+2. 話の流れ：経緯を含めて30文字程度で要約
+3. 回答案：過去の傾向や設計知見から、私が次に取るべき行動や返信案を提案
+4. 着手予定日：期限から逆算した日付（YYYY/MM/DD形式）
