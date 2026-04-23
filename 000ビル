@@ -9,7 +9,7 @@
    モダンUI デザインリセット & ベース
    ========================================= */
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", sans-serif;background:#e2e8f0;color:#0f172a;min-height:100vh;display:flex;justify-content:center;padding:24px 16px}
+body{font-family:"BIZ UDPGothic", "メイリオ", Meiryo, "Yu Gothic", YuGothic, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif; background:#e2e8f0;color:#0f172a;min-height:100vh;display:flex;justify-content:center;padding:24px 16px; line-height:1.5;}
 .app{width:100%;max-width:440px;background:#f8fafc;border-radius:24px;box-shadow:0 20px 40px -10px rgba(0,0,0,.15);overflow:hidden;display:flex;flex-direction:column;}
 
 /* ヘッダーエリア（グラデーション） */
@@ -19,16 +19,16 @@ body{font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
 .hdr.paused{background:linear-gradient(135deg, #f59e0b, #d97706);}
 
 .hdr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
-.hdr-top h1{font-size:18px;font-weight:700;white-space:nowrap;letter-spacing:-0.5px;}
-.hdr-btn{font-size:12px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:600;transition:background 0.2s;}
+.hdr-top h1{font-size:18px;font-weight:600;white-space:nowrap;letter-spacing:-0.5px;}
+.hdr-btn{font-size:12px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:500;transition:background 0.2s;}
 .hdr-btn:hover{background:rgba(255,255,255,.3)}
 
 /* ステータスボックス（すりガラス風） */
 .status-box{background:rgba(255,255,255,.15);border-radius:16px;padding:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1);}
-.status-label{font-size:12px;opacity:.9;margin-bottom:6px;font-weight:600;}
+.status-label{font-size:12px;opacity:.9;margin-bottom:6px;font-weight:500;}
 .status-main{display:flex;justify-content:space-between;align-items:center;}
-.status-task{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.status-time{font-family:'JetBrains Mono', monospace;font-size:24px;font-weight:700;flex-shrink:0;letter-spacing:-0.5px;}
+.status-task{font-weight:600;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.status-time{font-family:'JetBrains Mono', monospace;font-size:24px;font-weight:600;flex-shrink:0;letter-spacing:-0.5px;}
 
 /* 停止・再生ボタン（角丸の正方形・モダンデザイン） */
 .btn-stop-mini{
@@ -48,7 +48,7 @@ body{font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
 /* アニメーション */
 .dot{width:8px;height:8px;background:#fca5a5;border-radius:50%;display:inline-block;margin-right:8px;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.waiting{font-weight:700;font-size:18px;color:rgba(255,255,255,0.7);}
+.waiting{font-weight:600;font-size:18px;color:rgba(255,255,255,0.7);}
 
 /* アラート通知 */
 .alert{margin:16px 16px 0;padding:12px 16px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:8px;font-size:13px;color:#92400e;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 4px 6px rgba(0,0,0,.05); animation:slideDown 0.3s ease-out;}
@@ -59,9 +59,9 @@ body{font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
 
 /* 👇 視認性を高めるため背景色を少し濃いグレーに */
 .main{padding:20px; background:#f1f5f9; flex:1; border-radius:0 0 24px 24px;}
-.section-title{font-size:12px;font-weight:700;color:#64748b;}
+.section-title{font-size:12px;font-weight:600;color:#64748b;}
 .fav-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.edit-btn{font-size:12px;color:#2563eb;background:#eff6ff;border:none;cursor:pointer;padding:6px 10px;border-radius:6px;font-weight:600;transition:all 0.2s;}
+.edit-btn{font-size:12px;color:#2563eb;background:#eff6ff;border:none;cursor:pointer;padding:6px 10px;border-radius:6px;font-weight:500;transition:all 0.2s;}
 .edit-btn:hover{background:#dbeafe;}
 
 /* お気に入りボタン（カード風） */
@@ -70,24 +70,25 @@ body{font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
 .fav-btn:hover{border-color:#94a3b8;background:#f8fafc;box-shadow:0 6px 12px rgba(0,0,0,.06);transform:translateY(-2px);}
 .fav-btn:active{transform:translateY(0) scale(.98);}
 .fav-btn.on{background:#eff6ff;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(59,130,246,.2);}
-.fav-btn .id{font-weight:600;font-size:11px;color:#64748b;margin-bottom:4px; transition:color 0.2s;text-align:center;line-height:1;}
-.fav-btn .nm{font-weight:700;font-size:13px;color:#1e293b;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;line-height:1.4; transition:color 0.2s;text-align:center;word-break:break-word;}
+.fav-btn .id{font-weight:500;font-size:11px;color:#64748b;margin-bottom:4px; transition:color 0.2s;text-align:center;line-height:1;}
+.fav-btn .nm{font-weight:600;font-size:13px;color:#1e293b;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;line-height:1.4; transition:color 0.2s;text-align:center;word-break:break-word;}
 .fav-btn.on .id{color:#3b82f6;}
 .fav-btn.on .nm{color:#1d4ed8;}
 
 /* 入力フォーム共通 */
 select.full, .custom-row input, .add-hist-sel, select.ovt-sel{border:1px solid #cbd5e1;border-radius:10px;padding:12px 14px;font-size:14px;background:#ffffff;transition:all 0.2s;box-shadow:inset 0 1px 2px rgba(0,0,0,0.02);}
-select.full{width:100%;margin-bottom:16px;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 12px center;background-size:16px;}
+select.full{width:100%;margin-bottom:16px;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 12px center;background-size:16px;font-family:inherit;}
 .custom-row input:focus, select.full:focus, .add-hist-sel:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15);}
 .custom-row{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;}
-.custom-row input{flex:1;min-width:100px;}
+.custom-row input{flex:1;min-width:100px;font-family:inherit;}
 
 /* メモ入力（枠線を濃く、背景を白に） */
-.memo-input{width:100%;border:1px solid #94a3b8;border-radius:6px;padding:8px 10px;font-size:12px;background:#ffffff;color:#1e293b;transition:all 0.2s;margin-top:8px;}
+.memo-input{width:100%;border:1px solid #94a3b8;border-radius:6px;padding:8px 10px;font-size:12px;background:#ffffff;color:#1e293b;transition:all 0.2s;margin-top:8px;font-family:inherit;}
 .memo-input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.15);}
+.memo-input::placeholder {color:#94a3b8;}
 
 /* 汎用ボタン */
-.btn{padding:12px 16px;border-radius:12px;font-size:14px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);}
+.btn{padding:12px 16px;border-radius:12px;font-size:14px;font-weight:500;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);font-family:inherit;}
 .btn:disabled{opacity:.5;cursor:default;pointer-events:none;}
 .btn:active:not(:disabled){transform:scale(0.97);}
 .btn-dark{background:#0f172a;color:#fff;box-shadow:0 4px 6px rgba(15,23,42,.2);}
@@ -100,18 +101,18 @@ select.full{width:100%;margin-bottom:16px;cursor:pointer;appearance:none;backgro
 
 /* 集計確認画面 */
 .sum-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.sum-header h2{font-size:18px;font-weight:700}
-.back-link{font-size:13px;color:#2563eb;background:#ffffff;border:1px solid #cbd5e1;cursor:pointer;padding:6px 12px;border-radius:8px;font-weight:600;transition:all 0.2s;}
+.sum-header h2{font-size:18px;font-weight:600;}
+.back-link{font-size:13px;color:#2563eb;background:#ffffff;border:1px solid #cbd5e1;cursor:pointer;padding:6px 12px;border-radius:8px;font-weight:500;transition:all 0.2s;}
 .back-link:hover{background:#eff6ff; border-color:#93c5fd;}
 
 .ovt-box{background:#ffffff;border:1px solid #94a3b8;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 4px 8px rgba(0,0,0,0.05);}
 .ovt-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.ovt-top span{font-size:12px;font-weight:700;color:#475569}
-select.ovt-sel{padding:6px 10px;font-size:13px;border-radius:8px;}
+.ovt-top span{font-size:12px;font-weight:600;color:#475569}
+select.ovt-sel{padding:6px 10px;font-size:13px;border-radius:8px;font-family:inherit;}
 
 .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center}
 .stat{background:#f8fafc;border-radius:12px;padding:10px;border:1px solid #e2e8f0;}
-.stat .lbl{font-size:11px;color:#64748b;margin-bottom:2px;font-weight:600;}.stat .val{font-size:20px;font-weight:700;letter-spacing:-0.5px;}.stat .unit{font-size:12px;font-weight:500;color:#94a3b8;margin-left:2px;}
+.stat .lbl{font-size:11px;color:#64748b;margin-bottom:2px;font-weight:500;}.stat .val{font-size:20px;font-weight:600;letter-spacing:-0.5px;}.stat .unit{font-size:12px;font-weight:500;color:#94a3b8;margin-left:2px;}
 .stat.ok{background:#ecfdf5;border-color:#d1fae5;}.stat.ok .val{color:#059669}.stat.ok .lbl{color:#047857}
 .stat.ng{background:#fff1f2;border-color:#ffe4e6;}.stat.ng .val{color:#e11d48}.stat.ng .lbl{color:#be123c}
 .stat .val.blue{color:#2563eb}
@@ -120,14 +121,14 @@ select.ovt-sel{padding:6px 10px;font-size:13px;border-radius:8px;}
 .tbl-wrap{background:#ffffff;border:1px solid #94a3b8;border-radius:16px;overflow:hidden;margin-bottom:20px;box-shadow:0 6px 16px rgba(0,0,0,.08);}
 table{width:100%;font-size:14px;border-collapse:collapse}
 thead{background:#e2e8f0; border-bottom:2px solid #94a3b8;}
-th{padding:10px 14px;font-weight:700;color:#1e293b;font-size:12px;letter-spacing:0.5px;}
+th{padding:10px 14px;font-weight:600;color:#1e293b;font-size:12px;letter-spacing:0.5px;}
 td{padding:12px 14px;border-bottom:1px solid #e2e8f0;vertical-align:top;}
 tr:last-child td{border-bottom:none;}
-.task-id{font-weight:600;font-size:10px;color:#64748b;background:#f1f5f9;padding:3px 6px;border-radius:6px;margin-right:4px;display:inline-block; border:1px solid #e2e8f0;}
-.task-nm{font-weight:700;font-size:14px;color:#1e293b;display:block;margin-top:6px;line-height:1.4;}
-.time-input{width:76px;text-align:right;border:1px solid #cbd5e1;border-radius:8px;padding:6px 8px;font-size:15px;font-weight:700;color:#2563eb;background:#f8fafc;transition:all .2s;font-family:'JetBrains Mono',monospace;}
+.task-id{font-weight:500;font-size:10px;color:#64748b;background:#f1f5f9;padding:3px 6px;border-radius:6px;margin-right:4px;display:inline-block; border:1px solid #e2e8f0;}
+.task-nm{font-weight:600;font-size:14px;color:#1e293b;display:block;margin-top:6px;line-height:1.4;}
+.time-input{width:76px;text-align:right;border:1px solid #cbd5e1;border-radius:8px;padding:6px 8px;font-size:15px;font-weight:600;color:#2563eb;background:#f8fafc;transition:all .2s;font-family:'JetBrains Mono',monospace;}
 .time-input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15);background:#fff;}
-.sep-row td{background:#f8fafc;text-align:center;font-size:11px;color:#64748b;padding:8px;font-weight:700; border-bottom:1px dashed #cbd5e1; border-top:1px dashed #cbd5e1;}
+.sep-row td{background:#f8fafc;text-align:center;font-size:11px;color:#64748b;padding:8px;font-weight:600; border-bottom:1px dashed #cbd5e1; border-top:1px dashed #cbd5e1;}
 .empty-row td{text-align:center;color:#64748b;padding:32px;background:#ffffff;}
 
 .action-btns{display:flex;flex-direction:column;gap:12px}
@@ -145,7 +146,7 @@ tr:last-child td{border-bottom:none;}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px) scale(0.95);}to{opacity:1;transform:translateY(0) scale(1);}}
 .modal.wide{max-width:90vw;width:100%;}
 .modal-head{padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;background:#ffffff;}
-.modal-head h2{font-weight:700;font-size:18px;}
+.modal-head h2{font-weight:600;font-size:18px;}
 .close-btn{background:#f1f5f9;border:none;cursor:pointer;font-size:16px;color:#64748b;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}.close-btn:hover{background:#e2e8f0;color:#1e293b;transform:scale(1.05);}
 .modal-body{padding:24px;overflow-y:auto;flex:1;}
 .modal-foot{padding:20px 24px;border-top:1px solid #f1f5f9;background:#f8fafc}
@@ -153,7 +154,7 @@ tr:last-child td{border-bottom:none;}
 
 .cfm-modal{padding:32px 24px;text-align:center;max-width:360px}
 .cfm-modal .icon{font-size:48px;margin-bottom:16px;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.1));}
-.cfm-modal h3{font-size:20px;font-weight:700;margin-bottom:12px;color:#0f172a;}
+.cfm-modal h3{font-size:20px;font-weight:600;margin-bottom:12px;color:#0f172a;}
 .cfm-modal p{font-size:14px;color:#64748b;margin-bottom:24px;line-height:1.5;}
 .cfm-btns{display:flex;gap:12px}.cfm-btns .btn{flex:1;padding:12px 16px;}
 .btn-cancel{background:#fff;border:1px solid #cbd5e1;color:#475569;box-shadow:0 2px 4px rgba(0,0,0,.02);}.btn-cancel:hover{background:#f8fafc;border-color:#94a3b8;}
@@ -166,10 +167,10 @@ tr:last-child td{border-bottom:none;}
 .check-item:last-child{border-bottom:none}
 .check-item:hover{background:#f8fafc;}
 .check-item input{width:18px;height:18px;margin-right:14px;accent-color:#2563eb;cursor:pointer;}
-.check-item .ci-id{font-weight:700;font-size:14px;color:#1e293b;}.check-item .ci-nm{font-size:12px;color:#64748b;margin-top:2px;}
+.check-item .ci-id{font-weight:600;font-size:14px;color:#1e293b;}.check-item .ci-nm{font-size:12px;color:#64748b;margin-top:2px;}
 
 .tabs{display:flex;border-bottom:1px solid #e2e8f0;padding:0 12px;background:#fff;}
-.tab{flex:1;padding:12px 8px;text-align:center;font-size:13px;font-weight:700;color:#64748b;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;}
+.tab{flex:1;padding:12px 8px;text-align:center;font-size:13px;font-weight:600;color:#64748b;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;font-family:inherit;}
 .tab.on{color:#2563eb;border-bottom-color:#2563eb;}.tab:hover:not(.on){color:#334155;background:#f8fafc;}
 
 .hist-desc{font-size:12px;color:#475569;margin-bottom:16px}
@@ -177,8 +178,8 @@ tr:last-child td{border-bottom:none;}
 .hist-item{border:1px solid #94a3b8;border-radius:16px;background:#ffffff;margin-bottom:16px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.06);}
 .hist-row{display:flex;align-items:center;padding:16px;}
 .hist-right{display:flex;align-items:center;flex:1;cursor:pointer;justify-content:space-between;min-width:0;user-select:none;padding-left:0;}
-.hist-date{font-weight:700;font-size:15px;color:#1e293b;display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist-copy{padding:6px 12px;font-size:14px;font-weight:700;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;cursor:pointer;flex-shrink:0;margin-left:8px;transition:all 0.2s;}
+.hist-date{font-weight:600;font-size:15px;color:#1e293b;display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-copy{padding:6px 12px;font-size:14px;font-weight:600;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;cursor:pointer;flex-shrink:0;margin-left:8px;transition:all 0.2s;font-family:inherit;}
 .hist-copy:hover{background:#dbeafe;transform:translateY(-1px);}
 
 /* 👇 履歴詳細の中身の背景色を変えてメリハリをつける */
@@ -186,7 +187,7 @@ tr:last-child td{border-bottom:none;}
 .hist-detail table{width:100%;font-size:13px;border-collapse:collapse;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 6px rgba(0,0,0,0.03);}
 .hist-detail th{background:#e2e8f0; border-bottom:2px solid #cbd5e1;}
 .hist-detail td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top;}
-.hist-detail tfoot td{background:#f1f5f9;font-weight:700;border-top:1px solid #cbd5e1;color:#1e293b;}
+.hist-detail tfoot td{background:#f1f5f9;font-weight:600;border-top:1px solid #cbd5e1;color:#1e293b;}
 
 .empty-box{text-align:center;color:#64748b;padding:40px 20px;border:2px dashed #cbd5e1;border-radius:12px;font-weight:600;background:#ffffff;}
 
@@ -197,35 +198,36 @@ tr:last-child td{border-bottom:none;}
 .mc-item{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #f1f5f9;font-size:14px;cursor:pointer;}
 .mc-item:last-child{border-bottom:none}
 .mc-item input{width:18px;height:18px;margin-right:14px;accent-color:#2563eb;}
-.mc-date{font-weight:700;color:#334155;min-width:100px}
+.mc-date{font-weight:600;color:#334155;min-width:100px}
 .mc-label{color:#64748b;font-size:12px;margin-left:4px}
 .period-info{background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;padding:14px;margin-bottom:16px;font-size:14px;color:#1e40af;font-weight:600;}
 
 /* ヘルプモーダル用スタイル */
 .help-modal{font-size:14px;line-height:1.6;color:#334155;}
-.help-modal h3{font-size:15px;color:#2563eb;margin-bottom:10px;border-bottom:2px solid #eff6ff;padding-bottom:6px;margin-top:24px;font-weight:700;}
+.help-modal h3{font-size:15px;color:#2563eb;margin-bottom:10px;border-bottom:2px solid #eff6ff;padding-bottom:6px;margin-top:24px;font-weight:600;}
 .help-modal h3:first-child{margin-top:0;}
 .help-modal ul{padding-left:24px;margin-bottom:20px;}
 .help-modal li{margin-bottom:8px;}
-.help-highlight{color:#059669;font-weight:700;background:#ecfdf5;padding:2px 6px;border-radius:4px;}
+.help-highlight{color:#059669;font-weight:600;background:#ecfdf5;padding:2px 6px;border-radius:4px;}
 .help-sub{font-weight:normal;font-size:12px;color:#64748b;display:block;margin-top:4px;}
 
 /* 月次出力プレビュー用スタイル */
 .prev-table{width:max-content;font-size:12px;border-collapse:separate;border-spacing:0;min-width:100%;}
 .prev-table th, .prev-table td{padding:8px 10px;border-bottom:1px solid #cbd5e1;border-right:1px solid #cbd5e1;white-space:nowrap;text-align:center;background:#fff;background-clip:padding-box;}
 .prev-table th:first-child, .prev-table td:first-child{border-left:1px solid #cbd5e1;}
-.prev-table th{border-top:1px solid #cbd5e1;background:#f8fafc;position:sticky;top:0;z-index:20;color:#475569;white-space:pre-wrap;line-height:1.3;font-weight:700;}
-.prev-table .col-h{position:sticky;left:0;z-index:15;background:#fff;width:55px;min-width:55px;max-width:55px;overflow:hidden;text-align:left;font-weight:bold;color:#1e293b;}
+.prev-table th{border-top:1px solid #cbd5e1;background:#f8fafc;position:sticky;top:0;z-index:20;color:#475569;white-space:pre-wrap;line-height:1.3;font-weight:600;}
+.prev-table .col-h{position:sticky;left:0;z-index:15;background:#fff;width:55px;min-width:55px;max-width:55px;overflow:hidden;text-align:left;font-weight:600;color:#1e293b;}
 .prev-table .col-o{position:sticky;left:55px;z-index:15;background:#fff;width:90px;min-width:90px;max-width:90px;overflow:hidden;text-overflow:ellipsis;text-align:left;color:#334155;}
 .prev-table .col-w{position:sticky;left:145px;z-index:15;background:#fff;width:130px;min-width:130px;max-width:130px;overflow:hidden;text-overflow:ellipsis;text-align:left;color:#64748b;border-right:2px solid #94a3b8;}
-.prev-table .col-sum{width:55px;min-width:55px;max-width:55px;overflow:hidden;text-align:right;font-weight:bold;color:#059669;background:#ecfdf5;}
+.prev-table .col-sum{width:55px;min-width:55px;max-width:55px;overflow:hidden;text-align:right;font-weight:600;color:#059669;background:#ecfdf5;}
 .prev-table th.col-h, .prev-table th.col-o, .prev-table th.col-w{z-index:25;background:#e2e8f0;}
 .prev-table th.col-sum{z-index:20;}
 .prev-table .val-empty{background:#f8fafc;}
-.prev-table .val-num{font-weight:bold;color:#2563eb;font-family:'JetBrains Mono',monospace;}
+.prev-table .val-num{font-weight:600;color:#2563eb;font-family:'JetBrains Mono',monospace;}
 .prev-table .bg-sun{background-color:#fef2f2 !important;}
 .prev-table .bg-sat{background-color:#eff6ff !important;}
 .prev-table .sep-blank{background-color:#e2e8f0 !important; height:8px; padding:0;}
+.prev-table .border-thick{border-top: 2px solid #64748b !important;}
 </style>
 </head>
 <body>
@@ -245,13 +247,17 @@ var TASKS=[
 var TORD=TASKS.map(function(t){return t.id});
 var BRKS=[{sH:12,sM:0,eH:12,eM:45,l:'昼休憩'},{sH:17,sM:15,eH:17,eM:30,l:'残業前休憩'}];
 
+// 👇 H011, H015 の細分化項目の定義
+var H011_SUBS = ['遮断機', '計器', 'スマートメーター', '電磁開閉器'];
+var H015_SUBS = ['遮断機', '計器', 'スマートメーター', '電磁開閉器'];
+
 var S={active:null,start:null,records:{},memos:{},elapsed:0,paused:null,pauseLabel:'',alert:null,
   favs:['H001','H004','H016','H019','H020','H008'],history:[],ovt:0,page:'main',
-  modal:null,histTab:'manual',expHist:null,copied:false,needFullRender:true,
+  modal:null,histTab:'history',expHist:null,copied:false,needFullRender:true,
   mcChecked:{},confirmTarget:null};
 
 var lastModal = null;
-var lastHistTab = 'manual';
+var lastHistTab = 'history';
 var lastPage = 'main';
 
 function lsG(k){try{return JSON.parse(localStorage.getItem('tt_'+k))}catch(e){return null}}
@@ -291,7 +297,6 @@ function tLabel(id){
 
 function getToday(){return new Date().toLocaleDateString('sv-SE')}
 function getNowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
-function isManual(h){return h.date&&h.date.indexOf('保存')!==-1}
 function hDate(h){return(h.date||'').substring(0,10)}
 function brkB(b){var n=new Date(),s=new Date(n),e=new Date(n);s.setHours(b.sH,b.sM,0,0);e.setHours(b.eH,b.eM,0,0);return{s:s,e:e,l:b.l}}
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -308,7 +313,27 @@ function getSorted(recs){
     }
   });
   fx.sort(function(a,b){return TORD.indexOf(a.task)-TORD.indexOf(b.task)});
-  cx.sort(function(a,b){return b.secs-a.secs});
+  
+  cx.sort(function(a,b){
+    if (a.col2 === 'H011' && b.col2 === 'H011') {
+       var idxA = H011_SUBS.indexOf(a.col3);
+       var idxB = H011_SUBS.indexOf(b.col3);
+       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+       if (idxA !== -1) return -1;
+       if (idxB !== -1) return 1;
+    }
+    if (a.col2 === 'H015' && b.col2 === 'H015') {
+       var idxA = H015_SUBS.indexOf(a.col3);
+       var idxB = H015_SUBS.indexOf(b.col3);
+       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+       if (idxA !== -1) return -1;
+       if (idxB !== -1) return 1;
+    }
+    var cmpO = (a.col2 || '').localeCompare(b.col2 || '');
+    if(cmpO !== 0) return cmpO;
+    return (a.col3 || '').localeCompare(b.col3 || '');
+  });
+  
   return {fx:fx, cx:cx};
 }
 
@@ -335,7 +360,13 @@ function findOrMergeCustomTaskKey(newO, newW, recs, memos) {
   for(var i=0; i<existingKeys.length; i++){
     var k = existingKeys[i];
     var p = parseTaskKey(k);
-    if((newO && p.col2 === newO) || (newW && p.col3 === newW)) {
+    
+    var isSameO = (newO && p.col2 === newO);
+    var isSameW = (newW && p.col3 === newW);
+    var isCompatibleO = (p.col2 === newO) || (!p.col2) || (!newO);
+    var isCompatibleW = (p.col3 === newW) || (!p.col3) || (!newW);
+    
+    if((isSameO || isSameW) && isCompatibleO && isCompatibleW) {
       matchingKeys.push(k);
     }
   }
@@ -383,6 +414,22 @@ function findOrMergeCustomTaskKey(newO, newW, recs, memos) {
 
 function startTask(name){
   if(!name)return;
+  if(name === 'H011') {
+    S.modal = 'h011_sub';
+    S.needFullRender = true;
+    render();
+    return;
+  }
+  if(name === 'H015') {
+    S.modal = 'h015_sub';
+    S.needFullRender = true;
+    render();
+    return;
+  }
+  _executeStartTask(name);
+}
+
+function _executeStartTask(name) {
   S.alert=null;S.paused=null;S.pauseLabel='';
   var now=new Date();
   if(S.active&&S.start){
@@ -395,6 +442,12 @@ function startTask(name){
   if(S.records[name]===undefined) S.records[name]=0;
   S.needFullRender=true;
   save();render();
+}
+
+function startSubTask(baseId, subName) {
+  var key = findOrMergeCustomTaskKey(baseId, subName, S.records, S.memos);
+  S.modal = null;
+  _executeStartTask(key);
 }
 
 function togglePlayPause(){
@@ -471,10 +524,20 @@ function addHistoryItem(histIdx, selId, txtOId, txtWId){
   var el = document.getElementById(selId);
   var txtO = document.getElementById(txtOId);
   var txtW = document.getElementById(txtWId);
+  var taskId = el.value;
+  
+  if(taskId === 'H011' || taskId === 'H015') {
+    var nm = taskId === 'H011' ? 'H011（生産設計）' : 'H015（工作支援）';
+    S.alert = nm + 'は細分化されているため、右側の入力欄で オーダーに「' + taskId + '」、製品図番に細分化項目を直接入力して追加してください。';
+    S.alertType = null;
+    S.needFullRender = true;
+    render();
+    return;
+  }
+
   var hist = S.history[histIdx];
   if(!hist.memos) hist.memos = {};
   
-  var taskId = el.value;
   var wasMerged = false;
   
   if(!taskId) {
@@ -502,7 +565,6 @@ function addHistoryItem(histIdx, selId, txtOId, txtWId){
     if(txtW) txtW.value = '';
     save();
   } else if(hist.records[taskId] !== undefined){
-    // すでに登録されている場合は何もしない
   } else {
     hist.records[taskId] = 0;
     if(el) el.value = '';
@@ -541,19 +603,58 @@ function copyExcel(recs){
   var ln=[];
   TORD.forEach(function(id){
     var s=recs[id]||0;
+    if(id === 'H011') {
+      for(var rk in recs) {
+        if(rk.startsWith('C_H011___')) s += recs[rk];
+      }
+    }
+    if(id === 'H015') {
+      for(var rk in recs) {
+        if(rk.startsWith('C_H015___')) s += recs[rk];
+      }
+    }
     var h=hrs(s);
     ln.push(parseFloat(h)>0 ? String(h) : '');
   });
   
+  var subSecs = {};
+  H011_SUBS.forEach(function(sub) { subSecs['H011_'+sub] = 0; });
+  H015_SUBS.forEach(function(sub) { subSecs['H015_'+sub] = 0; });
+  
   var cx=[];
   Object.keys(recs).forEach(function(t){
-    if(TORD.indexOf(t)===-1 && recs[t]>0) cx.push({task:t, secs:recs[t]});
+    if(TORD.indexOf(t)===-1 && recs[t]>0) {
+      var p = parseTaskKey(t);
+      if(p.col2 === 'H011' && H011_SUBS.indexOf(p.col3) !== -1) {
+        subSecs['H011_'+p.col3] += recs[t];
+      } else if(p.col2 === 'H015' && H015_SUBS.indexOf(p.col3) !== -1) {
+        subSecs['H015_'+p.col3] += recs[t];
+      } else {
+        cx.push({task:t, secs:recs[t]});
+      }
+    }
   });
   cx.sort(function(a,b){return b.secs-a.secs});
   
-  if(cx.length>0){
+  var hasH011Sub = false;
+  var hasH015Sub = false;
+  H011_SUBS.forEach(function(sub){ if(subSecs['H011_'+sub] > 0) hasH011Sub = true; });
+  H015_SUBS.forEach(function(sub){ if(subSecs['H015_'+sub] > 0) hasH015Sub = true; });
+  
+  if(hasH011Sub || hasH015Sub || cx.length>0){
     ln.push(''); 
     ln.push(''); 
+    
+    H011_SUBS.forEach(function(sub){
+      var h = hrs(subSecs['H011_'+sub]);
+      ln.push(parseFloat(h)>0 ? String(h) : '');
+    });
+
+    H015_SUBS.forEach(function(sub){
+      var h = hrs(subSecs['H015_'+sub]);
+      ln.push(parseFloat(h)>0 ? String(h) : '');
+    });
+    
     cx.forEach(function(r){
       var h=hrs(r.secs);
       ln.push(h);
@@ -688,10 +789,20 @@ function getMonthlyGridData(){
     Object.keys(recs).forEach(function(t){
       if(TORD.indexOf(t)===-1) {
         var p = parseTaskKey(t);
+        
+        // H011, H015の内訳は専用エリアに固定出力するため除外する
+        if (p.col2 === 'H011' || p.col2 === 'H015') return;
+
         var matchIndexes = [];
         for(var i=0; i<customKeys.length; i++) {
           var ep = parseTaskKey(customKeys[i]);
-          if((p.col2 && p.col2 === ep.col2) || (p.col3 && p.col3 === ep.col3)) {
+          
+          var isSameO = (p.col2 && p.col2 === ep.col2);
+          var isSameW = (p.col3 && p.col3 === ep.col3);
+          var isCompatibleO = (p.col2 === ep.col2) || (!p.col2) || (!ep.col2);
+          var isCompatibleW = (p.col3 === ep.col3) || (!p.col3) || (!ep.col3);
+          
+          if((isSameO || isSameW) && isCompatibleO && isCompatibleW) {
             matchIndexes.push(i);
           }
         }
@@ -739,7 +850,14 @@ function getMonthlyGridData(){
     dates.forEach(function(d){
       var recs=byDate[d];
       var s = 0;
-      if(recs && recs[t.id]) s = recs[t.id];
+      if(recs) {
+        if(recs[t.id]) s += recs[t.id];
+        if(t.id === 'H011' || t.id === 'H015') {
+          for(var rk in recs) {
+            if(rk.startsWith('C_'+t.id+'___')) s += recs[rk];
+          }
+        }
+      }
       rowSumSecs += s;
       totalBaseSecs += s;
       var h = hrs(s);
@@ -765,6 +883,53 @@ function getMonthlyGridData(){
   rows.push([]); 
   rowNum++;
   
+  // H011, H015の細分化項目を出力するための共通処理
+  function addSubRows(baseId, subs) {
+    subs.forEach(function(sub, idx){
+      var formula = '=SUM(' + startCol + rowNum + ':' + endCol + rowNum + ')';
+      var rowSumSecs = 0;
+      var dataRow = [
+        {val: baseId, copy: baseId, isDim: (idx > 0)},
+        {val: (idx === 0 ? '（内訳エリア）' : ''), copy: '', isDimLabel: (idx === 0)},
+        {val: sub, copy: sub}
+      ];
+      var dateCells = [];
+      dates.forEach(function(d){
+        var recs=byDate[d];
+        var s=0;
+        if(recs){
+          var keys = Object.keys(recs);
+          for(var k=0; k<keys.length; k++) {
+            if(keys[k].startsWith('C_'+baseId+'___') && keys[k].endsWith('___' + sub)) {
+               s += recs[keys[k]];
+            }
+          }
+        }
+        rowSumSecs += s;
+        var h = hrs(s);
+        dateCells.push({val: parseFloat(h)>0?h:'', copy: parseFloat(h)>0?h:''});
+      });
+      dataRow.push({val: hrs(rowSumSecs), copy: formula});
+      dataRow = dataRow.concat(dateCells);
+      rows.push(dataRow);
+      rowNum++;
+    });
+  }
+
+  // 👇 H011, H015の順で専用エリアに出力し、ブロックの開始行に太線のフラグを立てる
+  var h011StartIndex = rows.length;
+  addSubRows('H011', H011_SUBS);
+  if (rows[h011StartIndex]) rows[h011StartIndex].isBorderTop = true;
+
+  var h015StartIndex = rows.length;
+  addSubRows('H015', H015_SUBS);
+  if (rows[h015StartIndex]) rows[h015StartIndex].isBorderTop = true;
+
+  if (customKeys.length > 0) {
+    rows.push([]); 
+    rowNum++;
+  }
+  
   customKeys.forEach(function(cid){
     var p = parseTaskKey(cid);
     var formula = '=SUM(' + startCol + rowNum + ':' + endCol + rowNum + ')';
@@ -782,9 +947,14 @@ function getMonthlyGridData(){
         var keys = Object.keys(recs);
         for(var k=0; k<keys.length; k++) {
           var rk = keys[k];
-          if(TORD.indexOf(rk) === -1) {
+          if(TORD.indexOf(rk) === -1 && !rk.startsWith('C_H011___') && !rk.startsWith('C_H015___')) {
             var rp = parseTaskKey(rk);
-            if((p.col2 && p.col2 === rp.col2) || (p.col3 && p.col3 === rp.col3)) {
+            var isSameO = (p.col2 && p.col2 === rp.col2);
+            var isSameW = (p.col3 && p.col3 === rp.col3);
+            var isCompatibleO = (p.col2 === rp.col2) || (!p.col2) || (!rp.col2);
+            var isCompatibleW = (p.col3 === rp.col3) || (!p.col3) || (!rp.col3);
+            
+            if((isSameO || isSameW) && isCompatibleO && isCompatibleW) {
               s += recs[rk] || 0;
             }
           }
@@ -823,17 +993,14 @@ function tick(){
   var now=new Date(),ds=now.toLocaleDateString('sv-SE'),asKey='as_'+ds;
   
   if(now.getHours()>=22&&!localStorage.getItem(asKey)){
-    localStorage.setItem(asKey,'true');var s22=new Date(now);s22.setHours(22,0,0,0);
+    localStorage.setItem(asKey,'true');
     
     var hasConfirmedToday = S.history.some(function(h){ return hDate(h) === ds && h.isConfirmed; });
     
     if(!hasConfirmedToday){
       var fin={},k;for(k in S.records)fin[k]=S.records[k];
-      if(S.active&&S.start){var d=Math.floor((Math.min(now.getTime(),s22.getTime())-S.start.getTime())/1000);if(d>0)fin[S.active]=(fin[S.active]||0)+d}
+      if(S.active&&S.start){var d=Math.floor((now.getTime()-S.start.getTime())/1000);if(d>0)fin[S.active]=(fin[S.active]||0)+d}
       
-      // H001（朝礼）の15分自動加算を自動保存時にも反映する
-      fin['H001'] = (fin['H001'] || 0) + 900;
-
       if(Object.keys(fin).length>0){
         var copyMemo = {}; for(var km in S.memos) copyMemo[km] = S.memos[km];
         S.history=[{date:ds+' (22:00 自動保存)',records:fin, memos:copyMemo}].concat(S.history).slice(0,120);
@@ -863,8 +1030,6 @@ function init(){var d=getToday(),rec=lsG('rec')||{},memos=lsG('memo')||{},hist=l
     var hasConf = hist.some(function(h){ return hDate(h) === sd && h.isConfirmed; });
 
     if(!hasConf && Object.keys(rec).length>0){
-      // H001（朝礼）の15分自動加算を自動保存時にも反映する
-      rec['H001'] = (rec['H001'] || 0) + 900;
       hist=[{date:sd+' (日付変更 自動保存)',records:rec,memos:memos}].concat(hist).slice(0,120);
       lsS('hist',hist);
     }
@@ -880,9 +1045,114 @@ function renderHistList(list,h){
     var confMark = hi.isConfirmed ? '<span style="color:#059669;margin-left:6px" title="確定済み">✅</span>' : '';
     h+='<div class="hist-item"><div class="hist-row"><div class="hist-right" style="padding-left:0;" onclick="S.expHist=S.expHist===\''+key+'\'?null:\''+key+'\';S.needFullRender=true;render()"><span class="hist-date"><span style="color:#94a3b8;font-size:11px;margin-right:4px;">'+(isOpen?'▲':'▼')+'</span> 📅 '+esc(hi.date)+confMark+'</span><button class="hist-copy" title="この日の記録をExcel用にコピーします" onclick="event.stopPropagation();copyExcel(S.history['+idx+'].records)">📋</button></div></div>';
     if(isOpen){
-      var hs=getSorted(hi.records),all=hs.fx.concat(hs.cx),total=all.reduce(function(s,r){return s+r.secs},0);
+      var hs=getSorted(hi.records);
+      var total = hs.fx.concat(hs.cx).reduce(function(s,r){return s+r.secs},0);
+      
+      var h011TotalSecs = 0, h011Idx = -1, h011Subs = [];
+      var h015TotalSecs = 0, h015Idx = -1, h015Subs = [];
+      var newCX = [];
+      
+      for(var j=0; j<hs.cx.length; j++) {
+        if(hs.cx[j].task.startsWith('C_H011___')) { 
+            h011TotalSecs += hs.cx[j].secs; 
+            h011Subs.push(hs.cx[j]);
+        } else if(hs.cx[j].task.startsWith('C_H015___')) { 
+            h015TotalSecs += hs.cx[j].secs; 
+            h015Subs.push(hs.cx[j]);
+        } else {
+            newCX.push(hs.cx[j]);
+        }
+      }
+      hs.cx = newCX; 
+
+      for(var j=0; j<hs.fx.length; j++) {
+        if(hs.fx[j].task === 'H011') { h011TotalSecs += hs.fx[j].secs; h011Idx = j; }
+        if(hs.fx[j].task === 'H015') { h015TotalSecs += hs.fx[j].secs; h015Idx = j; }
+      }
+      
+      if(h011Subs.length > 0) {
+        if(h011Idx === -1) {
+          var p = parseTaskKey('H011');
+          hs.fx.push({task:'H011', col1:p.col1, col2:p.col2, col3:p.col3, secs: h011TotalSecs, hours: hrs(h011TotalSecs), isVirtual: true});
+        } else {
+          hs.fx[h011Idx].secs = h011TotalSecs;
+          hs.fx[h011Idx].hours = hrs(h011TotalSecs);
+          hs.fx[h011Idx].isVirtual = true;
+        }
+      }
+      if(h015Subs.length > 0) {
+        if(h015Idx === -1) {
+          var p = parseTaskKey('H015');
+          hs.fx.push({task:'H015', col1:p.col1, col2:p.col2, col3:p.col3, secs: h015TotalSecs, hours: hrs(h015TotalSecs), isVirtual: true});
+        } else {
+          hs.fx[h015Idx].secs = h015TotalSecs;
+          hs.fx[h015Idx].hours = hrs(h015TotalSecs);
+          hs.fx[h015Idx].isVirtual = true;
+        }
+      }
+      hs.fx.sort(function(a,b){return TORD.indexOf(a.task)-TORD.indexOf(b.task)});
+      
       h+='<div class="hist-detail"><table><thead><tr><th style="text-align:left">オーダー</th><th style="text-align:center;width:80px;">実計測時間</th><th style="text-align:right;width:90px;">入力値(h)</th></tr></thead><tbody>';
-      all.forEach(function(r){
+      
+      hs.fx.forEach(function(r){
+        h+='<tr><td>';
+        var dispNm = [];
+        if(r.col1) dispNm.push('<span class="task-id">'+esc(r.col1)+'</span>');
+        if(r.col2) dispNm.push('<span class="task-id" style="color:#059669;background:#ecfdf5;">'+esc(r.col2)+'</span>');
+        
+        var nmText = esc(r.col3 || '');
+        if(r.isVirtual) nmText = '📂 ' + nmText + ' <span style="font-size:11px;color:#64748b;font-weight:normal;">(内訳の合計)</span>';
+        if(r.col3) dispNm.push('<span class="task-nm">'+nmText+'</span>');
+        
+        h+= dispNm.join(' ');
+        var memo = (hi.memos && hi.memos[r.task]) ? hi.memos[r.task] : '';
+        
+        var memoReadOnly = r.isVirtual ? 'readonly title="メモは下の内訳項目から修正してください" style="background:#e2e8f0;cursor:not-allowed;color:#94a3b8;" placeholder="内訳項目で入力"' : 'placeholder="📝 作業メモ..."';
+        var memoOnChange = r.isVirtual ? '' : 'onchange="updateRecordMemo(\'history\',\''+r.task+'\',this.value,'+idx+')"';
+        h+='<input type="text" class="memo-input" value="'+(r.isVirtual?'':esc(memo))+'" '+memoReadOnly+' '+memoOnChange+'>';
+        
+        var timeReadOnly = r.isVirtual ? 'readonly title="この時間は下の内訳項目から修正してください" style="background:#e2e8f0;cursor:not-allowed;color:#94a3b8;"' : '';
+        var timeOnChange = r.isVirtual ? '' : 'onchange="updateRecordTime(\'history\',\''+r.task+'\',this.value,'+idx+')"';
+        h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:'+(r.isVirtual?'#94a3b8':'#64748b')+';">'+fmt(r.secs)+'</td><td style="text-align:right;white-space:nowrap;"><input type="number" step="0.05" min="0" class="time-input" style="width:64px;padding:4px;font-size:14px" value="'+r.hours+'" '+timeReadOnly+' '+timeOnChange+'> <span style="font-size:12px;color:#64748b">h</span></td></tr>';
+
+        // 内訳をツリー表示
+        if (r.task === 'H011' && h011Subs.length > 0) {
+            h011Subs.forEach(function(subR){
+                h+='<tr style="background:#f8fafc;"><td style="padding-left: 36px; position:relative;">';
+                h+='<div style="position:absolute; left:14px; top:0; height:24px; width:12px; border-left:2px solid #94a3b8; border-bottom:2px solid #94a3b8; border-bottom-left-radius:4px;"></div>';
+                var subDispNm = [];
+                if(subR.col3) subDispNm.push('<span class="task-nm" style="margin-top:0;">'+esc(subR.col3)+'</span>');
+                h+= subDispNm.join(' ');
+                var subMemo = (hi.memos && hi.memos[subR.task]) ? hi.memos[subR.task] : '';
+                var subMemoOnChange = 'onchange="updateRecordMemo(\'history\',\''+subR.task+'\',this.value,'+idx+')"';
+                h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(subMemo)+'" '+subMemoOnChange+'>';
+                var subTimeOnChange = 'onchange="updateRecordTime(\'history\',\''+subR.task+'\',this.value,'+idx+')"';
+                h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(subR.secs)+'</td><td style="text-align:right;white-space:nowrap;"><input type="number" step="0.05" min="0" class="time-input" style="width:64px;padding:4px;font-size:14px;background:#ffffff;" value="'+subR.hours+'" '+subTimeOnChange+'> <span style="font-size:12px;color:#64748b">h</span></td></tr>';
+            });
+        }
+        if (r.task === 'H015' && h015Subs.length > 0) {
+            h015Subs.forEach(function(subR){
+                h+='<tr style="background:#f8fafc;"><td style="padding-left: 36px; position:relative;">';
+                h+='<div style="position:absolute; left:14px; top:0; height:24px; width:12px; border-left:2px solid #94a3b8; border-bottom:2px solid #94a3b8; border-bottom-left-radius:4px;"></div>';
+                var subDispNm = [];
+                if(subR.col3) subDispNm.push('<span class="task-nm" style="margin-top:0;">'+esc(subR.col3)+'</span>');
+                h+= subDispNm.join(' ');
+                var subMemo = (hi.memos && hi.memos[subR.task]) ? hi.memos[subR.task] : '';
+                var subMemoOnChange = 'onchange="updateRecordMemo(\'history\',\''+subR.task+'\',this.value,'+idx+')"';
+                h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(subMemo)+'" '+subMemoOnChange+'>';
+                var subTimeOnChange = 'onchange="updateRecordTime(\'history\',\''+subR.task+'\',this.value,'+idx+')"';
+                h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(subR.secs)+'</td><td style="text-align:right;white-space:nowrap;"><input type="number" step="0.05" min="0" class="time-input" style="width:64px;padding:4px;font-size:14px;background:#ffffff;" value="'+subR.hours+'" '+subTimeOnChange+'> <span style="font-size:12px;color:#64748b">h</span></td></tr>';
+            });
+        }
+      });
+      
+      if(hs.fx.length || hs.cx.length) {
+          if(hs.cx.length > 0) {
+              h+='<tr class="sep-row"><td colspan="3">↓ 個別オーダー業務 ↓</td></tr>';
+          }
+      }
+      
+      hs.cx.forEach(function(r){
         h+='<tr><td>';
         var dispNm = [];
         if(r.col1) dispNm.push('<span class="task-id">'+esc(r.col1)+'</span>');
@@ -890,8 +1160,12 @@ function renderHistList(list,h){
         if(r.col3) dispNm.push('<span class="task-nm">'+esc(r.col3)+'</span>');
         h+= dispNm.join(' ');
         var memo = (hi.memos && hi.memos[r.task]) ? hi.memos[r.task] : '';
-        h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(memo)+'" onchange="updateRecordMemo(\'history\',\''+r.task+'\',this.value,'+idx+')">';
-        h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(r.secs)+'</td><td style="text-align:right;white-space:nowrap;"><input type="number" step="0.05" min="0" class="time-input" style="width:64px;padding:4px;font-size:14px" value="'+r.hours+'" onchange="updateRecordTime(\'history\',\''+r.task+'\',this.value,'+idx+')"> <span style="font-size:12px;color:#64748b">h</span></td></tr>';
+        
+        var memoOnChange = 'onchange="updateRecordMemo(\'history\',\''+r.task+'\',this.value,'+idx+')"';
+        h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(memo)+'" '+memoOnChange+'>';
+        
+        var timeOnChange = 'onchange="updateRecordTime(\'history\',\''+r.task+'\',this.value,'+idx+')"';
+        h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(r.secs)+'</td><td style="text-align:right;white-space:nowrap;"><input type="number" step="0.05" min="0" class="time-input" style="width:64px;padding:4px;font-size:14px" value="'+r.hours+'" '+timeOnChange+'> <span style="font-size:12px;color:#64748b">h</span></td></tr>';
       });
       h+='</tbody><tfoot><tr><td>合計</td><td></td><td style="text-align:right;padding-right:20px;">'+hrs(total)+'h</td></tr></tfoot></table></div>';
       
@@ -964,16 +1238,62 @@ function render(){
 
   if(S.page==='main'){
     h+='<div class="fav-header"><span class="section-title">お気に入りボタン</span><button class="edit-btn" title="よく使う基本工程をメイン画面に表示・非表示にします" onclick="S.modal=\'editFav\';S.needFullRender=true;render()">⚙ 編集</button></div><div class="fav-grid">';
-    S.favs.forEach(function(tid){var t=TASKS.find(function(c){return c.id===tid})||{id:tid,name:''};h+='<button class="fav-btn '+(S.active===t.id?'on':'')+'" onclick="startTask(\''+t.id+'\')"><div class="id">'+esc(t.id)+'</div><div class="nm">'+esc(t.name)+'</div></button>'});
+    
+    // 👇 お気に入り配列を工程番号（TASKSの並び順）にソートしてから表示する
+    var sortedFavs = S.favs.slice().sort(function(a,b){return TORD.indexOf(a)-TORD.indexOf(b);});
+    sortedFavs.forEach(function(tid){var t=TASKS.find(function(c){return c.id===tid})||{id:tid,name:''};h+='<button class="fav-btn '+(S.active===t.id?'on':'')+'" onclick="startTask(\''+t.id+'\')"><div class="id">'+esc(t.id)+'</div><div class="nm">'+esc(t.name)+'</div></button>'});
+    
     if(!S.favs.length)h+='<div style="grid-column:span 2" class="empty-box">右上の「設定」から追加</div>';
     h+='</div><select class="full" onchange="if(this.value){startTask(this.value);this.value=\'\'}"><option value="">▼ その他の基本工程を選択して開始...</option>';
     TASKS.forEach(function(t){h+='<option value="'+t.id+'">'+esc(t.id)+' '+esc(t.name)+'</option>'});
     h+='</select><div class="custom-row"><input type="text" id="customOrder" placeholder="オーダー..." style="flex:1;min-width:100px;"><input type="text" id="customWork" placeholder="製品図番..." style="flex:1;min-width:100px;" onkeydown="if(event.key===\'Enter\'){event.preventDefault();startCustomTask();}">';
-    h+='<button class="btn btn-dark" title="入力したオーダー・製品図番で計測を開始します" style="padding:8px 12px;font-size:13px" onclick="startCustomTask()">▶ 開始</button></div>';
+    h+='<button class="btn btn-dark" title="入力したオーダー・製品図番で計測を開始します" style="padding:10px 16px;font-size:14px" onclick="startCustomTask()">▶ 開始</button></div>';
     h+='<div class="ctrl-row"><button class="btn btn-summary" title="本日の作業時間の確認・修正、Excelへのコピーを行います" onclick="S.page=\'summary\';S.needFullRender=true;render()">📊 集計確認</button></div>';
   }else{
     h+='<div class="sum-header"><h2>本日の集計 (0.05h単位)</h2><button class="back-link" onclick="S.page=\'main\';S.needFullRender=true;render()">← 選択画面に戻る</button></div>';
     
+    var h011TotalSecs = 0, h011Idx = -1, h011Subs = [];
+    var h015TotalSecs = 0, h015Idx = -1, h015Subs = [];
+    var newDC = [];
+    for(var i=0; i<dC.length; i++) {
+      if(dC[i].task.startsWith('C_H011___')) {
+        h011TotalSecs += dC[i].secs;
+        h011Subs.push(dC[i]);
+      } else if(dC[i].task.startsWith('C_H015___')) {
+        h015TotalSecs += dC[i].secs;
+        h015Subs.push(dC[i]);
+      } else {
+        newDC.push(dC[i]);
+      }
+    }
+    dC = newDC;
+
+    for(var i=0; i<dF.length; i++) {
+      if(dF[i].task === 'H011') { h011TotalSecs += dF[i].secs; h011Idx = i; }
+      if(dF[i].task === 'H015') { h015TotalSecs += dF[i].secs; h015Idx = i; }
+    }
+    if(h011Subs.length > 0) {
+      if(h011Idx === -1) {
+        var p = parseTaskKey('H011');
+        dF.push({task:'H011', col1:p.col1, col2:p.col2, col3:p.col3, secs: h011TotalSecs, hours: hrs(h011TotalSecs), isVirtual: true});
+      } else {
+        dF[h011Idx].secs = h011TotalSecs;
+        dF[h011Idx].hours = hrs(h011TotalSecs);
+        dF[h011Idx].isVirtual = true;
+      }
+    }
+    if(h015Subs.length > 0) {
+      if(h015Idx === -1) {
+        var p = parseTaskKey('H015');
+        dF.push({task:'H015', col1:p.col1, col2:p.col2, col3:p.col3, secs: h015TotalSecs, hours: hrs(h015TotalSecs), isVirtual: true});
+      } else {
+        dF[h015Idx].secs = h015TotalSecs;
+        dF[h015Idx].hours = hrs(h015TotalSecs);
+        dF[h015Idx].isVirtual = true;
+      }
+    }
+    dF.sort(function(a,b){return TORD.indexOf(a.task)-TORD.indexOf(b.task)});
+
     h+='<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">オーダー</th><th style="text-align:center;width:80px;">実計測時間</th><th style="text-align:right;width:90px;">入力値(h)</th></tr></thead><tbody>';
     if(!dF.length&&!dC.length) h+='<tr class="empty-row"><td colspan="3">記録がありません</td></tr>';
     else{
@@ -982,12 +1302,57 @@ function render(){
         var dispNm = [];
         if(r.col1) dispNm.push('<span class="task-id">'+esc(r.col1)+'</span>');
         if(r.col2) dispNm.push('<span class="task-id" style="color:#059669;background:#ecfdf5;">'+esc(r.col2)+'</span>');
-        if(r.col3) dispNm.push('<span class="task-nm">'+esc(r.col3)+'</span>');
+        
+        var nmText = esc(r.col3 || '');
+        if(r.isVirtual) nmText = '📂 ' + nmText + ' <span style="font-size:11px;color:#64748b;font-weight:normal;">(内訳の合計)</span>';
+        if(r.col3) dispNm.push('<span class="task-nm">'+nmText+'</span>');
+        
         h+= dispNm.join(' ');
-        h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(S.memos[r.task]||'')+'" onchange="updateRecordMemo(\'current\',\''+r.task+'\',this.value)">';
-        h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(r.secs)+'</td><td style="text-align:right"><input type="number" step="0.05" min="0" class="time-input" value="'+r.hours+'" onchange="updateRecordTime(\'current\',\''+r.task+'\',this.value)"></td></tr>';
+        
+        var memoReadOnly = r.isVirtual ? 'readonly title="メモは下の内訳項目から修正してください" style="background:#e2e8f0;cursor:not-allowed;color:#94a3b8;" placeholder="内訳項目で入力"' : 'placeholder="📝 作業メモ..."';
+        var memoOnChange = r.isVirtual ? '' : 'onchange="updateRecordMemo(\'current\',\''+r.task+'\',this.value)"';
+        h+='<input type="text" class="memo-input" value="'+(r.isVirtual?'':esc(S.memos[r.task]||''))+'" '+memoReadOnly+' '+memoOnChange+'>';
+        
+        var timeReadOnly = r.isVirtual ? 'readonly title="この時間は下の内訳項目から修正してください" style="background:#e2e8f0;cursor:not-allowed;color:#94a3b8;"' : '';
+        var timeOnChange = r.isVirtual ? '' : 'onchange="updateRecordTime(\'current\',\''+r.task+'\',this.value)"';
+        
+        h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:'+(r.isVirtual?'#94a3b8':'#64748b')+';">'+fmt(r.secs)+'</td><td style="text-align:right"><input type="number" step="0.05" min="0" class="time-input" value="'+r.hours+'" '+timeReadOnly+' '+timeOnChange+'></td></tr>';
+
+        // 内訳を直下にツリー表示
+        if (r.task === 'H011' && h011Subs.length > 0) {
+            h011Subs.forEach(function(subR){
+                h+='<tr style="background:#f8fafc;"><td style="padding-left: 36px; position:relative;">';
+                h+='<div style="position:absolute; left:14px; top:0; height:24px; width:12px; border-left:2px solid #94a3b8; border-bottom:2px solid #94a3b8; border-bottom-left-radius:4px;"></div>';
+                var subDispNm = [];
+                if(subR.col3) subDispNm.push('<span class="task-nm" style="margin-top:0;">'+esc(subR.col3)+'</span>');
+                h+= subDispNm.join(' ');
+                var subMemoOnChange = 'onchange="updateRecordMemo(\'current\',\''+subR.task+'\',this.value)"';
+                h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(S.memos[subR.task]||'')+'" '+subMemoOnChange+'>';
+                var subTimeOnChange = 'onchange="updateRecordTime(\'current\',\''+subR.task+'\',this.value)"';
+                h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(subR.secs)+'</td><td style="text-align:right"><input type="number" step="0.05" min="0" class="time-input" style="background:#ffffff;" value="'+subR.hours+'" '+subTimeOnChange+'></td></tr>';
+            });
+        }
+        if (r.task === 'H015' && h015Subs.length > 0) {
+            h015Subs.forEach(function(subR){
+                h+='<tr style="background:#f8fafc;"><td style="padding-left: 36px; position:relative;">';
+                h+='<div style="position:absolute; left:14px; top:0; height:24px; width:12px; border-left:2px solid #94a3b8; border-bottom:2px solid #94a3b8; border-bottom-left-radius:4px;"></div>';
+                var subDispNm = [];
+                if(subR.col3) subDispNm.push('<span class="task-nm" style="margin-top:0;">'+esc(subR.col3)+'</span>');
+                h+= subDispNm.join(' ');
+                var subMemoOnChange = 'onchange="updateRecordMemo(\'current\',\''+subR.task+'\',this.value)"';
+                h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(S.memos[subR.task]||'')+'" '+subMemoOnChange+'>';
+                var subTimeOnChange = 'onchange="updateRecordTime(\'current\',\''+subR.task+'\',this.value)"';
+                h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(subR.secs)+'</td><td style="text-align:right"><input type="number" step="0.05" min="0" class="time-input" style="background:#ffffff;" value="'+subR.hours+'" '+subTimeOnChange+'></td></tr>';
+            });
+        }
       });
-      if(dF.length||dC.length) h+='<tr class="sep-row"><td colspan="3">↓ 個別オーダー業務 ↓</td></tr>';
+      
+      if(dF.length||dC.length) {
+        if(dC.length > 0) {
+          h+='<tr class="sep-row"><td colspan="3">↓ 個別オーダー業務 ↓</td></tr>';
+        }
+      }
+      
       dC.forEach(function(r){
         h+='<tr><td>';
         var dispNm = [];
@@ -995,8 +1360,12 @@ function render(){
         if(r.col2) dispNm.push('<span class="task-id" style="color:#059669;background:#ecfdf5;">'+esc(r.col2)+'</span>');
         if(r.col3) dispNm.push('<span class="task-nm">'+esc(r.col3)+'</span>');
         h+= dispNm.join(' ');
-        h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(S.memos[r.task]||'')+'" onchange="updateRecordMemo(\'current\',\''+r.task+'\',this.value)">';
-        h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(r.secs)+'</td><td style="text-align:right"><input type="number" step="0.05" min="0" class="time-input" value="'+r.hours+'" onchange="updateRecordTime(\'current\',\''+r.task+'\',this.value)"></td></tr>';
+        
+        var memoOnChange = 'onchange="updateRecordMemo(\'current\',\''+r.task+'\',this.value)"';
+        h+='<input type="text" class="memo-input" placeholder="📝 作業メモ..." value="'+esc(S.memos[r.task]||'')+'" '+memoOnChange+'>';
+        
+        var timeOnChange = 'onchange="updateRecordTime(\'current\',\''+r.task+'\',this.value)"';
+        h+='</td><td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:#64748b;">'+fmt(r.secs)+'</td><td style="text-align:right"><input type="number" step="0.05" min="0" class="time-input" value="'+r.hours+'" '+timeOnChange+'></td></tr>';
       });
     }
     h+='</tbody></table></div>';
@@ -1011,6 +1380,20 @@ function render(){
 
   if(S.modal==='confirmHist'){
     h+='<div class="modal-bg'+bgAnim+'" style="z-index:110"><div class="cfm-modal modal'+boxAnim+'"><div class="icon">✅</div><h3>記録を確定しますか？</h3><p>この日の記録を確定し、不要な同日の履歴を整理（削除）します。<br><span style="font-size:12px;color:#e11d48">※確定後も時間の修正は可能です。</span></p><div class="cfm-btns"><button class="btn btn-cancel" onclick="S.modal=\'history\';S.confirmTarget=null;S.needFullRender=true;render()">キャンセル</button><button class="btn btn-primary" onclick="doConfirmHistory()">確定する</button></div></div></div>';
+  }
+  if(S.modal==='h011_sub'){
+    h+='<div class="modal-bg'+bgAnim+'" style="z-index:120"><div class="cfm-modal modal'+boxAnim+'" style="padding:24px 16px;"><div class="icon" style="font-size:36px;margin-bottom:8px;">📐</div><h3 style="font-size:16px;">H011: 生産設計の詳細</h3><p style="margin-bottom:16px;font-size:13px;">業務の詳細を選択して計測を開始してください。</p><div style="display:flex;flex-direction:column;gap:8px;text-align:left;padding:0 8px 16px;">';
+    H011_SUBS.forEach(function(sub){
+        h+='<button class="btn btn-outline" style="justify-content:flex-start;padding:12px 16px;font-size:14px;border-color:#94a3b8;color:#1e293b;" onclick="startSubTask(\'H011\', \''+sub+'\')"><span style="color:#2563eb;margin-right:8px;">▶</span>'+sub+'</button>';
+    });
+    h+='</div><div class="cfm-btns" style="padding:0 8px;"><button class="btn btn-cancel" onclick="S.modal=null;S.needFullRender=true;render()">キャンセル</button></div></div></div>';
+  }
+  if(S.modal==='h015_sub'){
+    h+='<div class="modal-bg'+bgAnim+'" style="z-index:120"><div class="cfm-modal modal'+boxAnim+'" style="padding:24px 16px;"><div class="icon" style="font-size:36px;margin-bottom:8px;">🏭</div><h3 style="font-size:16px;">H015: 工作支援の詳細</h3><p style="margin-bottom:16px;font-size:13px;">業務の詳細を選択して計測を開始してください。</p><div style="display:flex;flex-direction:column;gap:8px;text-align:left;padding:0 8px 16px;">';
+    H015_SUBS.forEach(function(sub){
+        h+='<button class="btn btn-outline" style="justify-content:flex-start;padding:12px 16px;font-size:14px;border-color:#94a3b8;color:#1e293b;" onclick="startSubTask(\'H015\', \''+sub+'\')"><span style="color:#2563eb;margin-right:8px;">▶</span>'+sub+'</button>';
+    });
+    h+='</div><div class="cfm-btns" style="padding:0 8px;"><button class="btn btn-cancel" onclick="S.modal=null;S.needFullRender=true;render()">キャンセル</button></div></div></div>';
   }
   if(S.modal==='resetCfm')h+='<div class="modal-bg'+bgAnim+'"><div class="cfm-modal modal'+boxAnim+'"><div class="icon">⚠️</div><h3>記録をリセットしますか？</h3><p>本日の記録が全て削除されます。</p><div class="cfm-btns"><button class="btn btn-cancel" onclick="S.modal=null;S.needFullRender=true;render()">キャンセル</button><button class="btn btn-danger" onclick="doReset()">リセットする</button></div></div></div>';
   if(S.modal==='saveCfm')h+='<div class="modal-bg'+bgAnim+'"><div class="cfm-modal modal'+boxAnim+'"><div class="icon">✅</div><h3>集計を確定して保存しますか？</h3><p>現在の集計内容をその日の最終データとして確定保存し、不要な同日の履歴を整理（削除）します。<br>※タイマーも同時に終了します。</p><div class="cfm-btns"><button class="btn btn-cancel" onclick="S.modal=null;S.needFullRender=true;render()">キャンセル</button><button class="btn btn-primary" onclick="doSaveConfirm()">確定保存</button></div></div></div>';
@@ -1074,7 +1457,21 @@ function render(){
         else if(cIdx===3) cls = 'col-sum';
         else if(tdObj.val==='') cls = 'val-empty';
         else cls = 'val-num';
-        h+='<td class="'+cls + getDayCls(cIdx)+'" title="コピー時: '+esc(tdObj.copy)+'">'+esc(tdObj.val)+'</td>';
+        
+        // グループの境界に太線を適用
+        if (row.isBorderTop) cls += ' border-thick';
+        
+        var cellContent = esc(tdObj.val);
+        // 2行目以降の不要な文字を薄くする
+        if (tdObj.isDim) {
+             cellContent = '<span style="opacity:0.3">' + cellContent + '</span>';
+        }
+        // 内訳エリアの表示ラベルを薄く小さく表示
+        if (tdObj.isDimLabel) {
+             cellContent = '<span style="color:#94a3b8; font-size:11px;">' + cellContent + '</span>';
+        }
+        
+        h+='<td class="'+cls + getDayCls(cIdx)+'" title="コピー時: '+esc(tdObj.copy)+'">'+cellContent+'</td>';
       });
       h+='</tr>';
     });
@@ -1084,19 +1481,13 @@ function render(){
   }
 
   if(S.modal==='history'){
-    var manualH=S.history.filter(isManual);
-    var autoH=S.history.filter(function(x){return!isManual(x)});
     h+='<div class="modal-bg'+bgAnim+'"><div class="modal'+boxAnim+'"><div class="modal-head"><h2>📋 過去の履歴</h2><button class="close-btn" onclick="S.modal=null;S.needFullRender=true;render()">✕</button></div>';
-    h+='<div class="tabs"><button class="tab '+(S.histTab==='manual'?'on':'')+'" onclick="S.histTab=\'manual\';S.expHist=null;S.needFullRender=true;render()">手動保存</button><button class="tab '+(S.histTab==='auto'?'on':'')+'" onclick="S.histTab=\'auto\';S.expHist=null;S.needFullRender=true;render()">自動保存</button><button class="tab '+(S.histTab==='monthly'?'on':'')+'" onclick="S.histTab=\'monthly\';S.needFullRender=true;render()">月次出力</button></div>';
+    h+='<div class="tabs"><button class="tab '+(S.histTab==='history'?'on':'')+'" onclick="S.histTab=\'history\';S.expHist=null;S.needFullRender=true;render()">履歴一覧</button><button class="tab '+(S.histTab==='monthly'?'on':'')+'" onclick="S.histTab=\'monthly\';S.needFullRender=true;render()">月次出力</button></div>';
     h+='<div class="modal-body">';
 
-    if(S.histTab==='manual'){
-      h+='<p class="hist-desc">「確定保存」したデータです。</p>';
-      h=renderHistList(manualH,h);
-    }
-    if(S.histTab==='auto'){
-      h+='<p class="hist-desc">22時自動保存・日付変更時のデータです。</p>';
-      h=renderHistList(autoH,h);
+    if(S.histTab==='history'){
+      h+='<p class="hist-desc">手動保存・自動保存された過去のデータです。</p>';
+      h=renderHistList(S.history,h);
     }
     if(S.histTab==='monthly'){
       var period=getPeriod();
@@ -1113,7 +1504,7 @@ function render(){
       
       var hasConfirmed = S.history.some(function(h){ return period.dates.indexOf(hDate(h))!==-1 && h.isConfirmed; });
       if(hasConfirmed){
-        h+='<button class="btn btn-outline" title="月次出力のために、確定マークがついている日を全てチェックします" style="width:100%;margin-top:12px;color:#059669;border-color:#10b981;font-weight:bold" onclick="selectAllConfirmed()">✅ 確定済みの履歴を一括選択</button>';
+        h+='<button class="btn btn-outline" title="月次出力のために、確定マークがついている日を全てチェックします" style="width:100%;margin-top:12px;color:#059669;border-color:#10b981;font-weight:500" onclick="selectAllConfirmed()">✅ 確定済みの履歴を一括選択</button>';
       }
       
       var cc=Object.keys(S.mcChecked).filter(function(k){return S.mcChecked[k]}).length;
@@ -1146,8 +1537,8 @@ function render(){
     
     h+='<h3>4. その他の仕様・注意点</h3><ul>';
     h+='<li>「朝礼・昼礼・夕礼・用足し（H001）」には、集計時に自動的に15分（0.25h）が加算されます。</li>';
-    h+='<li><b>🕒 自動保存機能:</b> 毎日22:00の時点（または翌日開いた時）で未確定のデータは自動保存されます。<br><span style="color:#e11d48;font-size:12px;font-weight:bold;">※今日すでに「確定保存」を行っている場合は、自動保存はスキップされます。</span></li>';
-    h+='<li style="color:#4f46e5;font-weight:bold;">🔒 完全ローカルで作動します<br><span class="help-sub">データはご使用のブラウザ内（ローカル環境）にのみ保存され、外部サーバーとは一切通信しません。</span></li></ul>';
+    h+='<li><b>🕒 自動保存機能:</b> 毎日22:00の時点（または翌日開いた時）で未確定のデータは自動保存されます。<br><span style="color:#e11d48;font-size:12px;font-weight:600;">※今日すでに「確定保存」を行っている場合は、自動保存はスキップされます。</span></li>';
+    h+='<li style="color:#4f46e5;font-weight:600;">🔒 完全ローカルで作動します<br><span class="help-sub">データはご使用のブラウザ内（ローカル環境）にのみ保存され、外部サーバーとは一切通信しません。</span></li></ul>';
     
     h+='</div></div></div>';
   }
@@ -1169,4 +1560,3 @@ init();S.needFullRender=true;render();setInterval(tick,1000);
 </script>
 </body>
 </html>
-    main()
