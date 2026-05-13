@@ -1,765 +1,521 @@
 ```vba
-Attribute VB_Name = "SlideBuilder"
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+'  電極設計・製作プロセス改革スライド — VBA生成スクリプト
+'  使用法：PowerPointのVBAエディタ（Alt+F11）に貼り付けて実行
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Option Explicit
 
-' ================================================================
-'  設計プロセス改革スライド生成 VBA（4枚・9方針整合版）
-'  使用方法:
-'    1. PowerPoint を開く
-'    2. Alt+F11 → VBAエディタ
-'    3. 挿入 → 標準モジュール → 本コードを全貼り付け
-'    4. Alt+F8 → BuildPresentation を実行
-'    5. 名前を付けて保存（.pptx）
-'  ※フォントが "Yu Gothic" にない場合は FN を "Meiryo" に変更
-' ================================================================
+' 色定数（RGB値）
+Private Const C_NAVY As Long = 1973855        ' RGB(30, 58, 95)
+Private Const C_BLUE As Long = 12095626       ' RGB(74, 144, 184)
+Private Const C_BLUE_LT As Long = 15787996    ' RGB(220, 231, 241)
+Private Const C_RED As Long = 3018952         ' RGB(200, 16, 46)
+Private Const C_RED_LT As Long = 15130876     ' RGB(252, 234, 237)
+Private Const C_RED_BADGE As Long = 3158482   ' RGB(211, 47, 47)
+Private Const C_AMBER As Long = 1800653       ' RGB(217, 119, 6)
+Private Const C_AMBER_LT As Long = 13233407   ' RGB(254, 243, 199)
+Private Const C_GREEN As Long = 4620845       ' RGB(45, 125, 70)
+Private Const C_GREEN_LT As Long = 14477525   ' RGB(213, 232, 220)
+Private Const C_MUTED As Long = 9128576       ' RGB(100, 116, 139)
+Private Const C_MUTED_LT As Long = 15857913   ' RGB(241, 245, 249)
+Private Const C_TEXT As Long = 3683615        ' RGB(31, 41, 55)
+Private Const C_TEXT_LT As Long = 6515019     ' RGB(75, 86, 99)
+Private Const C_WHITE As Long = 16777215      ' RGB(255, 255, 255)
+Private Const C_CARD_BG As Long = 16579064    ' RGB(248, 250, 252)
+Private Const C_CARD_BG2 As Long = 16249070   ' RGB(238, 242, 247)
+Private Const C_BORDER As Long = 14665163     ' RGB(203, 213, 224)
+Private Const C_BORDER_DK As Long = 12092820  ' RGB(148, 163, 184)
+Private Const C_GOLD_BADGE As Long = 723144   ' RGB(184, 134, 11)
+Private Const C_BLUE_BADGE As Long = 12417538 ' RGB(2, 119, 189)
 
-Private Const FN As String = "Yu Gothic"
+Private Const FONT_NAME As String = "Yu Gothic"
 
-' ── 単位変換 ────────────────────────────────────────────────
-Private Function P(x As Double) As Single
-    P = CSng(x * 72)   ' インチ → ポイント
+' ポイント変換（1インチ = 72ポイント）
+Private Function P(ByVal inches As Double) As Single
+    P = inches * 72
 End Function
 
-' ── タイプバッジ色 ──────────────────────────────────────────
-Private Function BadgeRGB(t As String) As Long
-    Select Case t
-        Case "直接": BadgeRGB = RGB(211, 47, 47)
-        Case "波及": BadgeRGB = RGB(2, 119, 189)
-        Case Else:   BadgeRGB = RGB(184, 134, 11)   ' 典型
-    End Select
-End Function
-
-' ── 白背景設定 ──────────────────────────────────────────────
-Private Sub BgWhite(sld As Slide)
-    sld.FollowMasterBackground = msoFalse
-    With sld.Background.Fill
-        .Solid
-        .ForeColor.RGB = RGB(255, 255, 255)
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+'  メイン処理
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sub Generate_ElectrodeProcess_Slides()
+    Dim pres As Presentation
+    Set pres = Presentations.Add(msoTrue)
+    
+    ' スライドサイズを16:9に設定
+    With pres.PageSetup
+        .SlideWidth = P(10)
+        .SlideHeight = P(5.625)
     End With
+    
+    ' 3枚のスライドを生成
+    Call BuildSlide1(pres)
+    Call BuildSlide2(pres)
+    Call BuildSlide3(pres)
+    
+    MsgBox "スライド生成完了！3枚のスライドを作成しました。", vbInformation
 End Sub
 
-' ── 既存シェイプ全削除 ──────────────────────────────────────
-Private Sub ClearSlide(sld As Slide)
-    Dim i As Integer
-    For i = sld.Shapes.Count To 1 Step -1
-        sld.Shapes(i).Delete
-    Next i
-End Sub
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+'  ヘルパー関数
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-' ── ノート設定 ──────────────────────────────────────────────
-Private Sub SetNotes(sld As Slide, txt As String)
-    sld.NotesPage.Shapes(2).TextFrame.TextRange.Text = txt
-End Sub
-
-' ── フッター ────────────────────────────────────────────────
-Private Sub AddFooter(sld As Slide, n As Integer)
-    Call AddT(sld, 0.4, 5.32, 5#, 0.22, "山電 工作部 工機技術課 工設係", 9, False, RGB(100, 116, 139), 1, 1)
-    Call AddT(sld, 9.2, 5.32, 0.4, 0.22, n & " / 4", 9, False, RGB(100, 116, 139), 3, 1)
-End Sub
-
-' ── スライド2〜4共通タイトルバー ─────────────────────────────
-Private Sub TitleBar(sld As Slide, title As String, subtitle As String)
-    Call AddR(sld, 0.4, 0.35, 0.08, 0.7, RGB(30, 58, 95))
-    Call AddT(sld, 0.6, 0.3, 9#, 0.5, title, 24, True, RGB(30, 58, 95), 1, 2)
-    If Len(subtitle) > 0 Then
-        Call AddT(sld, 0.6, 0.78, 9#, 0.3, subtitle, 12, False, RGB(75, 85, 99))
-    End If
-End Sub
-
-' ── 塗りつぶし四角形 ────────────────────────────────────────
-'   lineRGB = -1 のとき枠線なし
-Private Sub AddR(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
-                 fillRGB As Long, Optional lineRGB As Long = -1, Optional lw As Single = 0.5)
-    Dim sh As Shape
-    Set sh = sld.Shapes.AddShape(msoShapeRectangle, P(x), P(y), P(w), P(h))
-    sh.Fill.ForeColor.RGB = fillRGB
-    sh.Fill.Visible = msoTrue
-    If lineRGB = -1 Then
-        sh.Line.Visible = msoFalse
-    Else
-        sh.Line.Visible = msoTrue
-        sh.Line.ForeColor.RGB = lineRGB
-        sh.Line.Weight = lw
-    End If
-End Sub
-
-' ── テキストボックス ─────────────────────────────────────────
-'   al: 1=左(既定) 2=中央 3=右
-'   va: 1=上(既定) 2=中央 3=下
-Private Sub AddT(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
-                  txt As String, fs As Single, bld As Boolean, rgb As Long, _
-                  Optional al As Integer = 1, Optional va As Integer = 1, _
-                  Optional itl As Boolean = False)
-    Dim tb As Shape
-    Set tb = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, P(x), P(y), P(w), P(h))
-    With tb.TextFrame
-        .AutoSize = ppAutoSizeNone
-        .WordWrap = msoTrue
-        .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-        Select Case va
-            Case 1: .VerticalAnchor = msoAnchorTop
-            Case 2: .VerticalAnchor = msoAnchorMiddle
-            Case 3: .VerticalAnchor = msoAnchorBottom
-        End Select
-    End With
-    With tb.TextFrame.TextRange
-        .Text = txt
-        Select Case al
-            Case 1: .ParagraphFormat.Alignment = ppAlignLeft
-            Case 2: .ParagraphFormat.Alignment = ppAlignCenter
-            Case 3: .ParagraphFormat.Alignment = ppAlignRight
-        End Select
-        With .Font
-            .Name = FN: .Size = fs: .Bold = bld: .Italic = itl: .Color.RGB = rgb
-        End With
-    End With
-End Sub
-
-' ── 2行ラベルボックス（スライド2の第N層ラベル用） ───────────────
-Private Sub AddLabelBox(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
-                         tagTxt As String, titleTxt As String, fillColor As Long)
-    Dim sh As Shape
-    Set sh = sld.Shapes.AddShape(msoShapeRectangle, P(x), P(y), P(w), P(h))
-    sh.Fill.ForeColor.RGB = fillColor
-    sh.Line.ForeColor.RGB = fillColor
-    With sh.TextFrame
-        .AutoSize = ppAutoSizeNone
-        .WordWrap = msoTrue
-        .VerticalAnchor = msoAnchorMiddle
-        .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-    End With
-    With sh.TextFrame.TextRange
-        .Text = tagTxt & Chr(13) & titleTxt
-        .ParagraphFormat.Alignment = ppAlignCenter
-        .Font.Name = FN
-        .Font.Color.RGB = RGB(255, 255, 255)
-        .Paragraphs(1).Font.Size = 11
-        .Paragraphs(2).Font.Size = 17
-        .Paragraphs(2).Font.Bold = True
-    End With
-End Sub
-
-' ================================================================
-'  AddBand: スライド1の方針整合バンドを追加
-'  items: "タイプ","方針名","貢献内容" の3つ1組を繰り返す (2〜3組)
-' ================================================================
-Private Sub AddBand(sld As Slide, bandY As Double, levelName As String, _
-                    levelColor As Long, ParamArray items() As Variant)
-    Const BH As Double = 0.72    ' バンド高さ(インチ)
-    Const LW As Double = 1.75    ' ラベル幅
-    Const SX As Double = 0.4     ' 開始X
-    Const IAX As Double = 2.2    ' アイテムエリア開始X
-    Const IAW As Double = 7.4    ' アイテムエリア幅
-
-    ' ─ 左ラベル ─
-    Dim lb As Shape
-    Set lb = sld.Shapes.AddShape(msoShapeRectangle, P(SX), P(bandY), P(LW), P(BH))
-    lb.Fill.ForeColor.RGB = levelColor
-    lb.Line.ForeColor.RGB = levelColor
-    With lb.TextFrame
-        .AutoSize = ppAutoSizeNone
-        .WordWrap = msoTrue
-        .VerticalAnchor = msoAnchorMiddle
-        .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-    End With
-    With lb.TextFrame.TextRange
-        .Text = levelName
-        .ParagraphFormat.Alignment = ppAlignCenter
-        With .Font
-            .Name = FN: .Size = 11.5: .Bold = True: .Color.RGB = RGB(255, 255, 255)
-        End With
-    End With
-
-    ' ─ アイテムカード群 ─
-    Dim itemCount As Integer: itemCount = (UBound(items) + 1) \ 3
-    Dim itemGap As Double:    itemGap = 0.1
-    Dim itemW As Double:      itemW = (IAW - itemGap * (itemCount - 1)) / itemCount
-
-    Dim j As Integer
-    For j = 0 To itemCount - 1
-        Dim ix As Double:   ix = IAX + j * (itemW + itemGap)
-        Dim typStr As String: typStr = items(j * 3)
-        Dim namStr As String: namStr = items(j * 3 + 1)
-        Dim conStr As String: conStr = items(j * 3 + 2)
-
-        ' カード背景
-        Dim cd As Shape
-        Set cd = sld.Shapes.AddShape(msoShapeRectangle, P(ix), P(bandY), P(itemW), P(BH))
-        cd.Fill.ForeColor.RGB = RGB(248, 250, 252)
-        cd.Line.Visible = msoTrue
-        cd.Line.ForeColor.RGB = levelColor
-        cd.Line.Weight = 0.5
-
-        ' タイプバッジ
-        Dim bg As Shape
-        Set bg = sld.Shapes.AddShape(msoShapeRectangle, P(ix + 0.08), P(bandY + 0.08), P(0.42), P(0.22))
-        bg.Fill.ForeColor.RGB = BadgeRGB(typStr)
-        bg.Line.ForeColor.RGB = BadgeRGB(typStr)
-        With bg.TextFrame
-            .AutoSize = ppAutoSizeNone
-            .WordWrap = msoFalse
-            .VerticalAnchor = msoAnchorMiddle
-            .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-        End With
-        With bg.TextFrame.TextRange
-            .Text = typStr
-            .ParagraphFormat.Alignment = ppAlignCenter
-            .Font.Name = FN: .Font.Size = 9: .Font.Bold = True
-            .Font.Color.RGB = RGB(255, 255, 255)
-        End With
-
-        ' 方針名
-        Call AddT(sld, ix + 0.54, bandY + 0.06, itemW - 0.6, 0.27, _
-                  namStr, 10.5, True, RGB(31, 41, 55), 1, 2)
-
-        ' 貢献内容
-        Call AddT(sld, ix + 0.1, bandY + 0.36, itemW - 0.2, BH - 0.4, _
-                  conStr, 9.5, False, RGB(75, 85, 99), 1, 1)
-    Next j
-End Sub
-
-' ================================================================
-'  BuildPresentation: メイン実行 (Alt+F8 で呼び出す)
-' ================================================================
-Public Sub BuildPresentation()
-    Dim prs As Presentation
-    Set prs = Presentations.Add
-
-    prs.PageSetup.SlideWidth  = P(10)
-    prs.PageSetup.SlideHeight = P(5.625)
-
-    ' 4枚のブランクスライドを追加
-    Dim i As Integer
-    For i = 1 To 4
-        prs.Slides.Add i, ppLayoutBlank
-    Next i
-
-    Call BuildSlide1(prs.Slides(1))
-    Call BuildSlide2(prs.Slides(2))
-    Call BuildSlide3(prs.Slides(3))
-    Call BuildSlide4(prs.Slides(4))
-
-    MsgBox "4枚のスライドが完成しました。" & Chr(10) & _
-           "「名前を付けて保存」→ .pptx で保存してください。", _
-           vbInformation, "完了"
-End Sub
-
-' ================================================================
-'  Slide 1 : 設計プロセス改革 — 9方針整合
-' ================================================================
-Private Sub BuildSlide1(sld As Slide)
-    Call ClearSlide(sld)
-    Call BgWhite(sld)
-
-    ' 左縦帯
-    Call AddR(sld, 0, 0, 0.18, 5.625, RGB(30, 58, 95))
-
-    ' タイトル・サブタイトル
-    Call AddT(sld, 0.5, 0.25, 9.2, 0.6, "設計プロセス改革", 30, True, RGB(30, 58, 95), 1, 2)
-    Call AddT(sld, 0.5, 0.83, 9.2, 0.3, _
-              "— 面色・PMI活用による設計プロセスと体制の構築 —", 13, False, RGB(75, 85, 99))
-
-    ' 決め台詞バー（ネイビー + ゴールドアクセント）
-    Call AddR(sld, 0.4, 1.2, 9.2, 0.55, RGB(30, 58, 95))
-    Call AddR(sld, 0.4, 1.2, 0.07, 0.55, RGB(184, 134, 11))
-
-    ' 決め台詞テキスト
-    Dim ph As Shape
-    Set ph = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, P(0.55), P(1.2), P(8.9), P(0.55))
-    With ph.TextFrame
-        .AutoSize = ppAutoSizeNone
-        .WordWrap = msoTrue
-        .VerticalAnchor = msoAnchorMiddle
-        .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-    End With
-    With ph.TextFrame.TextRange
-        .Text = "本活動は新技術の創出ではなく、" & _
-                "山電のものづくりを次世代へ繋ぐ「仕組みと体制の創出」である"
-        .ParagraphFormat.Alignment = ppAlignCenter
-        .Font.Name = FN: .Font.Color.RGB = RGB(255, 255, 255): .Font.Size = 13
-        ' 後半を太字 + 少し大きく
-        Dim s1 As Integer: s1 = InStr(.Text, "山電")
-        If s1 > 0 Then
-            .Characters(s1, Len(.Text) - s1 + 1).Font.Bold = True
-            .Characters(s1, Len(.Text) - s1 + 1).Font.Size = 14
+Private Function AddRect(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
+                          fillColor As Long, Optional lineColor As Long = -1, Optional lineWidth As Single = 0.5) As Shape
+    Dim shp As Shape
+    Set shp = sld.Shapes.AddShape(msoShapeRectangle, P(x), P(y), P(w), P(h))
+    With shp
+        .Fill.ForeColor.RGB = fillColor
+        .Fill.Solid
+        If lineColor = -1 Then
+            .Line.Visible = msoFalse
+        Else
+            .Line.ForeColor.RGB = lineColor
+            .Line.Weight = lineWidth
         End If
     End With
+    Set AddRect = shp
+End Function
 
-    ' セクションラベル
-    Call AddT(sld, 0.4, 1.88, 5.8, 0.25, _
-              "上位方針体系  3階層・9項目  との同時整合", 12, True, RGB(30, 58, 95), 1, 2)
+Private Function AddText(sld As Slide, txt As String, x As Double, y As Double, w As Double, h As Double, _
+                         Optional fontSize As Single = 10.5, Optional fontColor As Long = -1, _
+                         Optional bold As Boolean = False, Optional italic As Boolean = False, _
+                         Optional hAlign As Long = 1, Optional vAlign As Long = 5) As Shape
+    Dim shp As Shape
+    Set shp = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, P(x), P(y), P(w), P(h))
+    With shp.TextFrame
+        .TextRange.Text = txt
+        .TextRange.Font.Name = FONT_NAME
+        .TextRange.Font.Size = fontSize
+        If fontColor <> -1 Then .TextRange.Font.Color.RGB = fontColor
+        .TextRange.Font.Bold = bold
+        .TextRange.Font.Italic = italic
+        .TextRange.ParagraphFormat.Alignment = hAlign  ' 1=左, 2=中央, 3=右
+        .VerticalAnchor = vAlign  ' 1=上, 3=中央, 5=下
+        .MarginLeft = 0
+        .MarginRight = 0
+        .MarginTop = 0
+        .MarginBottom = 0
+        .WordWrap = msoTrue
+    End With
+    Set AddText = shp
+End Function
 
-    ' 凡例（直接 / 波及 / 典型）
-    Dim lgTypes(2) As String
-    lgTypes(0) = "直接": lgTypes(1) = "波及": lgTypes(2) = "典型"
-    Dim li As Integer
-    For li = 0 To 2
-        Dim lx As Double: lx = 6.3 + li * 1.1
-        Call AddR(sld, lx, 1.9, 0.4, 0.2, BadgeRGB(lgTypes(li)))
-        Call AddT(sld, lx, 1.9, 0.4, 0.2, lgTypes(li), 8.5, True, RGB(255, 255, 255), 2, 2)
-        Call AddT(sld, lx + 0.42, 1.9, 0.55, 0.2, "整合", 9, False, RGB(100, 116, 139), 1, 2)
-    Next li
+Private Sub AddFooter(sld As Slide, pageNum As Integer)
+    Call AddText(sld, "山電 工作部 工機技術課 工設係", 0.4, 5.32, 5, 0.22, 9, C_MUTED)
+    Call AddText(sld, pageNum & " / 3", 9.2, 5.32, 0.4, 0.22, 9, C_MUTED, , , 3)  ' 右揃え
+End Sub
 
-    ' ─ 9方針整合バンド（4バンド）────────────────────────────
-    Const BY As Double = 2.22   ' バンド開始Y
-    Const BH As Double = 0.72   ' バンド高さ
-    Const BG As Double = 0.05   ' バンド間隔
+Private Sub AddTitleBar(sld As Slide, title As String, Optional subtitle As String = "")
+    Call AddRect(sld, 0, 0, 0.18, 5.625, C_NAVY)
+    Call AddText(sld, title, 0.48, 0.22, 9.2, 0.56, 24, C_NAVY, True)
+    If subtitle <> "" Then
+        Call AddText(sld, subtitle, 0.48, 0.76, 9.2, 0.27, 11, C_TEXT_LT)
+    End If
+End Sub
 
-    ' バンド1: 工作部方針（2項目）
-    Call AddBand(sld, BY, "工作部方針", RGB(74, 144, 184), _
-        "直接", "ペーパーレス化・コスト追及",   "中で最大効果領域 / 年76万円", _
-        "直接", "定型作業のシステム化・自動化",  "自動化を超え工程ごと消滅")
+Private Sub AddSectionLabel(sld As Slide, x As Double, y As Double, w As Double, h As Double, txt As String, bgColor As Long)
+    Call AddRect(sld, x, y, w, h, bgColor)
+    Call AddText(sld, txt, x, y, w, h, 10, C_WHITE, True, , 2, 3)  ' 中央揃え・中央配置
+End Sub
 
-    ' バンド2: 工機技術課ミッション（2項目）
-    Call AddBand(sld, BY + (BH + BG), "工機技術課" & Chr(10) & "ミッション", RGB(30, 58, 95), _
-        "波及", "② 技術革新",              "330h/年解放 → CAE・冷却最適化へ", _
-        "典型", "③ ナレッジ継承(本丸)",   "色＝形式知14分類で暗黙知を組織化")
+Private Sub AddKPICard(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
+                       val As String, lbl As String, subTxt As String, cardColor As Long, _
+                       Optional isBig As Boolean = False)
+    Call AddRect(sld, x, y, w, h, C_CARD_BG, cardColor, 1.2)
+    Call AddRect(sld, x, y, w, 0.1, cardColor)
+    
+    If isBig Then
+        ' ▲2.0%用の強調表示
+        Call AddRect(sld, x, y, w, 0.14, cardColor)
+        Call AddText(sld, val, x, y + 0.14, w, 0.5, 30, cardColor, True, , 2, 3)
+        Call AddText(sld, lbl, x + 0.07, y + 0.66, w - 0.14, 0.25, 11, C_TEXT, True, , 2)
+        Call AddText(sld, subTxt, x + 0.07, y + 0.9, w - 0.14, 0.22, 9, C_MUTED, , , 2)
+    Else
+        Call AddText(sld, val, x, y + 0.14, w, 0.5, 26, cardColor, True, , 2, 3)
+        Call AddText(sld, lbl, x + 0.07, y + 0.66, w - 0.14, 0.25, 10.5, C_TEXT, True, , 2)
+        Call AddText(sld, subTxt, x + 0.07, y + 0.9, w - 0.14, 0.22, 9, C_MUTED, , , 2)
+    End If
+End Sub
 
-    ' バンド3: 工設係 重点取組み（2項目）
-    Call AddBand(sld, BY + 2 * (BH + BG), "工設係" & Chr(10) & "重点取組み", RGB(45, 125, 70), _
-        "直接", "④ 基準類・標準仕様見直し", "1施策で5標準書を創出(密度最大)", _
-        "波及", "⑤ 外部メーカー活用",      "標準化で外注先活用の土台を整える")
+Private Sub AddTypeBadge(sld As Slide, x As Double, y As Double, badgeType As String)
+    Dim badgeColor As Long
+    Select Case badgeType
+        Case "直接": badgeColor = C_RED_BADGE
+        Case "波及": badgeColor = C_BLUE_BADGE
+        Case "典型": badgeColor = C_GOLD_BADGE
+    End Select
+    Call AddRect(sld, x, y, 0.42, 0.2, badgeColor)
+    Call AddText(sld, badgeType, x, y, 0.42, 0.2, 8.5, C_WHITE, True, , 2, 3)
+End Sub
 
-    ' バンド4: 行動指針（3項目）
-    Call AddBand(sld, BY + 3 * (BH + BG), "行動指針", RGB(217, 119, 6), _
-        "典型", "かえる",   "変革・達成・適応3要素", _
-        "典型", "つながる", "工設×SRT×外注 越境連携", _
-        "典型", "ささえる", "早期巻き込みで現場主役化")
-
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+'  Slide 1: 課題の構造
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Private Sub BuildSlide1(pres As Presentation)
+    Dim sld As Slide
+    Set sld = pres.Slides.Add(1, ppLayoutBlank)
+    sld.FollowMasterBackground = msoFalse
+    sld.Background.Fill.ForeColor.RGB = C_WHITE
+    
+    Call AddTitleBar(sld, "電極設計プロセスの課題 — 工設担当がもたらす構造的ロス", _
+                     "前提：年間新規金型 3件 ／ 電極 30本/金型（平均）／ 手戻り率 約10%（3〜4本/金型）")
+    
+    Dim contY As Double: contY = 1.1
+    Dim LX As Double: LX = 0.38
+    Dim LW As Double: LW = 2.72
+    
+    ' 左列：前提条件
+    Call AddSectionLabel(sld, LX, contY, LW, 0.3, "前提条件：なぜ業務が分かれるのか", C_NAVY)
+    
+    ' プレス電極ブロック
+    Call AddRect(sld, LX, contY + 0.35, LW, 1.25, C_BLUE_LT, C_BLUE, 0.5)
+    Call AddRect(sld, LX, contY + 0.35, LW, 0.28, C_BLUE)
+    Call AddText(sld, "プレス電極", LX, contY + 0.35, LW, 0.28, 11, C_WHITE, True, , 2)
+    Call AddText(sld, "主に2次元形状が主体", LX + 0.1, contY + 0.67, LW - 0.2, 0.28, 11, C_TEXT)
+    Call AddText(sld, "現場CADスキルで対応可能" & vbCrLf & "モデリングのハードルが低い", _
+                 LX + 0.1, contY + 0.97, LW - 0.2, 0.37, 10, C_TEXT_LT)
+    Call AddRect(sld, LX + 0.1, contY + 1.38, LW - 0.2, 0.18, C_GREEN)
+    Call AddText(sld, "✓ 型工が設計（現状問題なし）", LX + 0.1, contY + 1.38, LW - 0.2, 0.18, 9, C_WHITE, True, , 2)
+    
+    ' モールド電極ブロック
+    Call AddRect(sld, LX, contY + 1.68, LW, 1.35, C_AMBER_LT, C_AMBER, 0.5)
+    Call AddRect(sld, LX, contY + 1.68, LW, 0.28, C_AMBER)
+    Call AddText(sld, "モールド電極", LX, contY + 1.68, LW, 0.28, 11, C_WHITE, True, , 2)
+    Call AddText(sld, "複雑な3次元曲面を持つ", LX + 0.1, contY + 2, LW - 0.2, 0.28, 11, C_TEXT)
+    Call AddText(sld, "高度な3Dモデリングが必要" & vbCrLf & "現場CADスキルでは対応困難", _
+                 LX + 0.1, contY + 2.3, LW - 0.2, 0.37, 10, C_TEXT_LT)
+    Call AddRect(sld, LX + 0.1, contY + 2.72, LW - 0.2, 0.18, C_RED)
+    Call AddText(sld, "⚠ 工設が担当（課題の起点）", LX + 0.1, contY + 2.72, LW - 0.2, 0.18, 9, C_WHITE, True, , 2)
+    
+    ' キャプション
+    Call AddRect(sld, LX, contY + 3.02, LW, 0.55, C_CARD_BG, C_NAVY, 0.5)
+    Call AddText(sld, "形状の複雑さ（2D→3D）が" & vbCrLf & "業務分担の壁を作っている", _
+                 LX + 0.1, contY + 3.04, LW - 0.2, 0.51, 10.5, C_NAVY, True, , 2)
+    
+    ' 中央列：現行フロー
+    Dim CX As Double: CX = 3.22
+    Dim CW As Double: CW = 3.42
+    Call AddSectionLabel(sld, CX, contY, CW, 0.3, "現行ワークフロー — ボトルネックの構造", C_MUTED)
+    
+    Dim cy As Double: cy = contY + 0.36
+    Dim SH As Double: SH = 0.52
+    Dim AH As Double: AH = 0.22
+    
+    ' ステップ1
+    Call AddRect(sld, CX, cy, CW, SH, C_BLUE_LT, C_NAVY, 0.75)
+    Call AddText(sld, "① 金型設計完了", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_NAVY, True, , 1, 3)
+    cy = cy + SH
+    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
+    cy = cy + 0.1
+    
+    ' ステップ2（問題）
+    Call AddRect(sld, CX, cy, CW, SH, C_RED_LT, C_RED, 0.75)
+    Call AddText(sld, "② 電極設計（工設）", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_RED, True, , 1, 3)
+    cy = cy + SH
+    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_RED, 0.5)
+    Call AddText(sld, "⚠  設計工数 20h/金型（30本 × 40分）", CX + 0.1, cy, CW - 0.2, AH, 9, C_RED, , True, 1, 3)
+    cy = cy + AH
+    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
+    cy = cy + 0.1
+    
+    ' ステップ3（問題）
+    Call AddRect(sld, CX, cy, CW, SH, C_AMBER_LT, C_AMBER, 0.75)
+    Call AddText(sld, "③ 照査・検印", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_AMBER, True, , 1, 3)
+    cy = cy + SH
+    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_AMBER, 0.5)
+    Call AddText(sld, "⚠  型工は出図待ちで製作に着手できない", CX + 0.1, cy, CW - 0.2, AH, 9, C_AMBER, , True, 1, 3)
+    cy = cy + AH
+    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
+    cy = cy + 0.1
+    
+    ' ステップ4（問題）
+    Call AddRect(sld, CX, cy, CW, SH, C_RED_LT, C_RED, 0.75)
+    Call AddText(sld, "④ 型工確認 → 差し戻し", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_RED, True, , 1, 3)
+    cy = cy + SH
+    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_RED, 0.5)
+    Call AddText(sld, "⚠  手戻り率 約10%（3〜4本/金型）", CX + 0.1, cy, CW - 0.2, AH, 9, C_RED, , True, 1, 3)
+    cy = cy + AH
+    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
+    cy = cy + 0.1
+    
+    ' ステップ5
+    Call AddRect(sld, CX, cy, CW, SH, C_GREEN_LT, C_GREEN, 0.75)
+    Call AddText(sld, "⑤ 電極製作開始", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_GREEN, True, , 1, 3)
+    
+    ' 右列：定量インパクト
+    Dim RX As Double: RX = 6.78
+    Dim RW As Double: RW = 2.82
+    Call AddSectionLabel(sld, RX, contY, RW, 0.3, "課題の定量インパクト（年間3金型）", C_RED)
+    
+    Dim ky As Double: ky = contY + 0.36
+    Dim KH As Double: KH = 0.83
+    Dim KG As Double: KG = 0.09
+    
+    ' KPIカード4枚
+    Call AddKPICard(sld, RX, ky, RW, KH, "60h", "工設設計工数（年間）", "20h/金型 × 3件", C_RED)
+    ky = ky + KH + KG
+    Call AddKPICard(sld, RX, ky, RW, KH, "≈10件", "手戻り再設計件数（年間）", "3.5件/金型 × 3件", C_AMBER)
+    ky = ky + KH + KG
+    Call AddKPICard(sld, RX, ky, RW, KH, "7.5日", "型工の出図待ち（年間）", "2.5日/金型 × 3件", C_NAVY)
+    ky = ky + KH + KG
+    Call AddKPICard(sld, RX, ky, RW, KH, "≈40万円", "直接コストロス（年間）", "60h × 6,650円/h", C_RED)
+    
     Call AddFooter(sld, 1)
-
-    ' ─ ノート ─
-    Dim n As String
-    n = "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【話す内容】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "本日ご報告する活動は、単なるコスト削減施策ではなく、山電のものづくりプロセスそのものを" & Chr(10)
-    n = n & "次世代へ繋ぐための「設計プロセス改革」と位置づけています。" & Chr(10) & Chr(10)
-    n = n & "本活動は、上位方針体系の3階層・9項目に同時に整合する経営施策です。" & Chr(10)
-    n = n & "工作部のペーパーレス化方針では最大効果領域に切り込み、工機技術課ミッションでは" & Chr(10)
-    n = n & "技術革新の前提条件を整えつつナレッジ継承の本丸を担います。工設係重点取組みでは" & Chr(10)
-    n = n & "1活動で5標準書を生み出し、行動指針「かえる・つながる・ささえる」3指針すべてを体現します。" & Chr(10) & Chr(10)
-    n = n & "コスト削減は結果であり、本質は組織能力の構築です。" & Chr(10) & Chr(10) & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【YH向け解説(プレゼン前の自己整理用)】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "★ 整合の質を3分類で意識" & Chr(10)
-    n = n & "  ・直接整合：方針の文言と活動内容がほぼ一致(言い換え可能)" & Chr(10)
-    n = n & "  ・波及整合：活動が生む資源・基盤が他方針実現を支える" & Chr(10)
-    n = n & "  ・典型整合：方針の精神を最もよく体現する事例" & Chr(10) & Chr(10)
-    n = n & "★ 9項目の論点と質疑対応" & Chr(10) & Chr(10)
-    n = n & "①ペーパーレス化【直接】最大効果領域(年76万円は事務系電子化の数十倍規模)" & Chr(10)
-    n = n & "  Q「他のペーパーレス施策との関係は?」→「最大効果領域・最上流に切り込む」" & Chr(10) & Chr(10)
-    n = n & "②定型作業の自動化【直接・一歩先】" & Chr(10)
-    n = n & "  Q「VBA自動化の方が早い?」→「自動化しても2D図面・検図・配布工程は残る。本活動は工程ごと消す」" & Chr(10)
-    n = n & "  訴求「自動化は作業を速く、本活動は作業を消す」" & Chr(10) & Chr(10)
-    n = n & "③技術革新【波及】本活動は技術革新ではない。330h解放で前提条件を整える" & Chr(10)
-    n = n & "  Q「技術革新そのものではない」→正面から認める。「前提条件創出として明確に区別」" & Chr(10) & Chr(10)
-    n = n & "④ナレッジ継承【典型・本丸】★最重要" & Chr(10)
-    n = n & "  色=形式知14分類はSECIモデル「表出化」フェーズに該当。経営学的にも整理済" & Chr(10)
-    n = n & "  Q「14分類で網羅できる?」→「標準+PMI特例+月次改善で進化する設計」" & Chr(10)
-    n = n & "  訴求「色はベテランの判断を組織の言語に翻訳する装置」" & Chr(10) & Chr(10)
-    n = n & "⑤基準類見直し【直接・密度最大】1施策で5標準書(面色/PMI/検図/3D運用/外注先)" & Chr(10)
-    n = n & "  Q「標準書は守られない問題」→「月次MTGで運用確認、PDCAで改訂」" & Chr(10) & Chr(10)
-    n = n & "⑥外部メーカー活用【波及】標準化で外注先活用の土台を整える" & Chr(10)
-    n = n & "  Q「外注先が3D+PMIに対応できない?」→「段階的移行(初回2D併用)と月次MTG伴走」" & Chr(10) & Chr(10)
-    n = n & "⑦かえる【典型】変革推進・達成志向・変化適応の3要素すべて内包" & Chr(10)
-    n = n & "⑧つながる【典型】工設係×SRT×外注先の3者越境連携を体制として実装" & Chr(10)
-    n = n & "⑨ささえる【典型】早期巻き込みで現場を主役化" & Chr(10) & Chr(10)
-    n = n & "★ 語り順の戦略【推奨:強さ順】" & Chr(10)
-    n = n & "  ナレッジ継承(本丸) → ペーパーレス化(最大効果) → 基準類(密度最大) → 他" & Chr(10) & Chr(10)
-    n = n & "★ 決め台詞(使い分け)" & Chr(10)
-    n = n & "  ・冒頭：「コストは結果、本質は組織能力の構築」" & Chr(10)
-    n = n & "  ・ナレッジ継承：「色はベテランの判断を組織の言語に翻訳する装置」" & Chr(10)
-    n = n & "  ・自動化との差別化：「自動化は作業を速く、本活動は作業を消す」"
-    Call SetNotes(sld, n)
 End Sub
 
-' ================================================================
-'  Slide 2 : 現状の課題 — 3層構造
-' ================================================================
-Private Sub BuildSlide2(sld As Slide)
-    Call ClearSlide(sld)
-    Call BgWhite(sld)
-    Call TitleBar(sld, "現状の課題 — 3層構造で見る本質", _
-                  "表面はコスト問題、実態は事業継続と技術継承のリスク")
-
-    Const CT As Double = 1.3    ' カード開始Y
-    Const CH As Double = 1.13   ' カード高さ
-    Const CG As Double = 0.07   ' カード間隔
-
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+'  Slide 2: 解決策
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Private Sub BuildSlide2(pres As Presentation)
+    Dim sld As Slide
+    Set sld = pres.Slides.Add(2, ppLayoutBlank)
+    sld.FollowMasterBackground = msoFalse
+    sld.Background.Fill.ForeColor.RGB = C_WHITE
+    
+    Call AddTitleBar(sld, "解決策 — NX-Open半自動化による電極設計の業務移管", _
+                     "自動化でモデリングのハードルを下げ、型工の加工ノウハウを設計に組み込む")
+    
+    Dim contY As Double: contY = 1.08
+    
+    ' 左列：BEFORE
+    Dim LX As Double: LX = 0.38
+    Dim LW As Double: LW = 2.6
+    Call AddSectionLabel(sld, LX, contY, LW, 0.28, "BEFORE（現行フロー）", C_MUTED)
+    
+    Dim by As Double: by = contY + 0.34
+    Dim BSH As Double: BSH = 0.52
     Dim i As Integer
-    For i = 0 To 2
-        Dim ly As Double: ly = CT + i * (CH + CG)
-        Dim lTag As String, lTitle As String
-        Dim lProblem As String, lDetail As String, lHidden As String
-        Dim lFill As Long, lBg As Long
-
+    
+    For i = 1 To 6
+        Dim stepColor As Long, stepLtColor As Long, stepFlag As Boolean
+        Dim stepText As String
+        
         Select Case i
-            Case 0
-                lTag = "第1層": lTitle = "経済損失層"
-                lFill = RGB(200, 16, 46): lBg = RGB(248, 225, 230)
-                lProblem = "問題① 設計費の4割が「図面作成」 (36.5万円/件)"
-                lDetail  = "投影図・寸法転記・注記など、設計者の判断を要さない機械的作業"
-                lHidden  = "隠れコスト：3D/2D二重管理による不整合手戻り(現状未可視化)"
-            Case 1
-                lTag = "第2層": lTitle = "事業継続層"
-                lFill = RGB(217, 119, 6): lBg = RGB(252, 231, 197)
-                lProblem = "問題② 設計者2名が年165h を図面作成に消費し受注機会を逸失"
-                lDetail  = "余力なき状態が続き、新規案件の経験機会も失われている"
-                lHidden  = "隠れリスク：見積・原価計算プロセスとの整合(他部門連携が未着手)"
-            Case 2
-                lTag = "第3層": lTitle = "技術空洞化層"
-                lFill = RGB(30, 58, 95): lBg = RGB(220, 231, 241)
-                lProblem = "問題③ 外製化進行により内製ノウハウの蓄積が止まる"
-                lDetail  = "加工性判断・不具合究明・若手育成――5〜10年スパンで事業継続が脅威"
-                lHidden  = "隠れリスク：検図プロセス／PMI運用ルール／長期保管が未整備"
+            Case 1: stepText = "① 金型設計完了": stepColor = C_NAVY: stepLtColor = C_BLUE_LT: stepFlag = False
+            Case 2: stepText = "② 電極設計（工設）": stepColor = C_RED: stepLtColor = C_RED_LT: stepFlag = True
+            Case 3: stepText = "③ 照査・検印（待ち）": stepColor = C_AMBER: stepLtColor = C_AMBER_LT: stepFlag = True
+            Case 4: stepText = "④ 型工確認・差し戻し": stepColor = C_RED: stepLtColor = C_RED_LT: stepFlag = True
+            Case 5: stepText = "⑤ 再設計（工設）": stepColor = C_RED: stepLtColor = C_RED_LT: stepFlag = True
+            Case 6: stepText = "⑥ 電極製作開始": stepColor = C_MUTED: stepLtColor = C_MUTED_LT: stepFlag = False
         End Select
-
-        ' 左ラベルボックス
-        Call AddLabelBox(sld, 0.4, ly, 1.55, CH, lTag, lTitle, lFill)
-
-        ' 右コンテンツ背景
-        Call AddR(sld, 1.95, ly, 7.65, CH, lBg, lFill, 0.5)
-
-        ' 問題テキスト
-        Call AddT(sld, 2.1, ly + 0.06, 7.4, 0.32, lProblem, 12.5, True, RGB(31, 41, 55))
-
-        ' 詳細テキスト
-        Call AddT(sld, 2.1, ly + 0.38, 7.4, 0.3, lDetail, 10.5, False, RGB(75, 85, 99))
-
-        ' 隠れコスト白ボックス
-        Call AddR(sld, 2.1, ly + 0.72, 7.4, 0.36, RGB(255, 255, 255), lFill, 0.5)
-
-        ' 隠れコストテキスト（イタリック）
-        Call AddT(sld, 2.18, ly + 0.74, 7.24, 0.32, lHidden, 10.5, False, lFill, 1, 1, True)
+        
+        Call AddRect(sld, LX, by, LW, BSH, stepLtColor, stepColor, 0.6)
+        If stepFlag Then Call AddRect(sld, LX, by, 0.07, BSH, stepColor)
+        Call AddText(sld, stepText, LX + IIf(stepFlag, 0.13, 0.1), by, LW - 0.2, BSH, 10.5, stepColor, stepFlag, , 1, 3)
+        by = by + BSH
+        If i < 6 Then
+            Call AddText(sld, "↓", LX, by, LW, 0.07, 8, C_BORDER_DK, , , 2)
+            by = by + 0.07
+        End If
     Next i
-
-    ' 締めメッセージ
-    Call AddT(sld, 0.5, 5.0, 9.0, 0.25, _
-              "「コスト問題」に見えて、実は事業継続と技術継承のリスクが組み込まれている", _
-              11, True, RGB(30, 58, 95), 2, 2, True)
-
+    
+    Call AddRect(sld, LX, by + 0.05, LW, 0.45, C_RED_LT, C_RED, 0.5)
+    Call AddText(sld, "設計完了〜製作開始：3〜6日" & vbCrLf & "工設消費：20h + 手戻り", _
+                 LX + 0.08, by + 0.06, LW - 0.16, 0.43, 9.5, C_RED, True, , 2)
+    
+    ' 中央列：半自動化の構造
+    Dim CX As Double: CX = 3.1
+    Dim CW As Double: CW = 3.82
+    Call AddSectionLabel(sld, CX, contY, CW, 0.28, "NX-Open半自動化の構造", C_NAVY)
+    
+    ' 自動化ボックス
+    Call AddRect(sld, CX, contY + 0.34, CW, 1.2, C_BLUE_LT, C_NAVY, 0.75)
+    Call AddRect(sld, CX, contY + 0.34, CW, 0.26, C_NAVY)
+    Call AddText(sld, "自動化がカバーする領域", CX, contY + 0.34, CW, 0.26, 10.5, C_WHITE, True, , 2)
+    Call AddText(sld, "● 電極形状の自動生成", CX + 0.15, contY + 0.65, CW - 0.3, 0.25, 10, C_NAVY)
+    Call AddText(sld, "● 逃げ形状・クリアランスの自動付加", CX + 0.15, contY + 0.92, CW - 0.3, 0.25, 10, C_NAVY)
+    Call AddText(sld, "● エッジ処理・コーナーR処理", CX + 0.15, contY + 1.19, CW - 0.3, 0.25, 10, C_NAVY)
+    
+    ' 型工ボックス
+    Call AddRect(sld, CX, contY + 1.62, CW, 1.2, C_GREEN_LT, C_GREEN, 0.75)
+    Call AddRect(sld, CX, contY + 1.62, CW, 0.26, C_GREEN)
+    Call AddText(sld, "型工が担う役割（加工ノウハウを発揮）", CX, contY + 1.62, CW, 0.26, 10.5, C_WHITE, True, , 2)
+    Call AddText(sld, "● 加工性の微調整（削れる・削れない判断）", CX + 0.15, contY + 1.93, CW - 0.3, 0.25, 10, C_GREEN)
+    Call AddText(sld, "● 干渉回避・段取りのしやすさ最適化", CX + 0.15, contY + 2.2, CW - 0.3, 0.25, 10, C_GREEN)
+    Call AddText(sld, "● 優先順位に応じた製作順序の決定", CX + 0.15, contY + 2.47, CW - 0.3, 0.25, 10, C_GREEN)
+    
+    ' 工設ボックス
+    Call AddRect(sld, CX, contY + 2.9, CW, 0.95, C_BLUE_LT, C_BLUE, 0.75)
+    Call AddRect(sld, CX, contY + 2.9, CW, 0.26, C_BLUE)
+    Call AddText(sld, "工設の新しい役割（仕組みで支える）", CX, contY + 2.9, CW, 0.26, 10.5, C_WHITE, True, , 2)
+    Call AddText(sld, "● NX-Openシステムの保守・改善", CX + 0.15, contY + 3.21, CW - 0.3, 0.25, 10, C_BLUE)
+    Call AddText(sld, "● 電極設計基準書の作成・改訂（標準化）", CX + 0.15, contY + 3.48, CW - 0.3, 0.25, 10, C_BLUE)
+    
+    ' キーメッセージバー
+    Call AddRect(sld, CX, contY + 3.93, CW, 0.42, C_NAVY)
+    Call AddText(sld, "型工の加工ノウハウが設計を決める  —  現場完結型プロセスへ", _
+                 CX, contY + 3.93, CW, 0.42, 9.5, C_WHITE, True, True, 2)
+    
+    ' 右列：AFTER
+    Dim RX As Double: RX = 7.04
+    Dim RW As Double: RW = 2.56
+    Call AddSectionLabel(sld, RX, contY, RW, 0.28, "AFTER（自動化・移管後）", C_GREEN)
+    
+    Dim ay As Double: ay = contY + 0.34
+    Dim ASH As Double: ASH = 0.6
+    
+    For i = 1 To 4
+        Select Case i
+            Case 1: stepText = "① 金型設計完了": stepColor = C_NAVY: stepLtColor = C_BLUE_LT
+            Case 2: stepText = "② 即時出図（金型のみ）": stepColor = C_NAVY: stepLtColor = C_BLUE_LT
+            Case 3: stepText = "③ 型工：自動生成＋微調整": stepColor = C_GREEN: stepLtColor = C_GREEN_LT
+            Case 4: stepText = "④ 即座に電極製作開始": stepColor = C_GREEN: stepLtColor = C_GREEN_LT
+        End Select
+        
+        Call AddRect(sld, RX, ay, RW, ASH, stepLtColor, stepColor, 0.75)
+        Call AddText(sld, stepText, RX + 0.12, ay, RW - 0.24, ASH, 11, stepColor, True, , 1, 3)
+        ay = ay + ASH
+        If i < 4 Then
+            Call AddText(sld, "↓", RX, ay, RW, 0.09, 9, stepColor, , , 2)
+            ay = ay + 0.09
+        End If
+    Next i
+    
+    ' 削減効果サマリー
+    Call AddRect(sld, RX, ay + 0.1, RW, 1.35, C_GREEN_LT, C_GREEN, 0.75)
+    Call AddRect(sld, RX, ay + 0.1, RW, 0.26, C_GREEN)
+    Call AddText(sld, "削減効果（vs 現行）", RX, ay + 0.1, RW, 0.26, 10, C_WHITE, True, , 2)
+    Call AddText(sld, "✓  工設工数 20h → 0h", RX + 0.12, ay + 0.4, RW - 0.24, 0.24, 10, C_GREEN, True)
+    Call AddText(sld, "✓  手戻り 3-4件 → 0件", RX + 0.12, ay + 0.65, RW - 0.24, 0.24, 10, C_GREEN, True)
+    Call AddText(sld, "✓  出図待ち 2〜3日 → 0日", RX + 0.12, ay + 0.9, RW - 0.24, 0.24, 10, C_GREEN, True)
+    Call AddText(sld, "✓  設計〜製作：1〜1.5日", RX + 0.12, ay + 1.15, RW - 0.24, 0.24, 10, C_GREEN)
+    
     Call AddFooter(sld, 2)
-
-    ' ─ ノート ─
-    Dim n As String
-    n = "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【話す内容】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "【第1層：経済損失層】" & Chr(10)
-    n = n & "設計費90万円のうち36.5万円が図面作成費。投影図・寸法転記など判断不要の機械的作業です。" & Chr(10)
-    n = n & "設計者の頭脳に合わない業務に4割が奪われている、業務設計上の不適合です。" & Chr(10)
-    n = n & "さらに3Dと2D図面の二重管理による不整合手戻りという見えないコストも存在します。" & Chr(10) & Chr(10)
-    n = n & "【第2層：事業継続層】" & Chr(10)
-    n = n & "設計者2名が年405時間中165時間を図面作成に消費し受注機会を逃し続けています。" & Chr(10)
-    n = n & "新規案件を経験できないという人材育成上の機会損失でもあります。" & Chr(10) & Chr(10)
-    n = n & "【第3層：技術空洞化層】" & Chr(10)
-    n = n & "最も深刻です。外製化が進むと加工現場の暗黙知が更新されません。" & Chr(10)
-    n = n & "5〜10年スパンで自社の設計能力が低下し、工機技術課ミッション①「生産継続」が脅かされます。" & Chr(10) & Chr(10)
-    n = n & "コスト問題に見えて、実は事業継続と技術継承のリスクが組み込まれている――" & Chr(10)
-    n = n & "だからこそ「設計プロセス改革」として位置づける必要があります。" & Chr(10) & Chr(10) & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【YH向け解説(プレゼン前の自己整理用)】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "★ 3層構造のロジック" & Chr(10)
-    n = n & "  第1層は理解しやすい。第2層は少し深い。第3層が最も評価者に刺さる層。" & Chr(10)
-    n = n & "  第3層は工機技術課ミッション①生産継続に接続 → 方針整合がここでも広がる。" & Chr(10) & Chr(10)
-    n = n & "★ 「隠れた課題」欄の役割" & Chr(10)
-    n = n & "  評価者に「現状認識の深さ」を示す装置。活動範囲外として認識済の布石。" & Chr(10)
-    n = n & "  第1層:3D/2D二重管理 / 第2層:見積・原価との整合 / 第3層:検図・保管・PMI" & Chr(10) & Chr(10)
-    n = n & "★ 質疑対応" & Chr(10)
-    n = n & "  「他に見えるコストはない?」→ 隠れた課題欄を引用" & Chr(10)
-    n = n & "  「数字の根拠は?」→ 設計費90万・図面41%・年405h・165hは詳細データあり" & Chr(10)
-    n = n & "  「外製化はビジネス上必要では?」→ 必要だが暗黙知喪失リスクを併存問題として認識" & Chr(10)
-    n = n & "  「5〜10年スパンは具体性に欠ける」→ ベテラン退職時期と若手育成の現状から逆算可能" & Chr(10) & Chr(10)
-    n = n & "★ 数字の取り扱い注意" & Chr(10)
-    n = n & "  ・90万円・36.5万円・165h・年405h：詳細根拠あり、ストレートに言える" & Chr(10)
-    n = n & "  ・3D/2D不整合手戻りコスト：未試算(敢えて「未可視化」と表現)" & Chr(10)
-    n = n & "  ・5〜10年スパンの技術空洞化：定性的判断(ベテラン退職タイミングから推定)"
-    Call SetNotes(sld, n)
 End Sub
 
-' ================================================================
-'  Slide 3 : 構想と取り組み
-' ================================================================
-Private Sub BuildSlide3(sld As Slide)
-    Call ClearSlide(sld)
-    Call BgWhite(sld)
-    Call TitleBar(sld, "構想と取り組み — 暗黙知を組織知に変える", _
-                  "色とPMIによる形式知化と、3者を巻き込んだ運用体制の構築")
-
-    Const RY As Double = 1.3    ' BEFORE/AFTER 開始Y
-    Const RH As Double = 1.5    ' 高さ
-
-    ' ─ BEFORE ─
-    Call AddR(sld, 0.4, RY, 4.2, 0.4, RGB(100, 116, 139))
-    Call AddT(sld, 0.45, RY + 0.02, 4.1, 0.36, "BEFORE — 図面という媒体に依存", _
-              12, True, RGB(255, 255, 255), 2, 2)
-    Call AddR(sld, 0.4, RY + 0.4, 4.2, RH - 0.4, RGB(248, 250, 252), RGB(203, 213, 224), 0.5)
-
-    Dim bef As Shape
-    Set bef = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, _
-                                    P(0.55), P(RY + 0.5), P(3.9), P(RH - 0.55))
-    With bef.TextFrame
-        .AutoSize = ppAutoSizeNone: .WordWrap = msoTrue
-        .VerticalAnchor = msoAnchorMiddle
-        .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-    End With
-    With bef.TextFrame.TextRange
-        .Text = "① 3Dモデル作成" & Chr(13) & _
-                "② 2D図面作成(36.5万円 = 設計費の41%)" & Chr(13) & _
-                "③ 図面を配布・加工"
-        .Font.Name = FN
-        .Paragraphs(1).Font.Size = 12: .Paragraphs(1).Font.Color.RGB = RGB(31, 41, 55)
-        .Paragraphs(2).Font.Size = 12: .Paragraphs(2).Font.Bold = True
-        .Paragraphs(2).Font.Color.RGB = RGB(200, 16, 46)
-        .Paragraphs(3).Font.Size = 12: .Paragraphs(3).Font.Color.RGB = RGB(31, 41, 55)
-    End With
-
-    ' ─ 矢印 → ─
-    Call AddT(sld, 4.62, RY + 0.4, 0.85, 1.1, Chr(8594), 44, True, RGB(184, 134, 11), 2, 2)
-
-    ' ─ AFTER ─
-    Call AddR(sld, 5.4, RY, 4.2, 0.4, RGB(45, 125, 70))
-    Call AddT(sld, 5.45, RY + 0.02, 4.1, 0.36, "AFTER — 面色・PMI運用(2D作図レス)", _
-              12, True, RGB(255, 255, 255), 2, 2)
-    Call AddR(sld, 5.4, RY + 0.4, 4.2, RH - 0.4, RGB(213, 232, 220), RGB(45, 125, 70), 0.5)
-
-    Dim aft As Shape
-    Set aft = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, _
-                                    P(5.55), P(RY + 0.5), P(3.9), P(RH - 0.55))
-    With aft.TextFrame
-        .AutoSize = ppAutoSizeNone: .WordWrap = msoTrue
-        .VerticalAnchor = msoAnchorMiddle
-        .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-    End With
-    With aft.TextFrame.TextRange
-        .Text = "① 3Dモデル作成" & Chr(13) & _
-                "② 各面に色を塗る／PMI注記(精度を色で定義)" & Chr(13) & _
-                "③ 3Dデータを配布・加工"
-        .Font.Name = FN
-        .Paragraphs(1).Font.Size = 12: .Paragraphs(1).Font.Color.RGB = RGB(31, 41, 55)
-        .Paragraphs(2).Font.Size = 12: .Paragraphs(2).Font.Bold = True
-        .Paragraphs(2).Font.Color.RGB = RGB(45, 125, 70)
-        .Paragraphs(3).Font.Size = 12: .Paragraphs(3).Font.Color.RGB = RGB(31, 41, 55)
-    End With
-
-    ' ─ 暗黙知→形式知バー ─
-    Call AddR(sld, 0.4, 2.95, 9.2, 0.5, RGB(30, 58, 95))
-    Call AddT(sld, 0.55, 2.97, 8.9, 0.46, _
-              "本質：ベテラン設計者の 暗黙知(精度判断)  →  色＝形式知 14分類" & _
-              "(基準面=Yellow / 製品面=Powder Gray / PL=Orange…)", _
-              12, False, RGB(255, 255, 255), 2, 2)
-
-    ' ─ 巻き込み戦略 ─
-    Call AddT(sld, 0.4, 3.6, 9.2, 0.3, "巻き込み戦略 — 受領者から伴走パートナーへ", _
-              13, True, RGB(30, 58, 95))
-
-    ' ステークホルダー 3カード
-    Dim swWho(2) As String, swFlow(2) As String, swDetail(2) As String
-    Dim swColor(2) As Long
-    swWho(0) = "型工(製作現場)":  swFlow(0) = "当事者参加 → 意見反映 → 担い手化"
-    swDetail(0) = "試し運用 → 問題点抽出 → 月次改善": swColor(0) = RGB(74, 144, 184)
-    swWho(1) = "SRT":             swFlow(1) = "受信側 → 共同検討者"
-    swDetail(1) = "現場ヒアリング → 運用ルールへ反映": swColor(1) = RGB(30, 58, 95)
-    swWho(2) = "製作外注先":      swFlow(2) = "受領者 → 伴走パートナー"
-    swDetail(2) = "標準書配布 → 2D併用支援 → 月次MTG参加": swColor(2) = RGB(217, 119, 6)
-
-    Const SW As Double = 2.95     ' カード幅
-    Const SX2 As Double = 0.5     ' 開始X
-    Const SG2 As Double = 0.13    ' カード間隔
-    Dim k As Integer
-    For k = 0 To 2
-        Dim kx As Double: kx = SX2 + k * (SW + SG2)
-        Call AddR(sld, kx, 3.95, SW, 0.38, swColor(k))
-        Call AddT(sld, kx + 0.05, 3.97, SW - 0.1, 0.34, swWho(k), 12, True, RGB(255, 255, 255), 2, 2)
-        Call AddR(sld, kx, 3.95 + 0.38, SW, 0.85, RGB(248, 250, 252), RGB(203, 213, 224), 0.5)
-
-        Dim swTxt As Shape
-        Set swTxt = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, _
-                    P(kx + 0.1), P(3.95 + 0.42), P(SW - 0.2), P(0.8))
-        With swTxt.TextFrame
-            .AutoSize = ppAutoSizeNone: .WordWrap = msoTrue
-            .VerticalAnchor = msoAnchorMiddle
-            .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
-        End With
-        With swTxt.TextFrame.TextRange
-            .Text = swFlow(k) & Chr(13) & swDetail(k)
-            .ParagraphFormat.Alignment = ppAlignCenter
-            .Font.Name = FN
-            .Paragraphs(1).Font.Size = 11.5: .Paragraphs(1).Font.Bold = True
-            .Paragraphs(1).Font.Color.RGB = swColor(k)
-            .Paragraphs(2).Font.Size = 10.5: .Paragraphs(2).Font.Bold = False
-            .Paragraphs(2).Font.Color.RGB = RGB(75, 85, 99)
-        End With
-    Next k
-
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+'  Slide 3: 定量効果と方針整合
+' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Private Sub BuildSlide3(pres As Presentation)
+    Dim sld As Slide
+    Set sld = pres.Slides.Add(3, ppLayoutBlank)
+    sld.FollowMasterBackground = msoFalse
+    sld.Background.Fill.ForeColor.RGB = C_WHITE
+    
+    Call AddTitleBar(sld, "定量効果と工設の方針体系との整合", _
+                     "年間3金型・1金型600万円 試算 ／ 工設▲60h・型工＋22.5h で 金型費比 ▲2.0%")
+    
+    ' KPI 5枚
+    Dim KW As Double: KW = 1.78
+    Dim KH As Double: KH = 1.22
+    Dim KGP As Double: KGP = 0.1
+    Dim kStartX As Double: kStartX = (10 - (KW * 5 + KGP * 4)) / 2
+    Dim i As Integer
+    
+    For i = 0 To 4
+        Dim kx As Double: kx = kStartX + i * (KW + KGP)
+        Select Case i
+            Case 0: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲2.0%", "金型費比削減", "1金型600万円基準", C_RED, True)
+            Case 1: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲36万円", "年間正味削減", "工設▲47 − 型工＋11", C_AMBER)
+            Case 2: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲60h", "工設工数削減", "型工へ +22.5h移管", C_BLUE)
+            Case 3: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲7.5日", "型工停滞解消", "出図待ち年間合計", C_NAVY)
+            Case 4: Call AddKPICard(sld, kx, 1.08, KW, KH, "0件", "手戻りゼロ化", "現行 約10件/年", C_GREEN)
+        End Select
+    Next i
+    
+    ' 削減効果の内訳（左下）
+    Dim breakX As Double: breakX = 0.38
+    Dim breakW As Double: breakW = 4.6
+    Dim breakStartY As Double: breakStartY = 2.42
+    
+    ' ヘッダ
+    Call AddRect(sld, breakX, breakStartY, breakW, 0.28, C_RED)
+    Call AddText(sld, "削減効果の内訳 — 根拠と計算（年間3金型・1金型600万円）", _
+                 breakX, breakStartY, breakW, 0.28, 10, C_WHITE, True, , 2)
+    
+    ' テーブルヘッダ
+    Dim ty As Double: ty = breakStartY + 0.32
+    Call AddRect(sld, breakX, ty, breakW, 0.24, C_CARD_BG2, C_BORDER, 0.5)
+    Call AddText(sld, "項目", breakX + 0.1, ty, 2.3, 0.24, 9.5, C_NAVY, True)
+    Call AddText(sld, "工数変化", breakX + 2.4, ty, 0.95, 0.24, 9.5, C_NAVY, True, , 2)
+    Call AddText(sld, "金額換算", breakX + 3.35, ty, 1.25, 0.24, 9.5, C_NAVY, True, , 2)
+    
+    ' データ行
+    ty = ty + 0.24
+    Dim rowH As Double: rowH = 0.27
+    Dim rowData(1 To 3, 1 To 5) As Variant
+    rowData(1, 1) = C_RED: rowData(1, 2) = "工設 電極設計（移管）": rowData(1, 3) = "▲ 60 h/年": rowData(1, 4) = "▲ 40.0 万円": rowData(1, 5) = C_RED
+    rowData(2, 1) = C_RED: rowData(2, 2) = "工設 手戻り工数（根絶）": rowData(2, 3) = "▲ 10 h/年": rowData(2, 4) = "▲ 6.7 万円": rowData(2, 5) = C_RED
+    rowData(3, 1) = C_AMBER: rowData(3, 2) = "型工 電極設計（増加）": rowData(3, 3) = "＋ 22.5 h/年": rowData(3, 4) = "＋ 11.3 万円": rowData(3, 5) = C_AMBER
+    
+    For i = 1 To 3
+        Call AddRect(sld, breakX, ty, breakW, rowH, IIf(i Mod 2 = 0, C_CARD_BG, C_WHITE), C_BORDER, 0.3)
+        Call AddRect(sld, breakX, ty, 0.05, rowH, rowData(i, 1))
+        Call AddText(sld, rowData(i, 2), breakX + 0.13, ty, 2.27, rowH, 10, C_TEXT)
+        Call AddText(sld, rowData(i, 3), breakX + 2.4, ty, 0.95, rowH, 10, rowData(i, 1), True, , 2)
+        Call AddText(sld, rowData(i, 4), breakX + 3.35, ty, 1.25, rowH, 10.5, rowData(i, 5), True, , 2)
+        ty = ty + rowH
+    Next i
+    
+    ' 小計行
+    Call AddRect(sld, breakX, ty, breakW, 0.32, C_NAVY)
+    Call AddText(sld, "正味削減効果（工設▲ − 型工＋）", breakX + 0.13, ty, 2.27, 0.32, 10, C_WHITE, True)
+    Call AddText(sld, "▲ 47.5 h/年", breakX + 2.4, ty, 0.95, 0.32, 10, C_WHITE, True, , 2)
+    Call AddText(sld, "▲ 36 万円/年", breakX + 3.35, ty, 1.25, 0.32, 11.5, C_WHITE, True, , 2)
+    ty = ty + 0.32
+    
+    ' 結果バー
+    ty = ty + 0.06
+    Call AddRect(sld, breakX, ty, breakW, 0.46, C_RED_LT, C_RED, 1.5)
+    Call AddText(sld, "金型費比削減率： 36万円 ÷ 1,800万円（600万円 × 3件）= ▲ 2.0 %", _
+                 breakX + 0.1, ty, breakW - 0.2, 0.46, 10.5, C_TEXT, , , 2, 3)
+    ty = ty + 0.46
+    
+    ' 単価注記
+    Call AddText(sld, "* 工数単価：工設 6,650円/h ／ 型工 5,000円/h（推定）", _
+                 breakX + 0.1, ty + 0.04, breakW - 0.2, 0.2, 8.5, C_MUTED, , True)
+    
+    ' 方針整合（右下）
+    Dim polX As Double: polX = 5.07
+    Dim polW As Double: polW = 4.55
+    
+    Call AddRect(sld, polX, breakStartY, polW, 0.28, C_GREEN)
+    Call AddText(sld, "工設の方針体系との整合 — 提案のメリット", polX, breakStartY, polW, 0.28, 10, C_WHITE, True, , 2)
+    
+    Dim py As Double: py = breakStartY + 0.34
+    Dim PRH As Double: PRH = 0.58
+    Dim meritData(1 To 4, 1 To 3) As Variant
+    meritData(1, 1) = "直接": meritData(1, 2) = "NX-Open半自動化で電極形状を自動生成": meritData(1, 3) = "定型作業のシステム化・自動化"
+    meritData(2, 1) = "直接": meritData(2, 2) = "工設60h回収・手戻り根絶 ≈ 36万円/年": meritData(2, 3) = "ペーパーレス化・コスト追及"
+    meritData(3, 1) = "典型": meritData(3, 2) = "設計ノウハウ → 電極設計基準書・自動化仕様書として形式知化": meritData(3, 3) = "ナレッジ継承＋基準類見直し"
+    meritData(4, 1) = "典型": meritData(4, 2) = "型工主体で工設がシステムで支援する体制": meritData(4, 3) = "行動指針「ささえる」「つながる」"
+    
+    For i = 1 To 4
+        Call AddRect(sld, polX, py, polW, PRH, IIf(i Mod 2 = 0, C_WHITE, C_CARD_BG), C_BORDER, 0.5)
+        Call AddTypeBadge(sld, polX + 0.1, py + 0.05, meritData(i, 1))
+        Call AddText(sld, meritData(i, 2), polX + 0.6, py + 0.04, polW - 0.7, 0.26, 10, C_TEXT, True)
+        Call AddText(sld, "→ " & meritData(i, 3), polX + 0.6, py + 0.3, polW - 0.7, 0.24, 9.5, C_GREEN, , True)
+        py = py + PRH + 0.05
+    Next i
+    
     Call AddFooter(sld, 3)
-
-    ' ─ ノート ─
-    Dim n As String
-    n = "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【話す内容】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "「3Dモデルの各面に色を塗り、PMIで注記する」シンプルな手段で図面依存を解消します。" & Chr(10)
-    n = n & "本質は技術手段ではなく、ベテランの暗黙知を色という形式知に変換することにあります。" & Chr(10)
-    n = n & "Yellow=基準面、Powder Gray=製品面、Orange=PL合わせ面――" & Chr(10)
-    n = n & "精度判断が組織知として標準化されます。工機技術課ミッション③ナレッジ継承の具体的実装です。" & Chr(10) & Chr(10)
-    n = n & "型工現場・SRT・外注先という3者を巻き込んで運用体制を構築することが核心です。" & Chr(10)
-    n = n & "受け身の受領者から伴走パートナーへ――この巻き込み設計が本活動固有の価値です。" & Chr(10) & Chr(10) & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【YH向け解説(プレゼン前の自己整理用)】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "★ 暗黙知→形式知のロジック(SECIモデル)" & Chr(10)
-    n = n & "  野中郁次郎モデルの「表出化(Externalization)」フェーズに該当。" & Chr(10)
-    n = n & "  「色」が媒体として優れる理由:" & Chr(10)
-    n = n & "    ①視覚言語=言語の壁なし(外注先・若手・外国人作業者にも通用)" & Chr(10)
-    n = n & "    ②3Dモデルに埋め込まれる=データと一体で伝達" & Chr(10)
-    n = n & "    ③引き継ぎで失われない=マニュアルが要らない" & Chr(10)
-    n = n & "    ④使いながら覚える=OJTより低コスト" & Chr(10) & Chr(10)
-    n = n & "★ 14分類の正当性" & Chr(10)
-    n = n & "  経験的に網羅可能な分類数 / 特殊ケースはPMI注記で補完 / 月次MTGで改訂(進化性)" & Chr(10)
-    n = n & "  14は「現時点最善」であり「最終形」ではないことを伝える" & Chr(10) & Chr(10)
-    n = n & "★ 3者巻き込みと行動指針の対応" & Chr(10)
-    n = n & "  型工現場 ←→ 「つながる」「ささえる」(早期参画・主役化)" & Chr(10)
-    n = n & "  SRT ←→ 「つながる」(越境連携)" & Chr(10)
-    n = n & "  外注先 ←→ 重点取組み⑤ + 「つながる」(パートナー化)" & Chr(10) & Chr(10)
-    n = n & "★ 質疑対応" & Chr(10)
-    n = n & "  「外注先が3D+PMIに対応できない?」→ 段階的移行(初回2D併用)と月次MTG伴走" & Chr(10)
-    n = n & "  「14分類で網羅できる?」→ 標準+PMI特例+改良サイクルの3層設計" & Chr(10)
-    n = n & "  「型工が抵抗したら?」→ 試し運用で当事者化、押し付けない" & Chr(10)
-    n = n & "  「色の認識誤りリスクは?」→ カラーチャート常備、検図プロセスで二重確認" & Chr(10) & Chr(10)
-    n = n & "★ 決め台詞" & Chr(10)
-    n = n & "  「色はベテランの判断を組織の言語に翻訳する装置」" & Chr(10)
-    n = n & "  「受領者から伴走パートナーへ」" & Chr(10)
-    n = n & "  「設計者だけが頑張る活動ではない」"
-    Call SetNotes(sld, n)
 End Sub
 
-' ================================================================
-'  Slide 4 : 期待効果と変革推進プロセス
-' ================================================================
-Private Sub BuildSlide4(sld As Slide)
-    Call ClearSlide(sld)
-    Call BgWhite(sld)
-    Call TitleBar(sld, "期待効果と変革推進プロセス", _
-                  "4つの定量効果＋5つ目の「組織能力獲得」 / 変革推進5フェーズ")
 
-    ' ─ 効果5カード ─
-    Dim stVal(4) As String, stLabel(4) As String, stSub(4) As String
-    Dim stColor(4) As Long
-    stVal(0) = Chr(9660) & "4%":  stLabel(0) = "設計費削減率":  stSub(0) = "15% → 11%"
-    stVal(1) = "76万円":         stLabel(1) = "年間効果":       stSub(1) = "3年純利益 204万円"
-    stVal(2) = "4.5日":          stLabel(2) = "工期短縮":        stSub(2) = "製作リードタイム"
-    stVal(3) = "3.1ヶ月":        stLabel(3) = "投資回収":        stSub(3) = "初期24万・ツール費0"
-    stVal(4) = "+α":             stLabel(4) = "組織能力獲得":   stSub(4) = "標準書・体制・横展開"
-    stColor(0) = RGB(217, 119, 6): stColor(1) = RGB(200, 16, 46)
-    stColor(2) = RGB(74, 144, 184): stColor(3) = RGB(45, 125, 70): stColor(4) = RGB(30, 58, 95)
 
-    Const STW As Double = 1.78
-    Const STH As Double = 1.35
-    Const STG As Double = 0.1
-    Const STY As Double = 1.35
-    Dim stSX As Double: stSX = (10 - (STW * 5 + STG * 4)) / 2
 
-    Dim si As Integer
-    For si = 0 To 4
-        Dim sx As Double: sx = stSX + si * (STW + STG)
-        Call AddR(sld, sx, STY, STW, STH, RGB(248, 250, 252), stColor(si), 1.5)
-        Call AddR(sld, sx, STY, STW, 0.1, stColor(si))     ' 上部カラーバー
-        Call AddT(sld, sx + 0.05, STY + 0.18, STW - 0.1, 0.55, stVal(si), 26, True, stColor(si), 2, 2)
-        Call AddT(sld, sx + 0.05, STY + 0.78, STW - 0.1, 0.3, stLabel(si), 12, True, RGB(31, 41, 55), 2, 2)
-        Call AddT(sld, sx + 0.05, STY + 1.05, STW - 0.1, 0.25, stSub(si), 9.5, False, RGB(100, 116, 139), 2, 2)
-    Next si
+1枚目：現状分析と課題の浮き彫り
+【ノート案】
+現在、プレス部門では型工（現場）が自ら電極設計を行っていますが、モールド部門では工設（設計）が行っています。この差は「形状の複雑さ」にあります。プレスは2次元的な形状が主でハードルが低い一方、モールドは複雑な3次元曲面が多く、高度な3D CADスキルが求められるため、これまで工設が担わざるを得ませんでした。  
+しかし、現行のワークフローには大きな問題があります。金型設計完了後に工設が電極設計を行うため、現場への出図までに大きなタイムラグが生じています。また、設計者は「加工のプロ」ではないため、出図後に現場から「加工不可」や「効率が悪い」といった理由で手戻りが発生するケースが少なくありません。  
+これを定量的に見ると、電極設計にかかる工数だけでなく、照査・検印待ちによる「出図待ち（電極待ち）」が年間約14日、出図後の「手戻り」が年間約10件発生しているという実態があります。これらは単なる作業時間のロスではなく、金型製作全体のリードタイムを停滞させる大きな要因となっています。  
+2枚目：解決策（自動化・内製化）の提示
+【ノート案】
+この課題を解決するために、NX-Openを活用した「電極設計の自動化（素人化）」を導入します。高度なCADスキルが必要だったモデリング工程を自動化プログラムに置き換えることで、設計のハードルを極限まで下げ、型工が自ら設計を行える環境を整えます。  
+本施策の核心は、工設の「設計技術」と型工の「加工ノウハウ」の最適な役割分担にあります。AIやプログラムはあくまで初期形状の自動生成を担い、人間（型工）は「干渉の回避」や「削りやすさの微調整」といった、現場にしかできない高度な判断に特化します。  
+自動化後のフローでは、金型設計完了と同時に「即時出図」が可能になります。型工は現場の機械の空き状況や優先順位に合わせて、必要な電極をその場で半自動生成し、即座に製作へ移ることができます。これにより、従来の「出図待ち」や「特定部署経由の停滞」を完全に排除した、現場完結型のスピード感あるプロセスへと変革します。  
+3枚目：期待される効果と方針への整合
+【ノート案】
+最後に、この変革がもたらす効果と会社方針との整合性について説明します。
+「設計の仕事が現場に移るだけで、トータルの時間は変わらないのではないか」という懸念があるかもしれません。しかし、自動化ツールの導入により、作図にかかる「絶対時間」そのものが大幅に短縮されます。さらに、設計と現場の間で発生していた「手戻り」と「出図待ち」という、価値を生まない無駄な時間がゼロになるため、金型費全体の総原価は確実に低減します。  
+工設側では、電極設計に費やしていたリソースが解放されます。この浮いた時間は、CAE解析やDFM（製造性を考慮した設計）など、より高度で製品品質に直結する「設計の本質的業務」に再投資します。
 
-    ' 5枠目注釈
-    Call AddT(sld, stSX + 4 * (STW + STG), STY + STH + 0.03, STW, 0.35, _
-              "★ 金額化できない" & Chr(10) & "本活動の真価", 9.5, True, RGB(30, 58, 95), 2, 1, True)
 
-    ' ─ 変革推進プロセス タイトル ─
-    Call AddT(sld, 0.4, 3.05, 9.2, 0.3, _
-              "実施スケジュールを「変革推進プロセス」として組み立てる", 13, True, RGB(30, 58, 95))
 
-    ' ─ フェーズ5カード ─
-    Dim phMon(4) As String, phTitle(4) As String, phDetail(4) As String
-    Dim phColor(4) As Long
-    phMon(0) = "5月":   phTitle(0) = "ビジョン策定":   phDetail(0) = "推進チーム発足・標準書原案"
-    phMon(1) = "6月":   phTitle(1) = "小規模実証":      phDetail(1) = "危機感共有・賛同者を増やす"
-    phMon(2) = "7月":   phTitle(2) = "早期成果可視化":  phDetail(2) = "抵抗を緩和し標準書最終化"
-    phMon(3) = "8月":   phTitle(3) = "権限委譲":        phDetail(3) = "型工現場の腹落ち・担い手化"
-    phMon(4) = "9月〜": phTitle(4) = "定着・文化化":    phDetail(4) = "本格運用＋外注先展開"
-    phColor(0) = RGB(217, 119, 6): phColor(1) = RGB(200, 16, 46)
-    phColor(2) = RGB(74, 144, 184): phColor(3) = RGB(45, 125, 70): phColor(4) = RGB(30, 58, 95)
 
-    Const PHW As Double = 1.78
-    Const PHG As Double = 0.1
-    Const PHY As Double = 3.45
-    Dim phSX As Double: phSX = stSX
 
-    Dim pi2 As Integer
-    For pi2 = 0 To 4
-        Dim px As Double: px = phSX + pi2 * (PHW + PHG)
-        Call AddR(sld, px, PHY, PHW, 0.42, phColor(pi2))
-        Call AddT(sld, px + 0.05, PHY + 0.03, PHW - 0.1, 0.36, _
-                  phMon(pi2) & "  " & phTitle(pi2), 11, True, RGB(255, 255, 255), 2, 2)
-        Call AddR(sld, px, PHY + 0.42, PHW, 0.95, RGB(248, 250, 252), RGB(203, 213, 224), 0.5)
-        Call AddT(sld, px + 0.08, PHY + 0.45, PHW - 0.16, 0.9, phDetail(pi2), 10.5, False, RGB(31, 41, 55), 2, 2)
-    Next pi2
 
-    ' 締めバー
-    Call AddR(sld, 0.4, 4.92, 9.2, 0.35, RGB(30, 58, 95))
-    Call AddT(sld, 0.5, 4.93, 9.0, 0.33, _
-              "コスト削減は結果。本質は組織能力の構築(巻き込み・標準化・継承)", _
-              12, True, RGB(255, 255, 255), 2, 2, True)
 
-    Call AddFooter(sld, 4)
 
-    ' ─ ノート ─
-    Dim n As String
-    n = "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【話す内容】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "効果は4つの定量指標に加え、5つ目に「組織能力の獲得」を位置づけています。" & Chr(10)
-    n = n & "設計費削減率▲4%・年間効果76万円・工期4.5日短縮・投資回収3.1ヶ月。" & Chr(10)
-    n = n & "初期投資24万円に対して3年間で純利益204万円となります。" & Chr(10) & Chr(10)
-    n = n & "しかし金額化できない5つ目の効果がこの活動の真価です。" & Chr(10)
-    n = n & "標準書・月次改善体制・3者連携体制という「持続装置」が組織に残ります。" & Chr(10)
-    n = n & "暗黙知が14分類の色テーブルとPMIルールという形式知に変換されます。" & Chr(10)
-    n = n & "プレス金型や治具設計への横展開ポテンシャルが生まれます。" & Chr(10) & Chr(10)
-    n = n & "実施スケジュールは変革推進プロセスとして設計しています。" & Chr(10)
-    n = n & "5月ビジョン策定→6月小規模実証→7月早期成果可視化→8月権限委譲→9月以降定着。" & Chr(10)
-    n = n & "コスト削減は結果であり、本質は組織能力の構築です。" & Chr(10) & Chr(10) & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10)
-    n = n & "【YH向け解説(プレゼン前の自己整理用)】" & Chr(10)
-    n = n & "━━━━━━━━━━━━━━━━━━━━━━" & Chr(10) & Chr(10)
-    n = n & "★ 5枠目「組織能力獲得」の位置づけ" & Chr(10)
-    n = n & "  4数値は分かりやすいが、5枠目こそ本活動の真価=技術検証では得られない価値。" & Chr(10)
-    n = n & "  持続装置3つ：標準書5冊・月次MTG体制・3者連携体制" & Chr(10)
-    n = n & "  形式知化2つ：色テーブル14分類・PMI記入ルール" & Chr(10)
-    n = n & "  横展開：プレス金型・治具・設備設計へ" & Chr(10)
-    n = n & "  「金額化できない=安い」ではなく「金額化できない=見えにくいが大きい」と語る" & Chr(10) & Chr(10)
-    n = n & "★ 変革推進5フェーズはKotter変革論の応用" & Chr(10)
-    n = n & "  Kotterの8段階を5ヶ月に圧縮した実装と説明できる" & Chr(10)
-    n = n & "  「経営学のフレームに沿って設計した」と一言入れると説得力が増す" & Chr(10) & Chr(10)
-    n = n & "★ 数字の控えめ性" & Chr(10)
-    n = n & "  76万円は最小見積もり。以下は未計上:" & Chr(10)
-    n = n & "    ・3D/2D不整合手戻り削減(推定10〜20万円)" & Chr(10)
-    n = n & "    ・新規受注分の貢献" & Chr(10)
-    n = n & "    ・浮いた165h×2名がCAE活用で生む付加価値" & Chr(10)
-    n = n & "  「控えめに見ても76万円」というフレームが安全" & Chr(10) & Chr(10)
-    n = n & "★ 質疑対応" & Chr(10)
-    n = n & "  「効果76万は小さい」→ 持続効果+横展開+ナレッジ継承価値を合わせて評価いただきたい" & Chr(10)
-    n = n & "  「9月で本当に定着する?」→ 9月は「定着開始」、本格定着には半年〜1年見込み" & Chr(10)
-    n = n & "  「他工場への展開可能性は?」→ 標準化されているため横展開容易。次年度検討課題" & Chr(10) & Chr(10)
-    n = n & "★ 決め台詞の使い分け(プレゼン全体)" & Chr(10)
-    n = n & "  ・冒頭(S1)：「コストは結果、本質は組織能力の構築」" & Chr(10)
-    n = n & "  ・課題(S2)：「コスト問題に見えて事業継続と技術継承のリスク」" & Chr(10)
-    n = n & "  ・構想(S3)：「色はベテランの判断を組織の言語に翻訳する装置」" & Chr(10)
-    n = n & "  ・締め(S4)：「山電のものづくりを次世代へ繋ぐ仕組みと体制の創出」" & Chr(10) & Chr(10)
-    n = n & "★ プレゼン全体の所要時間目安" & Chr(10)
-    n = n & "  S1:3〜4分 / S2:2〜3分 / S3:3〜4分 / S4:3〜4分 = 合計11〜15分 + 質疑"
-    Call SetNotes(sld, n)
-End Sub
-
-```
