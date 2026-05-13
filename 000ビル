@@ -1,492 +1,175 @@
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  電極設計・製作プロセス改革スライド — VBA生成スクリプト
-'  使用法：PowerPointのVBAエディタ（Alt+F11）に貼り付けて実行
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Option Explicit
-
-' 色定数（RGB値）
-Private Const C_NAVY As Long = 1973855        ' RGB(30, 58, 95)
-Private Const C_BLUE As Long = 12095626       ' RGB(74, 144, 184)
-Private Const C_BLUE_LT As Long = 15787996    ' RGB(220, 231, 241)
-Private Const C_RED As Long = 3018952         ' RGB(200, 16, 46)
-Private Const C_RED_LT As Long = 15130876     ' RGB(252, 234, 237)
-Private Const C_RED_BADGE As Long = 3158482   ' RGB(211, 47, 47)
-Private Const C_AMBER As Long = 1800653       ' RGB(217, 119, 6)
-Private Const C_AMBER_LT As Long = 13233407   ' RGB(254, 243, 199)
-Private Const C_GREEN As Long = 4620845       ' RGB(45, 125, 70)
-Private Const C_GREEN_LT As Long = 14477525   ' RGB(213, 232, 220)
-Private Const C_MUTED As Long = 9128576       ' RGB(100, 116, 139)
-Private Const C_MUTED_LT As Long = 15857913   ' RGB(241, 245, 249)
-Private Const C_TEXT As Long = 3683615        ' RGB(31, 41, 55)
-Private Const C_TEXT_LT As Long = 6515019     ' RGB(75, 86, 99)
-Private Const C_WHITE As Long = 16777215      ' RGB(255, 255, 255)
-Private Const C_CARD_BG As Long = 16579064    ' RGB(248, 250, 252)
-Private Const C_CARD_BG2 As Long = 16249070   ' RGB(238, 242, 247)
-Private Const C_BORDER As Long = 14665163     ' RGB(203, 213, 224)
-Private Const C_BORDER_DK As Long = 12092820  ' RGB(148, 163, 184)
-Private Const C_GOLD_BADGE As Long = 723144   ' RGB(184, 134, 11)
-Private Const C_BLUE_BADGE As Long = 12417538 ' RGB(2, 119, 189)
-
-Private Const FONT_NAME As String = "Yu Gothic"
-
-' ポイント変換（1インチ = 72ポイント）
-Private Function P(ByVal inches As Double) As Single
-    P = inches * 72
-End Function
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  メイン処理
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Sub Generate_ElectrodeProcess_Slides()
-    Dim pres As Presentation
-    Set pres = Presentations.Add(msoTrue)
+Sub CreateElectrodePresentation()
+    Dim pptPres As Presentation
+    Dim pptSlide As Slide
+    Dim pptShape As Shape
+    Dim pptTable As Table
+    Dim i As Integer, j As Integer
     
-    ' スライドサイズを16:9に設定
-    With pres.PageSetup
-        .SlideWidth = P(10)
-        .SlideHeight = P(5.625)
-    End With
+    ' 新しいプレゼンテーションを作成 (16:9サイズ)
+    Set pptPres = Presentations.Add(msoTrue)
+    pptPres.PageSetup.SlideSize = ppSlideSizeOnScreen16x9
     
-    ' 3枚のスライドを生成
-    Call BuildSlide1(pres)
-    Call BuildSlide2(pres)
-    Call BuildSlide3(pres)
+    ' ==========================================
+    ' スライド1: 電極設計プロセスの課題 — 構造的ロス
+    ' ==========================================
+    Set pptSlide = pptPres.Slides.Add(1, ppLayoutTitleOnly)
+    pptSlide.Shapes(1).TextFrame.TextRange.Text = "電極設計プロセスの課題 — 構造的ロス"
+    pptSlide.Shapes(1).TextFrame.TextRange.Font.Size = 32
     
-    MsgBox "スライド生成完了！3枚のスライドを作成しました。", vbInformation
-End Sub
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  ヘルパー関数
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Private Function AddRect(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
-                          fillColor As Long, Optional lineColor As Long = -1, Optional lineWidth As Single = 0.5) As Shape
-    Dim shp As Shape
-    Set shp = sld.Shapes.AddShape(msoShapeRectangle, P(x), P(y), P(w), P(h))
-    With shp
-        .Fill.ForeColor.RGB = fillColor
-        .Fill.Solid
-        If lineColor = -1 Then
-            .Line.Visible = msoFalse
-        Else
-            .Line.ForeColor.RGB = lineColor
-            .Line.Weight = lineWidth
-        End If
-    End With
-    Set AddRect = shp
-End Function
-
-Private Function AddText(sld As Slide, txt As String, x As Double, y As Double, w As Double, h As Double, _
-                         Optional fontSize As Single = 10.5, Optional fontColor As Long = -1, _
-                         Optional bold As Boolean = False, Optional italic As Boolean = False, _
-                         Optional hAlign As Long = 1, Optional vAlign As Long = 5) As Shape
-    Dim shp As Shape
-    Set shp = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, P(x), P(y), P(w), P(h))
-    With shp.TextFrame
-        .TextRange.Text = txt
-        .TextRange.Font.Name = FONT_NAME
-        .TextRange.Font.Size = fontSize
-        If fontColor <> -1 Then .TextRange.Font.Color.RGB = fontColor
-        .TextRange.Font.Bold = bold
-        .TextRange.Font.Italic = italic
-        .TextRange.ParagraphFormat.Alignment = hAlign  ' 1=左, 2=中央, 3=右
-        .VerticalAnchor = vAlign  ' 1=上, 3=中央, 5=下
-        .MarginLeft = 0
-        .MarginRight = 0
-        .MarginTop = 0
-        .MarginBottom = 0
-        .WordWrap = msoTrue
-    End With
-    Set AddText = shp
-End Function
-
-Private Sub AddFooter(sld As Slide, pageNum As Integer)
-    Call AddText(sld, "山電 工作部 工機技術課 工設係", 0.4, 5.32, 5, 0.22, 9, C_MUTED)
-    Call AddText(sld, pageNum & " / 3", 9.2, 5.32, 0.4, 0.22, 9, C_MUTED, , , 3)
-End Sub
-
-Private Sub AddTitleBar(sld As Slide, title As String, Optional subtitle As String = "")
-    Call AddRect(sld, 0, 0, 0.18, 5.625, C_NAVY)
-    Call AddText(sld, title, 0.48, 0.22, 9.2, 0.56, 24, C_NAVY, True)
-    If subtitle <> "" Then
-        Call AddText(sld, subtitle, 0.48, 0.76, 9.2, 0.27, 11, C_TEXT_LT)
-    End If
-End Sub
-
-Private Sub AddSectionLabel(sld As Slide, x As Double, y As Double, w As Double, h As Double, txt As String, bgColor As Long)
-    Call AddRect(sld, x, y, w, h, bgColor)
-    Call AddText(sld, txt, x, y, w, h, 10, C_WHITE, True, , 2, 3)
-End Sub
-
-Private Sub AddKPICard(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
-                       val As String, lbl As String, subTxt As String, cardColor As Long, _
-                       Optional isBig As Boolean = False)
-    Call AddRect(sld, x, y, w, h, C_CARD_BG, cardColor, 1.2)
-    Call AddRect(sld, x, y, w, 0.1, cardColor)
+    ' 前提条件
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 80, 900, 50)
+    pptShape.TextFrame.TextRange.Text = "前提：年間新規金型 3件 ／ 電極 30本/金型（平均） ／ 手戻り率 約10%（3〜4本/金型）"
+    pptShape.TextFrame.TextRange.Font.Size = 18
+    pptShape.TextFrame.TextRange.Font.Bold = msoTrue
     
-    If isBig Then
-        Call AddRect(sld, x, y, w, 0.14, cardColor)
-        Call AddText(sld, val, x, y + 0.14, w, 0.5, 30, cardColor, True, , 2, 3)
-        Call AddText(sld, lbl, x + 0.07, y + 0.66, w - 0.14, 0.25, 11, C_TEXT, True, , 2)
-        Call AddText(sld, subTxt, x + 0.07, y + 0.9, w - 0.14, 0.22, 9, C_MUTED, , , 2)
-    Else
-        Call AddText(sld, val, x, y + 0.14, w, 0.5, 26, cardColor, True, , 2, 3)
-        Call AddText(sld, lbl, x + 0.07, y + 0.66, w - 0.14, 0.25, 10.5, C_TEXT, True, , 2)
-        Call AddText(sld, subTxt, x + 0.07, y + 0.9, w - 0.14, 0.22, 9, C_MUTED, , , 2)
-    End If
-End Sub
-
-Private Sub AddTypeBadge(sld As Slide, x As Double, y As Double, badgeType As String)
-    Dim badgeColor As Long
-    Select Case badgeType
-        Case "直接": badgeColor = C_RED_BADGE
-        Case "波及": badgeColor = C_BLUE_BADGE
-        Case "典型": badgeColor = C_GOLD_BADGE
-    End Select
-    Call AddRect(sld, x, y, 0.42, 0.2, badgeColor)
-    Call AddText(sld, badgeType, x, y, 0.42, 0.2, 8.5, C_WHITE, True, , 2, 3)
-End Sub
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  Slide 1: 課題の構造
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Private Sub BuildSlide1(pres As Presentation)
-    Dim sld As Slide
-    Set sld = pres.Slides.Add(1, ppLayoutBlank)
-    sld.FollowMasterBackground = msoFalse
-    sld.Background.Fill.ForeColor.RGB = C_WHITE
+    ' なぜ業務が分かれるのか (プレス vs モールド)
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 130, 420, 150)
+    pptShape.TextFrame.TextRange.Text = "【前提条件：なぜ業務が分かれるのか】" & vbCrLf & _
+        "■ プレス電極" & vbCrLf & _
+        "・主に2次元形状が主体" & vbCrLf & _
+        "・現場CADスキルで対応可能（モデリングのハードルが低い）" & vbCrLf & _
+        "✓ 型工が設計（現状問題なし）" & vbCrLf & vbCrLf & _
+        "■ モールド電極" & vbCrLf & _
+        "・金型部品が複雑な3次元曲面を持つ" & vbCrLf & _
+        "・高度な3Dモデリングが必要（現場CADでは困難）" & vbCrLf & _
+        "⚠ 工設が担当（課題の起点）" & vbCrLf & _
+        "⇒ 形状の複雑さ（2D→3D）が業務分担の壁を作っている"
+    pptShape.TextFrame.TextRange.Font.Size = 16
     
-    Call AddTitleBar(sld, "電極設計プロセスの課題 — 工設担当がもたらす構造的ロス", _
-                     "前提：年間新規金型 3件 ／ 電極 30本/金型（平均）／ 手戻り率 約10%（3〜4本/金型）")
+    ' 現行ワークフロー ボトルネック
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 480, 130, 450, 200)
+    pptShape.TextFrame.TextRange.Text = "【現行ワークフロー ボトルネック】" & vbCrLf & _
+        "① 金型設計完了" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "② 電極設計（工設） ⚠ 設計工数 20h/金型（30本 × 40分）" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "③ 照査・検印 / 出図 ⚠ 型工は出図待ちで着手不可" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "④ 型工確認 → 差し戻し ⚠ 手戻り率 約10%（3〜4本/金型）" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "⑤ 電極製作開始"
+    pptShape.TextFrame.TextRange.Font.Size = 16
     
-    Dim contY As Double: contY = 1.1
-    Dim LX As Double: LX = 0.38
-    Dim LW As Double: LW = 2.72
+    ' 課題の定量化
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 360, 900, 100)
+    pptShape.TextFrame.TextRange.Text = "【課題の定量化（年間3金型）】" & vbCrLf & _
+        "・工設設計工数: 60h （20h/金型 × 3件）" & vbCrLf & _
+        "・手戻り再設計: 10件 （3.5件/金型 × 3件）" & vbCrLf & _
+        "・型工の出図待ち: 7.5日 （2.5日/金型 × 3件）" & vbCrLf & _
+        "・直接コストロス: 40万円 （60h × 6,650円/h）"
+    pptShape.TextFrame.TextRange.Font.Size = 18
     
-    ' 左列：前提条件
-    Call AddSectionLabel(sld, LX, contY, LW, 0.3, "前提条件：なぜ業務が分かれるのか", C_NAVY)
+    ' ==========================================
+    ' スライド2: 解決策 — NX-Open自動化による電極設計の業務移管
+    ' ==========================================
+    Set pptSlide = pptPres.Slides.Add(2, ppLayoutTitleOnly)
+    pptSlide.Shapes(1).TextFrame.TextRange.Text = "解決策 — NX-Open自動化による電極設計の業務移管"
+    pptSlide.Shapes(1).TextFrame.TextRange.Font.Size = 32
     
-    ' プレス電極ブロック
-    Call AddRect(sld, LX, contY + 0.35, LW, 1.25, C_BLUE_LT, C_BLUE, 0.5)
-    Call AddRect(sld, LX, contY + 0.35, LW, 0.28, C_BLUE)
-    Call AddText(sld, "プレス電極", LX, contY + 0.35, LW, 0.28, 11, C_WHITE, True, , 2)
-    Call AddText(sld, "主に2次元形状が主体", LX + 0.1, contY + 0.67, LW - 0.2, 0.28, 11, C_TEXT)
-    Call AddText(sld, "現場CADスキルで対応可能" & vbCrLf & "モデリングのハードルが低い", _
-                 LX + 0.1, contY + 0.97, LW - 0.2, 0.37, 10, C_TEXT_LT)
-    Call AddRect(sld, LX + 0.1, contY + 1.38, LW - 0.2, 0.18, C_GREEN)
-    Call AddText(sld, "✓ 型工が設計（現状問題なし）", LX + 0.1, contY + 1.38, LW - 0.2, 0.18, 9, C_WHITE, True, , 2)
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 80, 900, 30)
+    pptShape.TextFrame.TextRange.Text = "自動化でモデリングのハードルを下げ、型工の加工ノウハウを設計に組み込む"
+    pptShape.TextFrame.TextRange.Font.Size = 18
+    pptShape.TextFrame.TextRange.Font.Bold = msoTrue
     
-    ' モールド電極ブロック
-    Call AddRect(sld, LX, contY + 1.68, LW, 1.35, C_AMBER_LT, C_AMBER, 0.5)
-    Call AddRect(sld, LX, contY + 1.68, LW, 0.28, C_AMBER)
-    Call AddText(sld, "モールド電極", LX, contY + 1.68, LW, 0.28, 11, C_WHITE, True, , 2)
-    Call AddText(sld, "複雑な3次元曲面を持つ", LX + 0.1, contY + 2, LW - 0.2, 0.28, 11, C_TEXT)
-    Call AddText(sld, "高度な3Dモデリングが必要" & vbCrLf & "現場CADスキルでは対応困難", _
-                 LX + 0.1, contY + 2.3, LW - 0.2, 0.37, 10, C_TEXT_LT)
-    Call AddRect(sld, LX + 0.1, contY + 2.72, LW - 0.2, 0.18, C_RED)
-    Call AddText(sld, "⚠ 工設が担当（課題の起点）", LX + 0.1, contY + 2.72, LW - 0.2, 0.18, 9, C_WHITE, True, , 2)
+    ' フロー比較
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 130, 420, 250)
+    pptShape.TextFrame.TextRange.Text = "【BEFORE（現行フロー）】" & vbCrLf & _
+        "① 金型設計完了" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "② 電極設計（工設）" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "③ 照査・検印（待ち）" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "④ 型工確認・差し戻し" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "⑤ 再設計（工設）" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "⑥ 電極製作開始" & vbCrLf & _
+        "⇒ 設計完了〜製作開始：3〜6日 / 工設消費：20h + 手戻り"
+    pptShape.TextFrame.TextRange.Font.Size = 16
     
-    ' キャプション
-    Call AddRect(sld, LX, contY + 3.02, LW, 0.55, C_CARD_BG, C_NAVY, 0.5)
-    Call AddText(sld, "形状の複雑さ（2D→3D）が" & vbCrLf & "業務分担の壁を作っている", _
-                 LX + 0.1, contY + 3.04, LW - 0.2, 0.51, 10.5, C_NAVY, True, , 2)
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 480, 130, 450, 200)
+    pptShape.TextFrame.TextRange.Text = "【AFTER（自動化・移管後）】" & vbCrLf & _
+        "① 金型設計完了" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "② 即時出図（金型のみ）" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "③ 型工：自動生成＋微調整" & vbCrLf & _
+        "↓" & vbCrLf & _
+        "④ 即座に電極製作開始" & vbCrLf & vbCrLf & _
+        "【削減効果（vs 現行）】" & vbCrLf & _
+        "✓ 工設工数 20h → 0h" & vbCrLf & _
+        "✓ 手戻り 3-4件 → 0件" & vbCrLf & _
+        "✓ 出図待ち 2～3日 → 0日"
+    pptShape.TextFrame.TextRange.Font.Size = 16
     
-    ' 中央列：現行フロー
-    Dim CX As Double: CX = 3.22
-    Dim CW As Double: CW = 3.42
-    Call AddSectionLabel(sld, CX, contY, CW, 0.3, "現行ワークフロー — ボトルネックの構造", C_MUTED)
+    ' NX-Open自動化の構造
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 360, 900, 150)
+    pptShape.TextFrame.TextRange.Text = "【NX-Open自動化の構造：型工の加工ノウハウが設計を決める — 現場完結型プロセスへ】" & vbCrLf & _
+        "■ 自動化がカバーする領域：電極形状の自動生成 / 逃げ形状・クリアランスの自動付加 / 電極設計基準" & vbCrLf & _
+        "■ 型工が担う役割：加工性の微調整 / 干渉回避・段取りのしやすさ最適化 / 製作順序の決定" & vbCrLf & _
+        "■ 工設の新しい役割：NX-Openシステムの保守・改善 / 電極設計基準書の作成・改訂（標準化）"
+    pptShape.TextFrame.TextRange.Font.Size = 16
     
-    Dim cy As Double: cy = contY + 0.36
-    Dim SH As Double: SH = 0.52
-    Dim AH As Double: AH = 0.22
+    ' ==========================================
+    ' スライド3: 効果と工設方針との整合
+    ' ==========================================
+    Set pptSlide = pptPres.Slides.Add(3, ppLayoutTitleOnly)
+    pptSlide.Shapes(1).TextFrame.TextRange.Text = "効果と工設方針との整合 / 削減効果の内訳"
+    pptSlide.Shapes(1).TextFrame.TextRange.Font.Size = 32
     
-    ' ステップ1
-    Call AddRect(sld, CX, cy, CW, SH, C_BLUE_LT, C_NAVY, 0.75)
-    Call AddText(sld, "① 金型設計完了", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_NAVY, True, , 1, 3)
-    cy = cy + SH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 80, 900, 30)
+    pptShape.TextFrame.TextRange.Text = "年間3件の新規金型（1金型600万円）での試算"
+    pptShape.TextFrame.TextRange.Font.Size = 18
     
-    ' ステップ2（問題）
-    Call AddRect(sld, CX, cy, CW, SH, C_RED_LT, C_RED, 0.75)
-    Call AddText(sld, "② 電極設計（工設）", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_RED, True, , 1, 3)
-    cy = cy + SH
-    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_RED, 0.5)
-    Call AddText(sld, "⚠  設計工数 20h/金型（30本 × 40分）", CX + 0.1, cy, CW - 0.2, AH, 9, C_RED, , True, 1, 3)
-    cy = cy + AH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
+    ' 表の作成 (5行3列)
+    Set pptShape = pptSlide.Shapes.AddTable(5, 3, 30, 120, 900, 150)
+    Set pptTable = pptShape.Table
     
-    ' ステップ3（問題）
-    Call AddRect(sld, CX, cy, CW, SH, C_AMBER_LT, C_AMBER, 0.75)
-    Call AddText(sld, "③ 照査・検印", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_AMBER, True, , 1, 3)
-    cy = cy + SH
-    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_AMBER, 0.5)
-    Call AddText(sld, "⚠  型工は出図待ちで製作に着手できない", CX + 0.1, cy, CW - 0.2, AH, 9, C_AMBER, , True, 1, 3)
-    cy = cy + AH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
+    ' 表のヘッダー
+    pptTable.Cell(1, 1).Shape.TextFrame.TextRange.Text = "項目"
+    pptTable.Cell(1, 2).Shape.TextFrame.TextRange.Text = "工数変化"
+    pptTable.Cell(1, 3).Shape.TextFrame.TextRange.Text = "金額換算"
     
-    ' ステップ4（問題）
-    Call AddRect(sld, CX, cy, CW, SH, C_RED_LT, C_RED, 0.75)
-    Call AddText(sld, "④ 型工確認 → 差し戻し", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_RED, True, , 1, 3)
-    cy = cy + SH
-    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_RED, 0.5)
-    Call AddText(sld, "⚠  手戻り率 約10%（3〜4本/金型）", CX + 0.1, cy, CW - 0.2, AH, 9, C_RED, , True, 1, 3)
-    cy = cy + AH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
+    ' 表のデータ
+    pptTable.Cell(2, 1).Shape.TextFrame.TextRange.Text = "工設 電極設計（移管）"
+    pptTable.Cell(2, 2).Shape.TextFrame.TextRange.Text = "▲ 60 h/年"
+    pptTable.Cell(2, 3).Shape.TextFrame.TextRange.Text = "▲ 40万円"
     
-    ' ステップ5
-    Call AddRect(sld, CX, cy, CW, SH, C_GREEN_LT, C_GREEN, 0.75)
-    Call AddText(sld, "⑤ 電極製作開始", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_GREEN, True, , 1, 3)
+    pptTable.Cell(3, 1).Shape.TextFrame.TextRange.Text = "工設 手戻り工数（根絶）"
+    pptTable.Cell(3, 2).Shape.TextFrame.TextRange.Text = "▲ 10 h/年"
+    pptTable.Cell(3, 3).Shape.TextFrame.TextRange.Text = "▲ 6.7 万円"
     
-    ' 右列：定量インパクト
-    Dim RX As Double: RX = 6.78
-    Dim RW As Double: RW = 2.82
-    Call AddSectionLabel(sld, RX, contY, RW, 0.3, "課題の定量インパクト（年間3金型）", C_RED)
+    pptTable.Cell(4, 1).Shape.TextFrame.TextRange.Text = "型工 電極設計（増加）"
+    pptTable.Cell(4, 2).Shape.TextFrame.TextRange.Text = "＋ 22.5 h/年"
+    pptTable.Cell(4, 3).Shape.TextFrame.TextRange.Text = "＋ 11.3 万円"
     
-    Dim ky As Double: ky = contY + 0.36
-    Dim KH As Double: KH = 0.83
-    Dim KG As Double: KG = 0.09
+    pptTable.Cell(5, 1).Shape.TextFrame.TextRange.Text = "正味削減効果（工設▲ − 型工＋）"
+    pptTable.Cell(5, 2).Shape.TextFrame.TextRange.Text = "▲ 47.5 h/年"
+    pptTable.Cell(5, 3).Shape.TextFrame.TextRange.Text = "▲ 35.4 万円/年"
     
-    ' KPIカード4枚
-    Call AddKPICard(sld, RX, ky, RW, KH, "60h", "工設設計工数（年間）", "20h/金型 × 3件", C_RED)
-    ky = ky + KH + KG
-    Call AddKPICard(sld, RX, ky, RW, KH, "≈10件", "手戻り再設計件数（年間）", "3.5件/金型 × 3件", C_AMBER)
-    ky = ky + KH + KG
-    Call AddKPICard(sld, RX, ky, RW, KH, "7.5日", "型工の出図待ち（年間）", "2.5日/金型 × 3件", C_NAVY)
-    ky = ky + KH + KG
-    Call AddKPICard(sld, RX, ky, RW, KH, "≈40万円", "直接コストロス（年間）", "60h × 6,650円/h", C_RED)
-    
-    Call AddFooter(sld, 1)
-End Sub
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  Slide 2: 解決策
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Private Sub BuildSlide2(pres As Presentation)
-    Dim sld As Slide
-    Set sld = pres.Slides.Add(2, ppLayoutBlank)
-    sld.FollowMasterBackground = msoFalse
-    sld.Background.Fill.ForeColor.RGB = C_WHITE
-    
-    Call AddTitleBar(sld, "解決策 — NX-Open半自動化による電極設計の業務移管", _
-                     "自動化でモデリングのハードルを下げ、型工の加工ノウハウを設計に組み込む")
-    
-    Dim contY As Double: contY = 1.08
-    
-    ' 左列：BEFORE
-    Dim LX As Double: LX = 0.38
-    Dim LW As Double: LW = 2.6
-    Call AddSectionLabel(sld, LX, contY, LW, 0.28, "BEFORE（現行フロー）", C_MUTED)
-    
-    Dim by As Double: by = contY + 0.34
-    Dim BSH As Double: BSH = 0.52
-    Dim i As Integer
-    
-    For i = 1 To 6
-        Dim stepColor As Long, stepLtColor As Long, stepFlag As Boolean
-        Dim stepText As String
-        
-        Select Case i
-            Case 1: stepText = "① 金型設計完了": stepColor = C_NAVY: stepLtColor = C_BLUE_LT: stepFlag = False
-            Case 2: stepText = "② 電極設計（工設）": stepColor = C_RED: stepLtColor = C_RED_LT: stepFlag = True
-            Case 3: stepText = "③ 照査・検印（待ち）": stepColor = C_AMBER: stepLtColor = C_AMBER_LT: stepFlag = True
-            Case 4: stepText = "④ 型工確認・差し戻し": stepColor = C_RED: stepLtColor = C_RED_LT: stepFlag = True
-            Case 5: stepText = "⑤ 再設計（工設）": stepColor = C_RED: stepLtColor = C_RED_LT: stepFlag = True
-            Case 6: stepText = "⑥ 電極製作開始": stepColor = C_MUTED: stepLtColor = C_MUTED_LT: stepFlag = False
-        End Select
-        
-        Call AddRect(sld, LX, by, LW, BSH, stepLtColor, stepColor, 0.6)
-        If stepFlag Then Call AddRect(sld, LX, by, 0.07, BSH, stepColor)
-        Call AddText(sld, stepText, LX + IIf(stepFlag, 0.13, 0.1), by, LW - 0.2, BSH, 10.5, stepColor, stepFlag, , 1, 3)
-        by = by + BSH
-        If i < 6 Then
-            Call AddText(sld, "↓", LX, by, LW, 0.07, 8, C_BORDER_DK, , , 2)
-            by = by + 0.07
-        End If
+    ' 表のフォントサイズ調整
+    For i = 1 To 5
+        For j = 1 To 3
+            pptTable.Cell(i, j).Shape.TextFrame.TextRange.Font.Size = 14
+        Next j
     Next i
     
-    Call AddRect(sld, LX, by + 0.05, LW, 0.45, C_RED_LT, C_RED, 0.5)
-    Call AddText(sld, "設計完了〜製作開始：3〜6日" & vbCrLf & "工設消費：20h + 手戻り", _
-                 LX + 0.08, by + 0.06, LW - 0.16, 0.43, 9.5, C_RED, True, , 2)
+    ' 補足テキスト
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 280, 900, 50)
+    pptShape.TextFrame.TextRange.Text = "金型費用比削減率（一型当たり）：11.8万円 ÷ 600万円 = ▲ 2.0 %" & vbCrLf & _
+                                        "* 工数単価：工設 6,650円/h ／ 型工 5,000円/h（推定）"
+    pptShape.TextFrame.TextRange.Font.Size = 14
     
-    ' 中央列：半自動化の構造
-    Dim CX As Double: CX = 3.1
-    Dim CW As Double: CW = 3.82
-    Call AddSectionLabel(sld, CX, contY, CW, 0.28, "NX-Open半自動化の構造", C_NAVY)
+    ' 工設の方針体系との整合
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 350, 900, 150)
+    pptShape.TextFrame.TextRange.Text = "【工設の方針体系との整合 — 提案のメリット】" & vbCrLf & _
+        "・定型作業のシステム化・自動化：NX-Openによる自動化で電極形状を自動生成" & vbCrLf & _
+        "・コスト追及・ペーパーレス化：工設60h回収・手戻り根絶による再出図なし" & vbCrLf & _
+        "・ナレッジ継承＋基準類見直し：設計ノウハウ → 電極設計基準書・自動化仕様書として形式知化" & vbCrLf & _
+        "・行動指針「ささえる」「つながる」：型工主体で工設がシステムで支援する体制" & vbCrLf & _
+        "⇒ 工設の解放枠：+高度設計へ (CAE・構造設計に注力)"
+    pptShape.TextFrame.TextRange.Font.Size = 16
     
-    ' 自動化ボックス
-    Call AddRect(sld, CX, contY + 0.34, CW, 1.2, C_BLUE_LT, C_NAVY, 0.75)
-    Call AddRect(sld, CX, contY + 0.34, CW, 0.26, C_NAVY)
-    Call AddText(sld, "自動化がカバーする領域", CX, contY + 0.34, CW, 0.26, 10.5, C_WHITE, True, , 2)
-    Call AddText(sld, "● 電極形状の自動生成", CX + 0.15, contY + 0.65, CW - 0.3, 0.25, 10, C_NAVY)
-    Call AddText(sld, "● 逃げ形状・クリアランスの自動付加", CX + 0.15, contY + 0.92, CW - 0.3, 0.25, 10, C_NAVY)
-    Call AddText(sld, "● エッジ処理・コーナーR処理", CX + 0.15, contY + 1.19, CW - 0.3, 0.25, 10, C_NAVY)
-    
-    ' 型工ボックス
-    Call AddRect(sld, CX, contY + 1.62, CW, 1.2, C_GREEN_LT, C_GREEN, 0.75)
-    Call AddRect(sld, CX, contY + 1.62, CW, 0.26, C_GREEN)
-    Call AddText(sld, "型工が担う役割（加工ノウハウを発揮）", CX, contY + 1.62, CW, 0.26, 10.5, C_WHITE, True, , 2)
-    Call AddText(sld, "● 加工性の微調整（削れる・削れない判断）", CX + 0.15, contY + 1.93, CW - 0.3, 0.25, 10, C_GREEN)
-    Call AddText(sld, "● 干渉回避・段取りのしやすさ最適化", CX + 0.15, contY + 2.2, CW - 0.3, 0.25, 10, C_GREEN)
-    Call AddText(sld, "● 優先順位に応じた製作順序の決定", CX + 0.15, contY + 2.47, CW - 0.3, 0.25, 10, C_GREEN)
-    
-    ' 工設ボックス
-    Call AddRect(sld, CX, contY + 2.9, CW, 0.95, C_BLUE_LT, C_BLUE, 0.75)
-    Call AddRect(sld, CX, contY + 2.9, CW, 0.26, C_BLUE)
-    Call AddText(sld, "工設の新しい役割（仕組みで支える）", CX, contY + 2.9, CW, 0.26, 10.5, C_WHITE, True, , 2)
-    Call AddText(sld, "● NX-Openシステムの保守・改善", CX + 0.15, contY + 3.21, CW - 0.3, 0.25, 10, C_BLUE)
-    Call AddText(sld, "● 電極設計基準書の作成・改訂（標準化）", CX + 0.15, contY + 3.48, CW - 0.3, 0.25, 10, C_BLUE)
-    
-    ' キーメッセージバー
-    Call AddRect(sld, CX, contY + 3.93, CW, 0.42, C_NAVY)
-    Call AddText(sld, "型工の加工ノウハウが設計を決める  —  現場完結型プロセスへ", _
-                 CX, contY + 3.93, CW, 0.42, 9.5, C_WHITE, True, True, 2)
-    
-    ' 右列：AFTER
-    Dim RX As Double: RX = 7.04
-    Dim RW As Double: RW = 2.56
-    Call AddSectionLabel(sld, RX, contY, RW, 0.28, "AFTER（自動化・移管後）", C_GREEN)
-    
-    Dim ay As Double: ay = contY + 0.34
-    Dim ASH As Double: ASH = 0.6
-    
-    For i = 1 To 4
-        Select Case i
-            Case 1: stepText = "① 金型設計完了": stepColor = C_NAVY: stepLtColor = C_BLUE_LT
-            Case 2: stepText = "② 即時出図（金型のみ）": stepColor = C_NAVY: stepLtColor = C_BLUE_LT
-            Case 3: stepText = "③ 型工：自動生成＋微調整": stepColor = C_GREEN: stepLtColor = C_GREEN_LT
-            Case 4: stepText = "④ 即座に電極製作開始": stepColor = C_GREEN: stepLtColor = C_GREEN_LT
-        End Select
-        
-        Call AddRect(sld, RX, ay, RW, ASH, stepLtColor, stepColor, 0.75)
-        Call AddText(sld, stepText, RX + 0.12, ay, RW - 0.24, ASH, 11, stepColor, True, , 1, 3)
-        ay = ay + ASH
-        If i < 4 Then
-            Call AddText(sld, "↓", RX, ay, RW, 0.09, 9, stepColor, , , 2)
-            ay = ay + 0.09
-        End If
-    Next i
-    
-    ' 削減効果サマリー
-    Call AddRect(sld, RX, ay + 0.1, RW, 1.35, C_GREEN_LT, C_GREEN, 0.75)
-    Call AddRect(sld, RX, ay + 0.1, RW, 0.26, C_GREEN)
-    Call AddText(sld, "削減効果（vs 現行）", RX, ay + 0.1, RW, 0.26, 10, C_WHITE, True, , 2)
-    Call AddText(sld, "✓  工設工数 20h → 0h", RX + 0.12, ay + 0.4, RW - 0.24, 0.24, 10, C_GREEN, True)
-    Call AddText(sld, "✓  手戻り 3-4件 → 0件", RX + 0.12, ay + 0.65, RW - 0.24, 0.24, 10, C_GREEN, True)
-    Call AddText(sld, "✓  出図待ち 2〜3日 → 0日", RX + 0.12, ay + 0.9, RW - 0.24, 0.24, 10, C_GREEN, True)
-    Call AddText(sld, "✓  設計〜製作：1〜1.5日", RX + 0.12, ay + 1.15, RW - 0.24, 0.24, 10, C_GREEN)
-    
-    Call AddFooter(sld, 2)
-End Sub
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  Slide 3: 定量効果と方針整合
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Private Sub BuildSlide3(pres As Presentation)
-    Dim sld As Slide
-    Set sld = pres.Slides.Add(3, ppLayoutBlank)
-    sld.FollowMasterBackground = msoFalse
-    sld.Background.Fill.ForeColor.RGB = C_WHITE
-    
-    Call AddTitleBar(sld, "定量効果と工設の方針体系との整合", _
-                     "年間3金型・1金型600万円 試算 ／ 工設▲60h・型工＋22.5h で 金型費比 ▲2.0%")
-    
-    ' KPI 5枚
-    Dim KW As Double: KW = 1.78
-    Dim KH As Double: KH = 1.22
-    Dim KGP As Double: KGP = 0.1
-    Dim kStartX As Double: kStartX = (10 - (KW * 5 + KGP * 4)) / 2
-    Dim i As Integer
-    
-    For i = 0 To 4
-        Dim kx As Double: kx = kStartX + i * (KW + KGP)
-        Select Case i
-            Case 0: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲2.0%", "金型費比削減", "1金型600万円基準", C_RED, True)
-            Case 1: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲36万円", "年間正味削減", "工設▲47 − 型工＋11", C_AMBER)
-            Case 2: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲60h", "工設工数削減", "型工へ +22.5h移管", C_BLUE)
-            Case 3: Call AddKPICard(sld, kx, 1.08, KW, KH, "▲7.5日", "型工停滞解消", "出図待ち年間合計", C_NAVY)
-            Case 4: Call AddKPICard(sld, kx, 1.08, KW, KH, "0件", "手戻りゼロ化", "現行 約10件/年", C_GREEN)
-        End Select
-    Next i
-    
-    ' 削減効果の内訳（左下）
-    Dim breakX As Double: breakX = 0.38
-    Dim breakW As Double: breakW = 4.6
-    Dim breakStartY As Double: breakStartY = 2.42
-    
-    ' ヘッダ
-    Call AddRect(sld, breakX, breakStartY, breakW, 0.28, C_RED)
-    Call AddText(sld, "削減効果の内訳 — 根拠と計算（年間3金型・1金型600万円）", _
-                 breakX, breakStartY, breakW, 0.28, 10, C_WHITE, True, , 2)
-    
-    ' テーブルヘッダ
-    Dim ty As Double: ty = breakStartY + 0.32
-    Call AddRect(sld, breakX, ty, breakW, 0.24, C_CARD_BG2, C_BORDER, 0.5)
-    Call AddText(sld, "項目", breakX + 0.1, ty, 2.3, 0.24, 9.5, C_NAVY, True)
-    Call AddText(sld, "工数変化", breakX + 2.4, ty, 0.95, 0.24, 9.5, C_NAVY, True, , 2)
-    Call AddText(sld, "金額換算", breakX + 3.35, ty, 1.25, 0.24, 9.5, C_NAVY, True, , 2)
-    
-    ' データ行
-    ty = ty + 0.24
-    Dim rowH As Double: rowH = 0.27
-    Dim rowData(1 To 3, 1 To 5) As Variant
-    rowData(1, 1) = C_RED: rowData(1, 2) = "工設 電極設計（移管）": rowData(1, 3) = "▲ 60 h/年": rowData(1, 4) = "▲ 40.0 万円": rowData(1, 5) = C_RED
-    rowData(2, 1) = C_RED: rowData(2, 2) = "工設 手戻り工数（根絶）": rowData(2, 3) = "▲ 10 h/年": rowData(2, 4) = "▲ 6.7 万円": rowData(2, 5) = C_RED
-    rowData(3, 1) = C_AMBER: rowData(3, 2) = "型工 電極設計（増加）": rowData(3, 3) = "＋ 22.5 h/年": rowData(3, 4) = "＋ 11.3 万円": rowData(3, 5) = C_AMBER
-    
-    For i = 1 To 3
-        Call AddRect(sld, breakX, ty, breakW, rowH, IIf(i Mod 2 = 0, C_CARD_BG, C_WHITE), C_BORDER, 0.3)
-        Call AddRect(sld, breakX, ty, 0.05, rowH, rowData(i, 1))
-        Call AddText(sld, rowData(i, 2), breakX + 0.13, ty, 2.27, rowH, 10, C_TEXT)
-        Call AddText(sld, rowData(i, 3), breakX + 2.4, ty, 0.95, rowH, 10, rowData(i, 1), True, , 2)
-        Call AddText(sld, rowData(i, 4), breakX + 3.35, ty, 1.25, rowH, 10.5, rowData(i, 5), True, , 2)
-        ty = ty + rowH
-    Next i
-    
-    ' 小計行
-    Call AddRect(sld, breakX, ty, breakW, 0.32, C_NAVY)
-    Call AddText(sld, "正味削減効果（工設▲ − 型工＋）", breakX + 0.13, ty, 2.27, 0.32, 10, C_WHITE, True)
-    Call AddText(sld, "▲ 47.5 h/年", breakX + 2.4, ty, 0.95, 0.32, 10, C_WHITE, True, , 2)
-    Call AddText(sld, "▲ 36 万円/年", breakX + 3.35, ty, 1.25, 0.32, 11.5, C_WHITE, True, , 2)
-    ty = ty + 0.32
-    
-    ' 結果バー
-    ty = ty + 0.06
-    Call AddRect(sld, breakX, ty, breakW, 0.46, C_RED_LT, C_RED, 1.5)
-    Call AddText(sld, "金型費比削減率： 36万円 ÷ 1,800万円（600万円 × 3件）= ▲ 2.0 %", _
-                 breakX + 0.1, ty, breakW - 0.2, 0.46, 10.5, C_TEXT, , , 2, 3)
-    ty = ty + 0.46
-    
-    ' 単価注記
-    Call AddText(sld, "* 工数単価：工設 6,650円/h ／ 型工 5,000円/h（推定）", _
-                 breakX + 0.1, ty + 0.04, breakW - 0.2, 0.2, 8.5, C_MUTED, , True)
-    
-    ' 方針整合（右下）
-    Dim polX As Double: polX = 5.07
-    Dim polW As Double: polW = 4.55
-    
-    Call AddRect(sld, polX, breakStartY, polW, 0.28, C_GREEN)
-    Call AddText(sld, "工設の方針体系との整合 — 提案のメリット", polX, breakStartY, polW, 0.28, 10, C_WHITE, True, , 2)
-    
-    Dim py As Double: py = breakStartY + 0.34
-    Dim PRH As Double: PRH = 0.58
-    Dim meritData(1 To 4, 1 To 3) As Variant
-    meritData(1, 1) = "直接": meritData(1, 2) = "NX-Open半自動化で電極形状を自動生成": meritData(1, 3) = "定型作業のシステム化・自動化"
-    meritData(2, 1) = "直接": meritData(2, 2) = "工設60h回収・手戻り根絶 ≈ 36万円/年": meritData(2, 3) = "ペーパーレス化・コスト追及"
-    meritData(3, 1) = "典型": meritData(3, 2) = "設計ノウハウ → 電極設計基準書・自動化仕様書として形式知化": meritData(3, 3) = "ナレッジ継承＋基準類見直し"
-    meritData(4, 1) = "典型": meritData(4, 2) = "型工主体で工設がシステムで支援する体制": meritData(4, 3) = "行動指針「ささえる」「つながる」"
-    
-    For i = 1 To 4
-        Call AddRect(sld, polX, py, polW, PRH, IIf(i Mod 2 = 0, C_WHITE, C_CARD_BG), C_BORDER, 0.5)
-        Call AddTypeBadge(sld, polX + 0.1, py + 0.05, meritData(i, 1))
-        Call AddText(sld, meritData(i, 2), polX + 0.6, py + 0.04, polW - 0.7, 0.26, 10, C_TEXT, True)
-        Call AddText(sld, "→ " & meritData(i, 3), polX + 0.6, py + 0.3, polW - 0.7, 0.24, 9.5, C_GREEN, , True)
-        py = py + PRH + 0.05
-    Next i
-    
-    Call AddFooter(sld, 3)
+    MsgBox "スライドの生成が完了しました。", vbInformation
 End Sub
