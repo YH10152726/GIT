@@ -1,175 +1,325 @@
-Sub CreateElectrodePresentation()
+Sub CreateRichElectrodePresentation()
     Dim pptPres As Presentation
     Dim pptSlide As Slide
     Dim pptShape As Shape
     Dim pptTable As Table
     Dim i As Integer, j As Integer
+    Dim footerText As String
     
-    ' 新しいプレゼンテーションを作成 (16:9サイズ)
+    ' --- カラー定義 ---
+    Dim colBlue As Long, colRed As Long, colGreen As Long, colGray As Long
+    Dim colDarkBlue As Long, colOrange As Long, colWhite As Long, colBlack As Long
+    colBlue = RGB(220, 235, 245)      ' 薄い青
+    colRed = RGB(250, 220, 220)       ' 薄い赤
+    colGreen = RGB(225, 245, 225)     ' 薄い緑
+    colGray = RGB(242, 242, 242)      ' 薄いグレー
+    colDarkBlue = RGB(0, 112, 192)    ' 濃い青（ヘッダー用）
+    colOrange = RGB(255, 102, 0)      ' オレンジ（警告・強調用）
+    colWhite = RGB(255, 255, 255)
+    colBlack = RGB(0, 0, 0)
+    
+    ' 新しいプレゼンテーションを作成 (16:9サイズ: 幅960 x 高さ540)
     Set pptPres = Presentations.Add(msoTrue)
     pptPres.PageSetup.SlideSize = ppSlideSizeOnScreen16x9
+    
+    footerText = "山電 工作部 工機技術課 工設係"
     
     ' ==========================================
     ' スライド1: 電極設計プロセスの課題 — 構造的ロス
     ' ==========================================
-    Set pptSlide = pptPres.Slides.Add(1, ppLayoutTitleOnly)
-    pptSlide.Shapes(1).TextFrame.TextRange.Text = "電極設計プロセスの課題 — 構造的ロス"
-    pptSlide.Shapes(1).TextFrame.TextRange.Font.Size = 32
+    Set pptSlide = pptPres.Slides.Add(1, ppLayoutBlank)
+    
+    ' タイトル
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 10, 900, 50)
+    With pptShape.TextFrame.TextRange
+        .Text = "電極設計プロセスの課題 — 構造的ロス"
+        .Font.Size = 28
+        .Font.Bold = msoTrue
+        .Font.Color.RGB = colDarkBlue
+    End With
     
     ' 前提条件
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 80, 900, 50)
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 60, 900, 30)
     pptShape.TextFrame.TextRange.Text = "前提：年間新規金型 3件 ／ 電極 30本/金型（平均） ／ 手戻り率 約10%（3〜4本/金型）"
-    pptShape.TextFrame.TextRange.Font.Size = 18
+    pptShape.TextFrame.TextRange.Font.Size = 14
+    
+    ' --- 左側：なぜ業務が分かれるのか ---
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 100, 350, 30)
+    pptShape.TextFrame.TextRange.Text = "【前提条件：なぜ業務が分かれるのか】"
+    pptShape.TextFrame.TextRange.Font.Size = 16
     pptShape.TextFrame.TextRange.Font.Bold = msoTrue
     
-    ' なぜ業務が分かれるのか (プレス vs モールド)
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 130, 420, 150)
-    pptShape.TextFrame.TextRange.Text = "【前提条件：なぜ業務が分かれるのか】" & vbCrLf & _
-        "■ プレス電極" & vbCrLf & _
-        "・主に2次元形状が主体" & vbCrLf & _
-        "・現場CADスキルで対応可能（モデリングのハードルが低い）" & vbCrLf & _
-        "✓ 型工が設計（現状問題なし）" & vbCrLf & vbCrLf & _
-        "■ モールド電極" & vbCrLf & _
-        "・金型部品が複雑な3次元曲面を持つ" & vbCrLf & _
-        "・高度な3Dモデリングが必要（現場CADでは困難）" & vbCrLf & _
-        "⚠ 工設が担当（課題の起点）" & vbCrLf & _
-        "⇒ 形状の複雑さ（2D→3D）が業務分担の壁を作っている"
-    pptShape.TextFrame.TextRange.Font.Size = 16
+    ' プレス電極 (青色ボックス)
+    Set pptShape = pptSlide.Shapes.AddShape(msoShapeRectangle, 30, 130, 350, 90)
+    pptShape.Fill.ForeColor.RGB = colBlue
+    pptShape.Line.ForeColor.RGB = colDarkBlue
+    With pptShape.TextFrame.TextRange
+        .Text = "■ プレス電極" & vbCrLf & "・主に2次元形状が主体" & vbCrLf & "・現場CADスキルで対応可能（モデリングのハードルが低い）" & vbCrLf & "✓ 型工が設計（現状問題なし）"
+        .Font.Size = 14
+        .Font.Color.RGB = colBlack
+    End With
     
-    ' 現行ワークフロー ボトルネック
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 480, 130, 450, 200)
-    pptShape.TextFrame.TextRange.Text = "【現行ワークフロー ボトルネック】" & vbCrLf & _
-        "① 金型設計完了" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "② 電極設計（工設） ⚠ 設計工数 20h/金型（30本 × 40分）" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "③ 照査・検印 / 出図 ⚠ 型工は出図待ちで着手不可" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "④ 型工確認 → 差し戻し ⚠ 手戻り率 約10%（3〜4本/金型）" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "⑤ 電極製作開始"
-    pptShape.TextFrame.TextRange.Font.Size = 16
+    ' モールド電極 (赤色ボックス)
+    Set pptShape = pptSlide.Shapes.AddShape(msoShapeRectangle, 30, 230, 350, 110)
+    pptShape.Fill.ForeColor.RGB = colRed
+    pptShape.Line.ForeColor.RGB = RGB(192, 0, 0)
+    With pptShape.TextFrame.TextRange
+        .Text = "■ モールド電極" & vbCrLf & "・金型部品が複雑な3次元曲面を持つ" & vbCrLf & "・高度な3Dモデリングが必要（現場CADスキルでは対応困難）" & vbCrLf & "⚠ 工設が担当（課題の起点）" & vbCrLf & "⇒ 形状の複雑さ（2D→3D）が業務分担の壁を作っている"
+        .Font.Size = 14
+        .Font.Color.RGB = colBlack
+    End With
     
-    ' 課題の定量化
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 360, 900, 100)
-    pptShape.TextFrame.TextRange.Text = "【課題の定量化（年間3金型）】" & vbCrLf & _
-        "・工設設計工数: 60h （20h/金型 × 3件）" & vbCrLf & _
-        "・手戻り再設計: 10件 （3.5件/金型 × 3件）" & vbCrLf & _
-        "・型工の出図待ち: 7.5日 （2.5日/金型 × 3件）" & vbCrLf & _
-        "・直接コストロス: 40万円 （60h × 6,650円/h）"
-    pptShape.TextFrame.TextRange.Font.Size = 18
+    ' --- 右側：現行ワークフロー ボトルネック ---
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 420, 100, 500, 30)
+    pptShape.TextFrame.TextRange.Text = "【現行ワークフロー ボトルネック】"
+    pptShape.TextFrame.TextRange.Font.Size = 16
+    pptShape.TextFrame.TextRange.Font.Bold = msoTrue
+    
+    Set pptShape = pptSlide.Shapes.AddShape(msoShapeRectangle, 420, 130, 500, 210)
+    pptShape.Fill.ForeColor.RGB = colGray
+    pptShape.Line.ForeColor.RGB = colOrange
+    pptShape.Line.Weight = 2
+    With pptShape.TextFrame.TextRange
+        .Text = "① 金型設計完了" & vbCrLf & _
+                "↓" & vbCrLf & _
+                "② 電極設計（工設）  ⚠ 設計工数 20h/金型（30本 × 40分）" & vbCrLf & _
+                "↓" & vbCrLf & _
+                "③ 照査・検印 / 出図  ⚠ 型工は出図待ちで製作に着手できない" & vbCrLf & _
+                "↓" & vbCrLf & _
+                "④ 型工確認 → 差し戻し  ⚠ 手戻り率 約10%（3〜4本/金型）" & vbCrLf & _
+                "↓" & vbCrLf & _
+                "⑤ 電極製作開始"
+        .Font.Size = 14
+        .Font.Color.RGB = colBlack
+    End With
+    
+    ' --- 下部：課題の定量化（4つのボックス） ---
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 360, 900, 30)
+    pptShape.TextFrame.TextRange.Text = "【課題の定量化（年間3金型）】"
+    pptShape.TextFrame.TextRange.Font.Size = 16
+    pptShape.TextFrame.TextRange.Font.Bold = msoTrue
+    
+    Dim metrics1 As Variant
+    metrics1 = Array("60h" & vbCrLf & "工設設計工数（年間）" & vbCrLf & "20h/金型 × 3件", _
+                     "10件" & vbCrLf & "手戻り再設計件数（年間）" & vbCrLf & "3.5件/金型 × 3件", _
+                     "7.5日" & vbCrLf & "型工の出図待ち（年間）" & vbCrLf & "2.5日/金型 × 3件", _
+                     "40万円" & vbCrLf & "直接コストロス（年間）" & vbCrLf & "60h×6,650円/h")
+    For i = 0 To 3
+        Set pptShape = pptSlide.Shapes.AddShape(msoShapeRoundedRectangle, 30 + (i * 230), 390, 210, 80)
+        pptShape.Fill.ForeColor.RGB = colDarkBlue
+        With pptShape.TextFrame.TextRange
+            .Text = metrics1(i)
+            .Font.Size = 14
+            .Font.Color.RGB = colWhite
+            .ParagraphFormat.Alignment = ppAlignCenter
+        End With
+    Next i
     
     ' ==========================================
     ' スライド2: 解決策 — NX-Open自動化による電極設計の業務移管
     ' ==========================================
-    Set pptSlide = pptPres.Slides.Add(2, ppLayoutTitleOnly)
-    pptSlide.Shapes(1).TextFrame.TextRange.Text = "解決策 — NX-Open自動化による電極設計の業務移管"
-    pptSlide.Shapes(1).TextFrame.TextRange.Font.Size = 32
+    Set pptSlide = pptPres.Slides.Add(2, ppLayoutBlank)
     
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 80, 900, 30)
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 10, 900, 50)
+    With pptShape.TextFrame.TextRange
+        .Text = "解決策 — NX-Open自動化による電極設計の業務移管"
+        .Font.Size = 28
+        .Font.Bold = msoTrue
+        .Font.Color.RGB = colDarkBlue
+    End With
+    
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 60, 900, 30)
     pptShape.TextFrame.TextRange.Text = "自動化でモデリングのハードルを下げ、型工の加工ノウハウを設計に組み込む"
-    pptShape.TextFrame.TextRange.Font.Size = 18
+    pptShape.TextFrame.TextRange.Font.Size = 16
     pptShape.TextFrame.TextRange.Font.Bold = msoTrue
     
-    ' フロー比較
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 130, 420, 250)
-    pptShape.TextFrame.TextRange.Text = "【BEFORE（現行フロー）】" & vbCrLf & _
-        "① 金型設計完了" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "② 電極設計（工設）" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "③ 照査・検印（待ち）" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "④ 型工確認・差し戻し" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "⑤ 再設計（工設）" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "⑥ 電極製作開始" & vbCrLf & _
-        "⇒ 設計完了〜製作開始：3〜6日 / 工設消費：20h + 手戻り"
-    pptShape.TextFrame.TextRange.Font.Size = 16
+    ' BEFORE フロー
+    Set pptShape = pptSlide.Shapes.AddShape(msoShapeRectangle, 30, 110, 250, 250)
+    pptShape.Fill.ForeColor.RGB = colGray
+    pptShape.Line.ForeColor.RGB = colBlack
+    With pptShape.TextFrame.TextRange
+        .Text = "【BEFORE（現行フロー）】" & vbCrLf & vbCrLf & _
+                "① 金型設計完了" & vbCrLf & "↓" & vbCrLf & _
+                "② 電極設計（工設）" & vbCrLf & "↓" & vbCrLf & _
+                "③ 照査・検印（待ち）" & vbCrLf & "↓" & vbCrLf & _
+                "④ 型工確認・差し戻し" & vbCrLf & "↓" & vbCrLf & _
+                "⑤ 再設計（工設）" & vbCrLf & "↓" & vbCrLf & _
+                "⑥ 電極製作開始"
+        .Font.Size = 14
+        .Font.Color.RGB = colBlack
+    End With
     
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 480, 130, 450, 200)
-    pptShape.TextFrame.TextRange.Text = "【AFTER（自動化・移管後）】" & vbCrLf & _
-        "① 金型設計完了" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "② 即時出図（金型のみ）" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "③ 型工：自動生成＋微調整" & vbCrLf & _
-        "↓" & vbCrLf & _
-        "④ 即座に電極製作開始" & vbCrLf & vbCrLf & _
-        "【削減効果（vs 現行）】" & vbCrLf & _
-        "✓ 工設工数 20h → 0h" & vbCrLf & _
-        "✓ 手戻り 3-4件 → 0件" & vbCrLf & _
-        "✓ 出図待ち 2～3日 → 0日"
-    pptShape.TextFrame.TextRange.Font.Size = 16
+    ' AFTER フロー
+    Set pptShape = pptSlide.Shapes.AddShape(msoShapeRectangle, 300, 110, 250, 250)
+    pptShape.Fill.ForeColor.RGB = colGreen
+    pptShape.Line.ForeColor.RGB = RGB(0, 176, 80)
+    With pptShape.TextFrame.TextRange
+        .Text = "【AFTER（自動化・移管後）】" & vbCrLf & vbCrLf & _
+                "① 金型設計完了" & vbCrLf & "↓" & vbCrLf & _
+                "② 即時出図（金型のみ）" & vbCrLf & "↓" & vbCrLf & _
+                "③ 型工：自動生成＋微調整" & vbCrLf & "↓" & vbCrLf & _
+                "④ 即座に電極製作開始" & vbCrLf & vbCrLf & _
+                "■ 削減効果" & vbCrLf & _
+                "✓ 工設工数 20h → 0h" & vbCrLf & _
+                "✓ 手戻り 3-4件 → 0件" & vbCrLf & _
+                "✓ 出図待ち 2～3日 → 0日"
+        .Font.Size = 14
+        .Font.Color.RGB = colBlack
+    End With
     
-    ' NX-Open自動化の構造
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 360, 900, 150)
-    pptShape.TextFrame.TextRange.Text = "【NX-Open自動化の構造：型工の加工ノウハウが設計を決める — 現場完結型プロセスへ】" & vbCrLf & _
-        "■ 自動化がカバーする領域：電極形状の自動生成 / 逃げ形状・クリアランスの自動付加 / 電極設計基準" & vbCrLf & _
-        "■ 型工が担う役割：加工性の微調整 / 干渉回避・段取りのしやすさ最適化 / 製作順序の決定" & vbCrLf & _
-        "■ 工設の新しい役割：NX-Openシステムの保守・改善 / 電極設計基準書の作成・改訂（標準化）"
-    pptShape.TextFrame.TextRange.Font.Size = 16
+    ' NX-Open自動化の構造 (右側)
+    Set pptShape = pptSlide.Shapes.AddShape(msoShapeRectangle, 570, 110, 360, 250)
+    pptShape.Fill.ForeColor.RGB = colBlue
+    pptShape.Line.ForeColor.RGB = colDarkBlue
+    With pptShape.TextFrame.TextRange
+        .Text = "【NX-Open自動化の構造】" & vbCrLf & vbCrLf & _
+                "■ 自動化がカバーする領域" & vbCrLf & _
+                "・電極形状の自動生成" & vbCrLf & _
+                "・逃げ形状・クリアランスの自動付加" & vbCrLf & _
+                "・電極設計基準" & vbCrLf & vbCrLf & _
+                "■ 型工が担う役割（加工ノウハウ発揮）" & vbCrLf & _
+                "・加工性の微調整（削れる・削れない判断）" & vbCrLf & _
+                "・干渉回避・段取りのしやすさ最適化" & vbCrLf & _
+                "・優先順位に応じた製作順序の決定" & vbCrLf & vbCrLf & _
+                "■ 工設の新しい役割（仕組みで支える）" & vbCrLf & _
+                "・NX-Openシステムの保守・改善" & vbCrLf & _
+                "・電極設計基準書の作成・改訂（標準化）"
+        .Font.Size = 12
+        .Font.Color.RGB = colBlack
+    End With
     
+    ' ボトムメッセージ
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 380, 900, 40)
+    With pptShape.TextFrame.TextRange
+        .Text = "型工の加工ノウハウが設計を決める — 現場完結型プロセスへ"
+        .Font.Size = 20
+        .Font.Bold = msoTrue
+        .Font.Color.RGB = colDarkBlue
+        .ParagraphFormat.Alignment = ppAlignCenter
+    End With
+
     ' ==========================================
     ' スライド3: 効果と工設方針との整合
     ' ==========================================
-    Set pptSlide = pptPres.Slides.Add(3, ppLayoutTitleOnly)
-    pptSlide.Shapes(1).TextFrame.TextRange.Text = "効果と工設方針との整合 / 削減効果の内訳"
-    pptSlide.Shapes(1).TextFrame.TextRange.Font.Size = 32
+    Set pptSlide = pptPres.Slides.Add(3, ppLayoutBlank)
     
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 80, 900, 30)
-    pptShape.TextFrame.TextRange.Text = "年間3件の新規金型（1金型600万円）での試算"
-    pptShape.TextFrame.TextRange.Font.Size = 18
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 10, 900, 50)
+    With pptShape.TextFrame.TextRange
+        .Text = "効果と工設方針との整合"
+        .Font.Size = 28
+        .Font.Bold = msoTrue
+        .Font.Color.RGB = colDarkBlue
+    End With
     
-    ' 表の作成 (5行3列)
-    Set pptShape = pptSlide.Shapes.AddTable(5, 3, 30, 120, 900, 150)
-    Set pptTable = pptShape.Table
-    
-    ' 表のヘッダー
-    pptTable.Cell(1, 1).Shape.TextFrame.TextRange.Text = "項目"
-    pptTable.Cell(1, 2).Shape.TextFrame.TextRange.Text = "工数変化"
-    pptTable.Cell(1, 3).Shape.TextFrame.TextRange.Text = "金額換算"
-    
-    ' 表のデータ
-    pptTable.Cell(2, 1).Shape.TextFrame.TextRange.Text = "工設 電極設計（移管）"
-    pptTable.Cell(2, 2).Shape.TextFrame.TextRange.Text = "▲ 60 h/年"
-    pptTable.Cell(2, 3).Shape.TextFrame.TextRange.Text = "▲ 40万円"
-    
-    pptTable.Cell(3, 1).Shape.TextFrame.TextRange.Text = "工設 手戻り工数（根絶）"
-    pptTable.Cell(3, 2).Shape.TextFrame.TextRange.Text = "▲ 10 h/年"
-    pptTable.Cell(3, 3).Shape.TextFrame.TextRange.Text = "▲ 6.7 万円"
-    
-    pptTable.Cell(4, 1).Shape.TextFrame.TextRange.Text = "型工 電極設計（増加）"
-    pptTable.Cell(4, 2).Shape.TextFrame.TextRange.Text = "＋ 22.5 h/年"
-    pptTable.Cell(4, 3).Shape.TextFrame.TextRange.Text = "＋ 11.3 万円"
-    
-    pptTable.Cell(5, 1).Shape.TextFrame.TextRange.Text = "正味削減効果（工設▲ − 型工＋）"
-    pptTable.Cell(5, 2).Shape.TextFrame.TextRange.Text = "▲ 47.5 h/年"
-    pptTable.Cell(5, 3).Shape.TextFrame.TextRange.Text = "▲ 35.4 万円/年"
-    
-    ' 表のフォントサイズ調整
-    For i = 1 To 5
-        For j = 1 To 3
-            pptTable.Cell(i, j).Shape.TextFrame.TextRange.Font.Size = 14
-        Next j
-    Next i
-    
-    ' 補足テキスト
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 280, 900, 50)
-    pptShape.TextFrame.TextRange.Text = "金型費用比削減率（一型当たり）：11.8万円 ÷ 600万円 = ▲ 2.0 %" & vbCrLf & _
-                                        "* 工数単価：工設 6,650円/h ／ 型工 5,000円/h（推定）"
+    ' 上部 KPI 5ボックス
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 60, 900, 30)
+    pptShape.TextFrame.TextRange.Text = "年間3件の新規金型での試算"
     pptShape.TextFrame.TextRange.Font.Size = 14
     
-    ' 工設の方針体系との整合
-    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 350, 900, 150)
-    pptShape.TextFrame.TextRange.Text = "【工設の方針体系との整合 — 提案のメリット】" & vbCrLf & _
-        "・定型作業のシステム化・自動化：NX-Openによる自動化で電極形状を自動生成" & vbCrLf & _
-        "・コスト追及・ペーパーレス化：工設60h回収・手戻り根絶による再出図なし" & vbCrLf & _
-        "・ナレッジ継承＋基準類見直し：設計ノウハウ → 電極設計基準書・自動化仕様書として形式知化" & vbCrLf & _
-        "・行動指針「ささえる」「つながる」：型工主体で工設がシステムで支援する体制" & vbCrLf & _
-        "⇒ 工設の解放枠：+高度設計へ (CAE・構造設計に注力)"
-    pptShape.TextFrame.TextRange.Font.Size = 16
+    Dim metrics3 As Variant
+    metrics3 = Array("工設60h" & vbCrLf & "工設工数削減", "40万円" & vbCrLf & "直接コスト削減", _
+                     "7.5日" & vbCrLf & "型工停滞解消", "0件" & vbCrLf & "手戻りゼロ化", _
+                     "+高度設計へ" & vbCrLf & "工設の解放枠")
+    For i = 0 To 4
+        Set pptShape = pptSlide.Shapes.AddShape(msoShapeRoundedRectangle, 30 + (i * 180), 90, 160, 70)
+        ' 最後の枠だけ色を変えて強調
+        If i = 4 Then
+            pptShape.Fill.ForeColor.RGB = colOrange
+        Else
+            pptShape.Fill.ForeColor.RGB = colDarkBlue
+        End If
+        With pptShape.TextFrame.TextRange
+            .Text = metrics3(i)
+            .Font.Size = 14
+            .Font.Bold = msoTrue
+            .Font.Color.RGB = colWhite
+            .ParagraphFormat.Alignment = ppAlignCenter
+        End With
+    Next i
     
-    MsgBox "スライドの生成が完了しました。", vbInformation
+    ' --- テーブル：削減効果の内訳 ---
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 170, 900, 30)
+    pptShape.TextFrame.TextRange.Text = "■ 削減効果の内訳 （年間3金型・1金型600万円）"
+    pptShape.TextFrame.TextRange.Font.Size = 14
+    pptShape.TextFrame.TextRange.Font.Bold = msoTrue
+    
+    Set pptShape = pptSlide.Shapes.AddTable(5, 3, 30, 200, 800, 140)
+    Set pptTable = pptShape.Table
+    
+    ' ヘッダーの設定
+    Dim headers As Variant
+    headers = Array("項目", "工数変化", "金額換算")
+    For j = 1 To 3
+        pptTable.Cell(1, j).Shape.TextFrame.TextRange.Text = headers(j - 1)
+        pptTable.Cell(1, j).Shape.Fill.ForeColor.RGB = colDarkBlue
+        pptTable.Cell(1, j).Shape.TextFrame.TextRange.Font.Color.RGB = colWhite
+        pptTable.Cell(1, j).Shape.TextFrame.TextRange.Font.Bold = msoTrue
+        pptTable.Cell(1, j).Shape.TextFrame.TextRange.ParagraphFormat.Alignment = ppAlignCenter
+    Next j
+    
+    ' データ行の設定
+    Dim rowData As Variant
+    rowData = Array( _
+        Array("工設 電極設計（移管）", "▲ 60 h/年", "▲ 40万円"), _
+        Array("工設 手戻り工数（根絶）", "▲ 10 h/年", "▲ 6.7 万円"), _
+        Array("型工 電極設計（増加）", "＋ 22.5 h/年", "＋ 11.3 万円"), _
+        Array("正味削減効果（工設▲ − 型工＋）", "▲ 47.5 h/年", "▲ 35.4 万円/年") _
+    )
+    
+    For i = 1 To 4
+        For j = 1 To 3
+            pptTable.Cell(i + 1, j).Shape.TextFrame.TextRange.Text = rowData(i - 1)(j - 1)
+            pptTable.Cell(i + 1, j).Shape.TextFrame.TextRange.Font.Size = 14
+            pptTable.Cell(i + 1, j).Shape.TextFrame.TextRange.Font.Color.RGB = colBlack
+            pptTable.Cell(i + 1, j).Shape.Fill.ForeColor.RGB = colWhite
+            ' 数値列は右寄せ
+            If j > 1 Then
+                pptTable.Cell(i + 1, j).Shape.TextFrame.TextRange.ParagraphFormat.Alignment = ppAlignRight
+            End If
+        Next j
+        ' 最終行の強調
+        If i = 4 Then
+            pptTable.Cell(i + 1, 1).Shape.Fill.ForeColor.RGB = colGray
+            pptTable.Cell(i + 1, 2).Shape.Fill.ForeColor.RGB = colGray
+            pptTable.Cell(i + 1, 3).Shape.Fill.ForeColor.RGB = colGray
+            pptTable.Cell(i + 1, 1).Shape.TextFrame.TextRange.Font.Bold = msoTrue
+            pptTable.Cell(i + 1, 2).Shape.TextFrame.TextRange.Font.Bold = msoTrue
+            pptTable.Cell(i + 1, 3).Shape.TextFrame.TextRange.Font.Bold = msoTrue
+        End If
+    Next i
+    
+    Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 350, 900, 30)
+    pptShape.TextFrame.TextRange.Text = "金型費用比削減率（一型当たり）：11.8万円 ÷ 600万円 = ▲ 2.0 %" & vbCrLf & "* 工数単価：工設 6,650円/h ／ 型工 5,000円/h（推定）"
+    pptShape.TextFrame.TextRange.Font.Size = 12
+    
+    ' --- 工設の方針体系との整合 ---
+    Set pptShape = pptSlide.Shapes.AddShape(msoShapeRectangle, 30, 390, 900, 100)
+    pptShape.Fill.ForeColor.RGB = colWhite
+    pptShape.Line.ForeColor.RGB = colDarkBlue
+    With pptShape.TextFrame.TextRange
+        .Text = "【工設の方針体系との整合 — 提案のメリット】" & vbCrLf & _
+                "■ 定型作業のシステム化・自動化：NX-Openによる自動化で電極形状を自動生成" & vbCrLf & _
+                "■ コスト追及・ペーパーレス化：工設60h回収・手戻り根絶 による再出図なし" & vbCrLf & _
+                "■ ナレッジ継承＋基準類見直し：設計ノウハウ → 電極設計基準書・自動化仕様書として形式知化" & vbCrLf & _
+                "■ 行動指針「ささえる」「つながる」：型工主体で工設がシステムで支援する体制"
+        .Font.Size = 14
+        .Font.Color.RGB = colBlack
+        .ParagraphFormat.Alignment = ppAlignLeft
+    End With
+    
+    ' ==========================================
+    ' フッターの追加 (全スライド共通)
+    ' ==========================================
+    For i = 1 To pptPres.Slides.Count
+        Set pptSlide = pptPres.Slides(i)
+        Set pptShape = pptSlide.Shapes.AddTextbox(msoTextOrientationHorizontal, 30, 500, 900, 30)
+        With pptShape.TextFrame.TextRange
+            .Text = footerText & "    " & i & " / " & pptPres.Slides.Count
+            .Font.Size = 10
+            .Font.Color.RGB = RGB(128, 128, 128)
+            .ParagraphFormat.Alignment = ppAlignRight
+        End With
+    Next i
+    
+    MsgBox "リッチフォーマットのスライド生成が完了しました。", vbInformation
 End Sub
