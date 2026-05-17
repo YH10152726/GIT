@@ -1,600 +1,616 @@
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  電極設計・製作プロセス改革スライド — VBA生成スクリプト
-'  使用法：PowerPointのVBAエディタ（Alt+F11）に貼り付けて実行
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 Option Explicit
 
-' 色定数（RGB値）
-Private Const C_NAVY As Long = 1973855        ' RGB(30, 58, 95)
-Private Const C_BLUE As Long = 12095626       ' RGB(74, 144, 184)
-Private Const C_BLUE_LT As Long = 15787996    ' RGB(220, 231, 241)
-Private Const C_RED As Long = 3018952         ' RGB(200, 16, 46)
-Private Const C_RED_LT As Long = 15130876     ' RGB(252, 234, 237)
-Private Const C_RED_BADGE As Long = 3158482   ' RGB(211, 47, 47)
-Private Const C_AMBER As Long = 1800653       ' RGB(217, 119, 6)
-Private Const C_AMBER_LT As Long = 13233407   ' RGB(254, 243, 199)
-Private Const C_GREEN As Long = 4620845       ' RGB(45, 125, 70)
-Private Const C_GREEN_LT As Long = 14477525   ' RGB(213, 232, 220)
-Private Const C_MUTED As Long = 9128576       ' RGB(100, 116, 139)
-Private Const C_MUTED_LT As Long = 15857913   ' RGB(241, 245, 249)
-Private Const C_TEXT As Long = 3683615        ' RGB(31, 41, 55)
-Private Const C_TEXT_LT As Long = 6515019     ' RGB(75, 86, 99)
-Private Const C_WHITE As Long = 16777215      ' RGB(255, 255, 255)
-Private Const C_CARD_BG As Long = 16579064    ' RGB(248, 250, 252)
-Private Const C_CARD_BG2 As Long = 16249070   ' RGB(238, 242, 247)
-Private Const C_BORDER As Long = 14665163     ' RGB(203, 213, 224)
-Private Const C_BORDER_DK As Long = 12092820  ' RGB(148, 163, 184)
-Private Const C_GOLD_BADGE As Long = 723144   ' RGB(184, 134, 11)
-Private Const C_BLUE_BADGE As Long = 12417538 ' RGB(2, 119, 189)
+'==================================================================
+' 面色・PMI活用による3D正運用キックオフ - PPT自動生成マクロ
+' 使い方:
+'   1. PowerPointを起動（空のプレゼン or どこでもOK）
+'   2. Alt + F11 でVBAエディタを開く
+'   3. メニュー「挿入」→「標準モジュール」
+'   4. ここから最後までを貼り付け
+'   5. F5キー、または Sub Build_3D_Kickoff を選んで実行
+'==================================================================
 
-Private Const FONT_NAME As String = "Yu Gothic"
+Public Const PT As Single = 72
+Public Const FN As String = "Yu Gothic"
 
-' ポイント変換（1インチ = 72ポイント）
-Private Function P(ByVal inches As Double) As Single
-    P = inches * 72
+'================ ヘルパー関数 ================
+Function H(hx As String) As Long
+    H = RGB(CLng("&H" & Left$(hx, 2)), CLng("&H" & Mid$(hx, 3, 2)), CLng("&H" & Right$(hx, 2)))
 End Function
 
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  メイン処理
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Sub Generate_ElectrodeProcess_Slides()
-    Dim pres As Presentation
-    Set pres = Application.Presentations.Add(msoTrue)
-    
-    ' スライドサイズを16:9に設定
-    With pres.PageSetup
-        .SlideWidth = P(10)
-        .SlideHeight = P(5.625)
-    End With
-    
-    ' 3枚のスライドを生成
-    Call BuildSlide1(pres)
-    Call BuildSlide2(pres)
-    Call BuildSlide3(pres)
-    
-    MsgBox "スライド生成完了！3枚のスライドを作成しました。", vbInformation
-End Sub
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  ヘルパー関数
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Private Function AddRect(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
-                          fillColor As Long, Optional lineColor As Long = -1, Optional lineWidth As Single = 0.5) As Shape
-    Dim shp As Shape
-    Set shp = sld.Shapes.AddShape(msoShapeRectangle, P(x), P(y), P(w), P(h))
-    With shp
-        .Fill.ForeColor.RGB = fillColor
-        .Fill.Solid
-        If lineColor = -1 Then
-            .Line.Visible = msoFalse
-        Else
-            .Line.ForeColor.RGB = lineColor
-            .Line.Weight = lineWidth
-        End If
-    End With
-    Set AddRect = shp
+Function R(sld As Slide, x As Single, y As Single, w As Single, h As Single, fillHex As String, Optional lineHex As String = "X", Optional lineW As Single = 0) As Shape
+    Set R = sld.Shapes.AddShape(msoShapeRectangle, x * PT, y * PT, w * PT, h * PT)
+    R.Fill.Solid
+    R.Fill.ForeColor.RGB = H(fillHex)
+    If lineHex = "X" Then
+        R.Line.Visible = msoFalse
+    Else
+        R.Line.Visible = msoTrue
+        R.Line.ForeColor.RGB = H(lineHex)
+        R.Line.Weight = lineW
+    End If
 End Function
 
-Private Function AddText(sld As Slide, txt As String, x As Double, y As Double, w As Double, h As Double, _
-                         Optional fontSize As Single = 10.5, Optional fontColor As Long = -1, _
-                         Optional bold As Boolean = False, Optional italic As Boolean = False, _
-                         Optional hAlign As Long = 1, Optional vAlign As Long = 1) As Shape
-    Dim shp As Shape
-    Set shp = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, P(x), P(y), P(w), P(h))
-    With shp.TextFrame
-        .TextRange.Text = txt
-        .TextRange.Font.Name = FONT_NAME
-        .TextRange.Font.Size = fontSize
-        If fontColor <> -1 Then .TextRange.Font.Color.RGB = fontColor
-        .TextRange.Font.bold = bold
-        .TextRange.Font.italic = italic
-        .TextRange.ParagraphFormat.Alignment = hAlign
-        .VerticalAnchor = vAlign
-        .MarginLeft = 0
-        .MarginRight = 0
-        .MarginTop = 0
-        .MarginBottom = 0
+Function Ov(sld As Slide, x As Single, y As Single, w As Single, h As Single, fillHex As String) As Shape
+    Set Ov = sld.Shapes.AddShape(msoShapeOval, x * PT, y * PT, w * PT, h * PT)
+    Ov.Fill.Solid
+    Ov.Fill.ForeColor.RGB = H(fillHex)
+    Ov.Line.Visible = msoFalse
+End Function
+
+Function T(sld As Slide, x As Single, y As Single, w As Single, h As Single, txt As String, sz As Single, colHex As String, Optional bold As Boolean = False, Optional align As Integer = 1, Optional valign As Integer = 1, Optional italic As Boolean = False) As Shape
+    Set T = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, x * PT, y * PT, w * PT, h * PT)
+    With T.TextFrame
+        .MarginLeft = 2
+        .MarginRight = 2
+        .MarginTop = 1
+        .MarginBottom = 1
+        .VerticalAnchor = valign
         .WordWrap = msoTrue
     End With
-    Set AddText = shp
+    With T.TextFrame.TextRange
+        .Text = txt
+        .Font.Size = sz
+        .Font.Color.RGB = H(colHex)
+        .Font.Bold = IIf(bold, msoTrue, msoFalse)
+        .Font.Italic = IIf(italic, msoTrue, msoFalse)
+        .Font.Name = FN
+        .ParagraphFormat.Alignment = align
+    End With
 End Function
 
-Private Sub AddFooter(sld As Slide, pageNum As Integer)
-    Call AddText(sld, "山電 工作部 工機技術課 工設係", 0.4, 5.32, 5, 0.22, 9, C_MUTED)
-    Call AddText(sld, pageNum & " / 3", 9.2, 5.32, 0.4, 0.22, 9, C_MUTED, , , 3)
+Function NS(pres As Presentation, bgHex As String) As Slide
+    Set NS = pres.Slides.Add(pres.Slides.Count + 1, ppLayoutBlank)
+    NS.FollowMasterBackground = msoFalse
+    NS.Background.Fill.Solid
+    NS.Background.Fill.ForeColor.RGB = H(bgHex)
+End Function
+
+Sub SetNotes(sld As Slide, txt As String)
+    On Error Resume Next
+    Dim ph As Shape
+    For Each ph In sld.NotesPage.Shapes
+        If ph.HasTextFrame Then
+            If ph.PlaceholderFormat.Type = ppPlaceholderBody Then
+                ph.TextFrame.TextRange.Text = txt
+                Exit Sub
+            End If
+        End If
+    Next
 End Sub
 
-Private Sub AddTitleBar(sld As Slide, title As String, Optional subtitle As String = "")
-    Call AddRect(sld, 0, 0, 0.18, 5.625, C_NAVY)
-    Call AddText(sld, title, 0.48, 0.22, 9.2, 0.56, 24, C_NAVY, True)
+Sub HDR(sld As Slide, label As String, num As Integer, total As Integer, Optional dark As Boolean = False)
+    T sld, 0.6, 0.28, 7, 0.3, label, 11, "E07A2C", True, 1, 1
+    T sld, 12.3, 7.05, 1, 0.3, Format(num, "00") & " / " & Format(total, "00"), 10, IIf(dark, "F4B57A", "64748B"), False, 3, 1
+End Sub
+
+Sub TTL(sld As Slide, title As String, Optional subtitle As String = "", Optional dark As Boolean = False)
+    T sld, 0.6, 0.62, 12.1, 0.7, title, 28, IIf(dark, "FFFFFF", "1E3A5F"), True, 1, 1
     If subtitle <> "" Then
-        Call AddText(sld, subtitle, 0.48, 0.76, 9.2, 0.27, 11, C_TEXT_LT)
+        T sld, 0.6, 1.32, 12.1, 0.4, subtitle, 14, IIf(dark, "F4B57A", "1E293B"), False, 1, 1
     End If
 End Sub
 
-Private Sub AddSectionLabel(sld As Slide, x As Double, y As Double, w As Double, h As Double, txt As String, bgColor As Long)
-    Call AddRect(sld, x, y, w, h, bgColor)
-    Call AddText(sld, txt, x, y, w, h, 10, C_WHITE, True, , 2, 3)
+Sub SC(tbl As Shape, r As Integer, c As Integer, txt As String, txtCol As String, fillCol As String, Optional bold As Boolean = False, Optional align As Integer = 1, Optional sz As Single = 12)
+    With tbl.Table.Cell(r, c)
+        .Shape.Fill.Solid
+        .Shape.Fill.ForeColor.RGB = H(fillCol)
+        With .Shape.TextFrame.TextRange
+            .Text = txt
+            .Font.Name = FN
+            .Font.Size = sz
+            .Font.Color.RGB = H(txtCol)
+            .Font.Bold = IIf(bold, msoTrue, msoFalse)
+            .ParagraphFormat.Alignment = align
+        End With
+        .Shape.TextFrame.VerticalAnchor = msoAnchorMiddle
+    End With
 End Sub
 
-Private Sub AddKPICard(sld As Slide, x As Double, y As Double, w As Double, h As Double, _
-                       val As String, lbl As String, subTxt As String, cardColor As Long, _
-                       Optional isBig As Boolean = False)
-    Call AddRect(sld, x, y, w, h, C_CARD_BG, cardColor, 1.2)
-    Call AddRect(sld, x, y, w, 0.1, cardColor)
-    
-    If isBig Then
-        Call AddRect(sld, x, y, w, 0.14, cardColor)
-        Call AddText(sld, val, x, y + 0.14, w, 0.5, 30, cardColor, True, , 2, 3)
-        Call AddText(sld, lbl, x + 0.07, y + 0.66, w - 0.14, 0.25, 11, C_TEXT, True, , 2)
-        Call AddText(sld, subTxt, x + 0.07, y + 0.9, w - 0.14, 0.22, 9, C_MUTED, , , 2)
-    Else
-        Call AddText(sld, val, x, y + 0.14, w, 0.5, 26, cardColor, True, , 2, 3)
-        Call AddText(sld, lbl, x + 0.07, y + 0.66, w - 0.14, 0.25, 10.5, C_TEXT, True, , 2)
-        Call AddText(sld, subTxt, x + 0.07, y + 0.9, w - 0.14, 0.22, 9, C_MUTED, , , 2)
-    End If
+'================ スライド0: タイトル ================
+Sub S0_Title(pres As Presentation)
+    Dim sld As Slide, sh As Shape, i As Integer
+    Set sld = NS(pres, "0F2440")
+    For i = 0 To 5
+        Set sh = R(sld, 9.5 + (i Mod 3) * 1.15, 5.5 + (i \ 3) * 1.15, 0.9, 0.9, "E07A2C")
+        sh.Fill.Transparency = (80 - i * 5) / 100
+    Next
+    Set sh = R(sld, 11.2, 0.6, 1.5, 1.5, "FFFFFF", "E07A2C", 2)
+    sh.Fill.Transparency = 0.9
+    T sld, 11.45, 0.85, 1, 1, "◰", 60, "FFFFFF", False, 2, 3
+    T sld, 0.7, 0.7, 8, 0.4, "KICK-OFF / 工設係", 12, "E07A2C", True
+    R sld, 0.7, 1.5, 0.08, 3.4, "E07A2C"
+    T sld, 1, 1.5, 11, 0.95, "面色・PMI活用による", 38, "FFFFFF", True
+    T sld, 1, 2.45, 11, 1.2, "3D正運用 キックオフ", 52, "FFFFFF", True
+    T sld, 1, 3.85, 11, 0.5, "金型費抑制と内製率向上に向けた金型製作情報の標準化", 18, "F4B57A"
+    Dim labels(2) As String, sublabels(2) As String, xs(2) As Single
+    labels(0) = "面色": sublabels(0) = "FACE COLOR": xs(0) = 1
+    labels(1) = "PMI": sublabels(1) = "DIMENSIONS": xs(1) = 4.7
+    labels(2) = "現場フィードバック": sublabels(2) = "FEEDBACK LOOP": xs(2) = 8.4
+    For i = 0 To 2
+        Set sh = R(sld, xs(i), 5.2, 3.7, 1.5, "FFFFFF", "E07A2C", 1)
+        sh.Fill.Transparency = 0.92
+        T sld, xs(i) + 0.3, 5.45, 1, 1, "■", 40, "FFFFFF", False, 2, 3
+        T sld, xs(i) + 1.5, 5.35, 2.1, 0.55, labels(i), 14, "FFFFFF", True, 1, 3
+        T sld, xs(i) + 1.5, 5.95, 2.1, 0.55, sublabels(i), 11, "F4B57A", True, 1, 3
+    Next
+    T sld, 0.7, 6.95, 8, 0.3, "対象：型工 / 設計 / 工程 / 加工 / 仕上げ", 11, "F4B57A"
+    T sld, 9, 6.95, 3.6, 0.3, "工機技術課", 11, "FFFFFF", False, 3
+    SetNotes sld, "本日は「面色・PMI活用による3D正運用キックオフ」というテーマで進めていきます。副題のとおり、本活動のゴールは金型費抑制と内製率向上です。型工の皆さんに加工・仕上げの現場視点で意見を出してもらうことが、活動成功の鍵になります。"
 End Sub
 
-Private Sub AddTypeBadge(sld As Slide, x As Double, y As Double, badgeType As String)
-    Dim badgeColor As Long
-    Select Case badgeType
-        Case "直接": badgeColor = C_RED_BADGE
-        Case "波及": badgeColor = C_BLUE_BADGE
-        Case "典型": badgeColor = C_GOLD_BADGE
-    End Select
-    Call AddRect(sld, x, y, 0.42, 0.2, badgeColor)
-    Call AddText(sld, badgeType, x, y, 0.42, 0.2, 8.5, C_WHITE, True, , 2, 3)
-End Sub
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  Slide 1: 課題の構造
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Private Sub BuildSlide1(pres As Presentation)
-    Dim sld As Slide
-    Set sld = pres.Slides.Add(1, ppLayoutBlank)
-    sld.FollowMasterBackground = msoFalse
-    sld.Background.Fill.ForeColor.RGB = C_WHITE
-    
-    Call AddTitleBar(sld, "電極設計プロセスの課題 — 工設担当がもたらす構造的ロス", _
-                     "前提：年間新規金型 3件 ／ 電極 30本/金型（平均）／ 手戻り率 約10%（3〜4本/金型）")
-    
-    Dim contY As Double: contY = 1.1
-    Dim LX As Double: LX = 0.38
-    Dim LW As Double: LW = 2.72
-    
-    ' 左列：前提条件
-    Call AddSectionLabel(sld, LX, contY, LW, 0.3, "前提条件：なぜ業務が分かれるのか", C_NAVY)
-    
-    ' プレス電極ブロック
-    Call AddRect(sld, LX, contY + 0.35, LW, 1.25, C_BLUE_LT, C_BLUE, 0.5)
-    Call AddRect(sld, LX, contY + 0.35, LW, 0.28, C_BLUE)
-    Call AddText(sld, "プレス電極", LX, contY + 0.35, LW, 0.28, 11, C_WHITE, True, , 2)
-    Call AddText(sld, "主に2次元形状が主体", LX + 0.1, contY + 0.67, LW - 0.2, 0.28, 11, C_TEXT)
-    Call AddText(sld, "現場CADスキルで対応可能" & vbCrLf & "モデリングのハードルが低い", _
-                 LX + 0.1, contY + 0.97, LW - 0.2, 0.37, 10, C_TEXT_LT)
-    Call AddRect(sld, LX + 0.1, contY + 1.38, LW - 0.2, 0.18, C_GREEN)
-    Call AddText(sld, "✓ 型工が設計（現状問題なし）", LX + 0.1, contY + 1.38, LW - 0.2, 0.18, 9, C_WHITE, True, , 2)
-    
-    ' モールド電極ブロック
-    Call AddRect(sld, LX, contY + 1.68, LW, 1.35, C_AMBER_LT, C_AMBER, 0.5)
-    Call AddRect(sld, LX, contY + 1.68, LW, 0.28, C_AMBER)
-    Call AddText(sld, "モールド電極", LX, contY + 1.68, LW, 0.28, 11, C_WHITE, True, , 2)
-    Call AddText(sld, "複雑な3次元曲面を持つ", LX + 0.1, contY + 2, LW - 0.2, 0.28, 11, C_TEXT)
-    Call AddText(sld, "高度な3Dモデリングが必要" & vbCrLf & "現場CADスキルでは対応困難", _
-                 LX + 0.1, contY + 2.3, LW - 0.2, 0.37, 10, C_TEXT_LT)
-    Call AddRect(sld, LX + 0.1, contY + 2.72, LW - 0.2, 0.18, C_RED)
-    Call AddText(sld, "⚠ 工設が担当（課題の起点）", LX + 0.1, contY + 2.72, LW - 0.2, 0.18, 9, C_WHITE, True, , 2)
-    
-    ' キャプション
-    Call AddRect(sld, LX, contY + 3.02, LW, 0.55, C_CARD_BG, C_NAVY, 0.5)
-    Call AddText(sld, "形状の複雑さ（2D→3D）が" & vbCrLf & "業務分担の壁を作っている", _
-                 LX + 0.1, contY + 3.04, LW - 0.2, 0.51, 10.5, C_NAVY, True, , 2)
-    
-    ' 中央列：現行フロー
-    Dim CX As Double: CX = 3.22
-    Dim CW As Double: CW = 3.42
-    Call AddSectionLabel(sld, CX, contY, CW, 0.3, "現行ワークフロー — ボトルネックの構造", C_MUTED)
-    
-    Dim cy As Double: cy = contY + 0.36
-    Dim SH As Double: SH = 0.52
-    Dim AH As Double: AH = 0.22
-    
-    ' ステップ1
-    Call AddRect(sld, CX, cy, CW, SH, C_BLUE_LT, C_NAVY, 0.75)
-    Call AddText(sld, "① 金型設計完了", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_NAVY, True, , 1, 3)
-    cy = cy + SH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
-    
-    ' ステップ2（問題）
-    Call AddRect(sld, CX, cy, CW, SH, C_RED_LT, C_RED, 0.75)
-    Call AddText(sld, "② 電極設計（工設）", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_RED, True, , 1, 3)
-    cy = cy + SH
-    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_RED, 0.5)
-    Call AddText(sld, "⚠  設計工数 20h/金型（30本 × 40分）", CX + 0.1, cy, CW - 0.2, AH, 9, C_RED, , True, 1, 3)
-    cy = cy + AH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
-    
-    ' ステップ3（問題）
-    Call AddRect(sld, CX, cy, CW, SH, C_AMBER_LT, C_AMBER, 0.75)
-    Call AddText(sld, "③ 照査・検印", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_AMBER, True, , 1, 3)
-    cy = cy + SH
-    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_AMBER, 0.5)
-    Call AddText(sld, "⚠  型工は出図待ちで製作に着手できない", CX + 0.1, cy, CW - 0.2, AH, 9, C_AMBER, , True, 1, 3)
-    cy = cy + AH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
-    
-    ' ステップ4（問題）
-    Call AddRect(sld, CX, cy, CW, SH, C_RED_LT, C_RED, 0.75)
-    Call AddText(sld, "④ 型工確認 → 差し戻し", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_RED, True, , 1, 3)
-    cy = cy + SH
-    Call AddRect(sld, CX, cy, CW, AH, RGB(255, 248, 248), C_RED, 0.5)
-    Call AddText(sld, "⚠  手戻り率 約10%（3〜4本/金型）", CX + 0.1, cy, CW - 0.2, AH, 9, C_RED, , True, 1, 3)
-    cy = cy + AH
-    Call AddText(sld, "↓", CX, cy, CW, 0.1, 9, C_BORDER_DK, , , 2)
-    cy = cy + 0.1
-    
-    ' ステップ5
-    Call AddRect(sld, CX, cy, CW, SH, C_GREEN_LT, C_GREEN, 0.75)
-    Call AddText(sld, "⑤ 電極製作開始", CX + 0.14, cy, CW - 0.28, SH, 11.5, C_GREEN, True, , 1, 3)
-    
-    ' 右列：定量インパクト
-    Dim RX As Double: RX = 6.78
-    Dim RW As Double: RW = 2.82
-    Call AddSectionLabel(sld, RX, contY, RW, 0.3, "課題の定量インパクト（年間3金型）", C_RED)
-    
-    Dim ky As Double: ky = contY + 0.36
-    Dim KH As Double: KH = 0.83
-    Dim KG As Double: KG = 0.09
-    
-    ' KPIカード4枚
-    Call AddKPICard(sld, RX, ky, RW, KH, "60h", "工設設計工数（年間）", "20h/金型 × 3件", C_RED)
-    ky = ky + KH + KG
-    Call AddKPICard(sld, RX, ky, RW, KH, "≈10件", "手戻り再設計件数（年間）", "3.5件/金型 × 3件", C_AMBER)
-    ky = ky + KH + KG
-    Call AddKPICard(sld, RX, ky, RW, KH, "7.5日", "型工の出図待ち（年間）", "2.5日/金型 × 3件", C_NAVY)
-    ky = ky + KH + KG
-    Call AddKPICard(sld, RX, ky, RW, KH, "≈40万円", "直接コストロス（年間）", "60h × 6,650円/h", C_RED)
-    
-    Call AddFooter(sld, 1)
-End Sub
-
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  Slide 2: 解決策
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Private Sub BuildSlide2(pres As Presentation)
-    Dim sld As Slide
-    Set sld = pres.Slides.Add(2, ppLayoutBlank)
-    sld.FollowMasterBackground = msoFalse
-    sld.Background.Fill.ForeColor.RGB = C_WHITE
-    
-    Call AddTitleBar(sld, "解決策 — NX-Open半自動化による電極設計の業務移管", _
-                     "自動化でモデリングのハードルを下げ、型工の加工ノウハウを設計に組み込む")
-    
-    Dim contY As Double: contY = 1.08
-    
-    ' 左列：BEFORE
-    Dim LX As Double: LX = 0.38
-    Dim LW As Double: LW = 2.6
-    Call AddSectionLabel(sld, LX, contY, LW, 0.28, "BEFORE（現行フロー）", C_MUTED)
-    
-    Dim by As Double: by = contY + 0.34
-    Dim BSH As Double: BSH = 0.52
+'================ スライド1: 今回の活動の本質 ================
+Sub S1_Purpose(pres As Presentation)
+    Dim sld As Slide, sh As Shape
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 01  /  ACTIVITY PURPOSE", 1, 11
+    TTL sld, "今回の活動の本質", "3Dモデルを「見やすくする」活動ではなく、「金型製作の正情報として活用する」活動である。"
+    R sld, 0.6, 1.95, 12.1, 1.05, "1E3A5F"
+    Ov sld, 0.85, 2.18, 0.6, 0.6, "FFFFFF"
+    T sld, 0.85, 2.18, 0.6, 0.6, "◎", 24, "1E3A5F", True, 2, 3
+    T sld, 1.65, 2.05, 10.9, 0.45, "目的は金型費抑制。", 18, "FFFFFF", True, 1, 1
+    T sld, 1.65, 2.5, 10.9, 0.4, "設計工数・確認工数・手戻り・外製依存 を 3Dモデルの整備で抑える。", 13, "F4B57A", False, 1, 1
+    Dim titles(2) As String, subs(2) As String, bodies(2) As String, colors(2) As String, xs(2) As Single
+    titles(0) = "面色": subs(0) = "面の意味（公差）を伝える": colors(0) = "E07A2C": xs(0) = 0.6
+    bodies(0) = "製品面・PL面・摺動面・逃がし面・基準面など、加工・仕上げで判断すべき面の役割をモデル上で明示する。"
+    titles(1) = "PMI": subs(1) = "重要寸法・注意点を伝える": colors(1) = "4A7AAB": xs(1) = 4.8
+    bodies(1) = "重要寸法・公差・穴径深さ・基準面・仕上げ注意などを、図面ではなく3Dモデル上に持たせる。"
+    titles(2) = "現場フィードバック": subs(2) = "ノウハウを設計に戻す": colors(2) = "1E3A5F": xs(2) = 9
+    bodies(2) = "現場で気付いた内容を部品・面・工程に紐付けて設計へ返し、面色・PMIルールを継続改善する。"
     Dim i As Integer
-    Dim stepColor As Long, stepLtColor As Long, stepFlag As Boolean
-    Dim stepText As String
-    Dim leftOffset As Double
-    
-    For i = 1 To 6
-        Select Case i
-            Case 1
-                stepText = "① 金型設計完了"
-                stepColor = C_NAVY
-                stepLtColor = C_BLUE_LT
-                stepFlag = False
-            Case 2
-                stepText = "② 電極設計（工設）"
-                stepColor = C_RED
-                stepLtColor = C_RED_LT
-                stepFlag = True
-            Case 3
-                stepText = "③ 照査・検印（待ち）"
-                stepColor = C_AMBER
-                stepLtColor = C_AMBER_LT
-                stepFlag = True
-            Case 4
-                stepText = "④ 型工確認・差し戻し"
-                stepColor = C_RED
-                stepLtColor = C_RED_LT
-                stepFlag = True
-            Case 5
-                stepText = "⑤ 再設計（工設）"
-                stepColor = C_RED
-                stepLtColor = C_RED_LT
-                stepFlag = True
-            Case 6
-                stepText = "⑥ 電極製作開始"
-                stepColor = C_MUTED
-                stepLtColor = C_MUTED_LT
-                stepFlag = False
-        End Select
-        
-        Call AddRect(sld, LX, by, LW, BSH, stepLtColor, stepColor, 0.6)
-        If stepFlag Then Call AddRect(sld, LX, by, 0.07, BSH, stepColor)
-        
-        If stepFlag Then
-            leftOffset = 0.13
-        Else
-            leftOffset = 0.1
-        End If
-        
-        Call AddText(sld, stepText, LX + leftOffset, by, LW - 0.2, BSH, 10.5, stepColor, stepFlag, , 1, 3)
-        by = by + BSH
-        If i < 6 Then
-            Call AddText(sld, "↓", LX, by, LW, 0.07, 8, C_BORDER_DK, , , 2)
-            by = by + 0.07
-        End If
-    Next i
-    
-    Call AddRect(sld, LX, by + 0.05, LW, 0.45, C_RED_LT, C_RED, 0.5)
-    Call AddText(sld, "設計完了〜製作開始：3〜6日" & vbCrLf & "工設消費：20h + 手戻り", _
-                 LX + 0.08, by + 0.06, LW - 0.16, 0.43, 9.5, C_RED, True, , 2)
-    
-    ' 中央列：半自動化の構造
-    Dim CX As Double: CX = 3.1
-    Dim CW As Double: CW = 3.82
-    Call AddSectionLabel(sld, CX, contY, CW, 0.28, "NX-Open半自動化の構造", C_NAVY)
-    
-    ' 自動化ボックス
-    Call AddRect(sld, CX, contY + 0.34, CW, 1.2, C_BLUE_LT, C_NAVY, 0.75)
-    Call AddRect(sld, CX, contY + 0.34, CW, 0.26, C_NAVY)
-    Call AddText(sld, "自動化がカバーする領域", CX, contY + 0.34, CW, 0.26, 10.5, C_WHITE, True, , 2)
-    Call AddText(sld, "● 電極形状の自動生成", CX + 0.15, contY + 0.65, CW - 0.3, 0.25, 10, C_NAVY)
-    Call AddText(sld, "● 逃げ形状・クリアランスの自動付加", CX + 0.15, contY + 0.92, CW - 0.3, 0.25, 10, C_NAVY)
-    Call AddText(sld, "● エッジ処理・コーナーR処理", CX + 0.15, contY + 1.19, CW - 0.3, 0.25, 10, C_NAVY)
-    
-    ' 型工ボックス
-    Call AddRect(sld, CX, contY + 1.62, CW, 1.2, C_GREEN_LT, C_GREEN, 0.75)
-    Call AddRect(sld, CX, contY + 1.62, CW, 0.26, C_GREEN)
-    Call AddText(sld, "型工が担う役割（加工ノウハウを発揮）", CX, contY + 1.62, CW, 0.26, 10.5, C_WHITE, True, , 2)
-    Call AddText(sld, "● 加工性の微調整（削れる・削れない判断）", CX + 0.15, contY + 1.93, CW - 0.3, 0.25, 10, C_GREEN)
-    Call AddText(sld, "● 干渉回避・段取りのしやすさ最適化", CX + 0.15, contY + 2.2, CW - 0.3, 0.25, 10, C_GREEN)
-    Call AddText(sld, "● 優先順位に応じた製作順序の決定", CX + 0.15, contY + 2.47, CW - 0.3, 0.25, 10, C_GREEN)
-    
-    ' 工設ボックス
-    Call AddRect(sld, CX, contY + 2.9, CW, 0.95, C_BLUE_LT, C_BLUE, 0.75)
-    Call AddRect(sld, CX, contY + 2.9, CW, 0.26, C_BLUE)
-    Call AddText(sld, "工設の新しい役割（仕組みで支える）", CX, contY + 2.9, CW, 0.26, 10.5, C_WHITE, True, , 2)
-    Call AddText(sld, "● NX-Openシステムの保守・改善", CX + 0.15, contY + 3.21, CW - 0.3, 0.25, 10, C_BLUE)
-    Call AddText(sld, "● 電極設計基準書の作成・改訂（標準化）", CX + 0.15, contY + 3.48, CW - 0.3, 0.25, 10, C_BLUE)
-    
-    ' キーメッセージバー
-    Call AddRect(sld, CX, contY + 3.93, CW, 0.42, C_NAVY)
-    Call AddText(sld, "型工の加工ノウハウが設計を決める  —  現場完結型プロセスへ", _
-                 CX, contY + 3.93, CW, 0.42, 9.5, C_WHITE, True, True, 2)
-    
-    ' 右列：AFTER
-    Dim RX As Double: RX = 7.04
-    Dim RW As Double: RW = 2.56
-    Call AddSectionLabel(sld, RX, contY, RW, 0.28, "AFTER（自動化・移管後）", C_GREEN)
-    
-    Dim ay As Double: ay = contY + 0.34
-    Dim ASH As Double: ASH = 0.6
-    
-    For i = 1 To 4
-        Select Case i
-            Case 1
-                stepText = "① 金型設計完了"
-                stepColor = C_NAVY
-                stepLtColor = C_BLUE_LT
-            Case 2
-                stepText = "② 即時出図（金型のみ）"
-                stepColor = C_NAVY
-                stepLtColor = C_BLUE_LT
-            Case 3
-                stepText = "③ 型工：自動生成＋微調整"
-                stepColor = C_GREEN
-                stepLtColor = C_GREEN_LT
-            Case 4
-                stepText = "④ 即座に電極製作開始"
-                stepColor = C_GREEN
-                stepLtColor = C_GREEN_LT
-        End Select
-        
-        Call AddRect(sld, RX, ay, RW, ASH, stepLtColor, stepColor, 0.75)
-        Call AddText(sld, stepText, RX + 0.12, ay, RW - 0.24, ASH, 11, stepColor, True, , 1, 3)
-        ay = ay + ASH
-        If i < 4 Then
-            Call AddText(sld, "↓", RX, ay, RW, 0.09, 9, stepColor, , , 2)
-            ay = ay + 0.09
-        End If
-    Next i
-    
-    ' 削減効果サマリー
-    Call AddRect(sld, RX, ay + 0.1, RW, 1.35, C_GREEN_LT, C_GREEN, 0.75)
-    Call AddRect(sld, RX, ay + 0.1, RW, 0.26, C_GREEN)
-    Call AddText(sld, "削減効果（vs 現行）", RX, ay + 0.1, RW, 0.26, 10, C_WHITE, True, , 2)
-    Call AddText(sld, "✓  工設工数 20h → 0h", RX + 0.12, ay + 0.4, RW - 0.24, 0.24, 10, C_GREEN, True)
-    Call AddText(sld, "✓  手戻り 3-4件 → 0件", RX + 0.12, ay + 0.65, RW - 0.24, 0.24, 10, C_GREEN, True)
-    Call AddText(sld, "✓  出図待ち 2〜3日 → 0日", RX + 0.12, ay + 0.9, RW - 0.24, 0.24, 10, C_GREEN, True)
-    Call AddText(sld, "✓  設計〜製作：1〜1.5日", RX + 0.12, ay + 1.15, RW - 0.24, 0.24, 10, C_GREEN)
-    
-    Call AddFooter(sld, 2)
+    For i = 0 To 2
+        R sld, xs(i), 3.25, 3.7, 3.5, "FFFFFF", "D9E1EA", 1
+        R sld, xs(i), 3.25, 3.7, 0.12, colors(i)
+        Ov sld, xs(i) + 0.3, 3.5, 0.7, 0.7, colors(i)
+        T sld, xs(i) + 0.3, 3.5, 0.7, 0.7, "●", 22, "FFFFFF", True, 2, 3
+        T sld, xs(i) + 1.15, 3.55, 2.45, 0.4, titles(i), 18, "1E293B", True, 1, 3
+        T sld, xs(i) + 1.15, 3.95, 2.45, 0.3, subs(i), 10.5, colors(i), True
+        R sld, xs(i) + 0.3, 4.45, 3.1, 0.02, "D9E1EA"
+        T sld, xs(i) + 0.3, 4.6, 3.1, 2.05, bodies(i), 12, "1E293B"
+    Next
+    T sld, 0.6, 6.9, 12.1, 0.35, "→ 設計・工程・加工・仕上げが「同じ情報」を見て判断できる状態をつくる。", 12, "1E3A5F", True, 1, 1, True
+    SetNotes sld, "今回の活動の目的は、面色を付けることでも、3Dモデルを見やすくすることでもありません。" & vbCrLf & "目的は、金型費を抑制することです。" & vbCrLf & vbCrLf & "金型費は、加工時間だけで決まるものではありません。" & vbCrLf & "設計工数、図面作成、問い合わせ、確認、手戻り、外製依存も含めて金型費です。" & vbCrLf & vbCrLf & "そこで、3Dモデルを正として扱い、面色とPMIで必要な情報を整理します。" & vbCrLf & "型工には、ただ3Dモデルを見るのではなく、金型部品の意味を理解して加工・仕上げ判断に使ってもらうことを狙います。"
 End Sub
 
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'  Slide 3: 定量効果と方針整合
-' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Private Sub BuildSlide3(pres As Presentation)
-    Dim sld As Slide
-    Set sld = pres.Slides.Add(3, ppLayoutBlank)
-    sld.FollowMasterBackground = msoFalse
-    sld.Background.Fill.ForeColor.RGB = C_WHITE
-    
-    Call AddTitleBar(sld, "定量効果と工設の方針体系との整合", _
-                     "年間3金型・1金型600万円 試算 ／ 工設▲60h・型工＋22.5h で 金型費比 ▲2.0%")
-    
-    ' KPI 5枚
-    Dim KW As Double: KW = 1.78
-    Dim KH As Double: KH = 1.22
-    Dim KGP As Double: KGP = 0.1
-    Dim kStartX As Double: kStartX = (10 - (KW * 5 + KGP * 4)) / 2
-    Dim i As Integer
-    Dim kx As Double
-    
+'================ スライド2: なぜ今この活動を行うのか ================
+Sub S2_WhyNow(pres As Presentation)
+    Dim sld As Slide, i As Integer, tbl As Shape
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 02  /  WHY NOW", 2, 11
+    TTL sld, "なぜ今この活動を行うのか", "限られた設計人員で内製率を維持するには、3D正運用への切り替えが不可欠。"
+    Dim sTitle(2) As String, sDesc(2) As String
+    sTitle(0) = "少人数設計": sDesc(0) = "設計人員が限られている"
+    sTitle(1) = "従来運用を続けると": sDesc(1) = "2D図面作成・出図・確認・問い合わせ対応が重い"
+    sTitle(2) = "外製依存↑": sDesc(2) = "金型費が上昇／社内ノウハウが残らない"
+    For i = 0 To 2
+        Dim y As Single: y = 2 + i * 1.55
+        Dim cc As String: cc = IIf(i = 2, "C53030", "1E3A5F")
+        R sld, 0.6, y, 5.6, 1.2, "FFFFFF", "D9E1EA", 1
+        R sld, 0.6, y, 0.12, 1.2, cc
+        Ov sld, 0.95, y + 0.27, 0.65, 0.65, cc
+        T sld, 0.95, y + 0.27, 0.65, 0.65, CStr(i + 1), 22, "FFFFFF", True, 2, 3
+        T sld, 1.75, y + 0.18, 4.3, 0.4, sTitle(i), 16, "1E293B", True, 1, 1
+        T sld, 1.75, y + 0.6, 4.3, 0.55, sDesc(i), 12, "64748B"
+        If i < 2 Then
+            R sld, 3.2, y + 1.22, 0.4, 0.28, "E07A2C"
+            T sld, 3.15, y + 1.2, 0.5, 0.3, "▼", 14, "FFFFFF", True, 2, 1
+        End If
+    Next
+    R sld, 7, 2, 5.7, 4.55, "FFFFFF", "D9E1EA", 1
+    R sld, 7, 2, 5.7, 0.5, "1E3A5F"
+    T sld, 7.2, 2.05, 5.3, 0.4, "金型費抑制の考え方", 14, "FFFFFF", True, 1, 3
+    Set tbl = sld.Shapes.AddTable(5, 2, 7.2 * PT, 2.6 * PT, 5.3 * PT, 3.85 * PT)
+    tbl.Table.Columns(1).Width = 2.1 * PT
+    tbl.Table.Columns(2).Width = 3.2 * PT
+    SC tbl, 1, 1, "金型費を押し上げる要因", "FFFFFF", "4A7AAB", True, 1, 12
+    SC tbl, 1, 2, "今回抑えたい内容", "FFFFFF", "4A7AAB", True, 1, 12
+    SC tbl, 2, 1, "2D図面作成工数", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 2, 2, "面色・PMIで作図負荷を抑える", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 3, 1, "設計確認・問い合わせ", "1E293B", "FFFFFF", False, 1, 11
+    SC tbl, 3, 2, "必要情報を3D上に整理する", "1E293B", "FFFFFF", False, 1, 11
+    SC tbl, 4, 1, "加工・仕上げの迷い", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 4, 2, "面の意味を明確にする", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 5, 1, "手戻り・再加工", "1E293B", "FFFFFF", False, 1, 11
+    SC tbl, 5, 2, "重要面の認識違いを減らす", "1E293B", "FFFFFF", False, 1, 11
+    T sld, 0.6, 7, 12.1, 0.3, "→ 少人数でも内製で金型設計を回せる仕組みを作る。", 12, "1E3A5F", True, 1, 1, True
+    SetNotes sld, "設計者が少ない状態で、従来通りすべての2D図面を細かく作り込むと、設計側の負荷が大きくなります。" & vbCrLf & "その結果、社内で対応しきれず、外製に頼る範囲が増えます。" & vbCrLf & vbCrLf & "外製に頼ること自体が悪いわけではありませんが、外製が増えると金型費が上がりやすく、社内にノウハウも残りにくくなります。" & vbCrLf & vbCrLf & "今回の活動は、少ない設計人員でも内製で金型設計を回すために、3Dモデルを正として活用する活動です。"
+End Sub
+
+'================ スライド3: 過去の取り組みで分かったこと ================
+Sub S3_Past(pres As Presentation)
+    Dim sld As Slide, tbl As Shape
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 03  /  PAST RESULTS", 3, 11
+    TTL sld, "過去の取り組みで分かったこと", "金型設計工程では削減効果が確認された一方、型工側で確認時間が増えた工程もあった。"
+    R sld, 0.6, 1.95, 4.15, 2, "FFFFFF", "D9E1EA", 1
+    R sld, 0.6, 1.95, 4.15, 0.12, "2D8659"
+    T sld, 0.85, 2.3, 0.5, 0.5, "✓", 32, "2D8659", True, 2, 3
+    T sld, 1.45, 2.3, 3.2, 0.4, "金型設計工程", 13, "64748B", True
+    T sld, 0.85, 2.85, 3.8, 0.75, "-18.5%", 44, "2D8659", True
+    T sld, 0.85, 3.55, 3.8, 0.35, "作業時間削減（2D図面レス時）", 11, "1E293B"
+    R sld, 4.95, 1.95, 4.15, 2, "FFFFFF", "D9E1EA", 1
+    R sld, 4.95, 1.95, 4.15, 0.12, "D97706"
+    T sld, 5.2, 2.3, 0.5, 0.5, "⚠", 28, "D97706", True, 2, 3
+    T sld, 5.8, 2.3, 3.2, 0.4, "金型製作", 13, "64748B", True
+    T sld, 5.2, 2.85, 3.8, 0.75, "+4.3%", 44, "D97706", True
+    T sld, 5.2, 3.55, 3.8, 0.35, "増加した工程あり（3D確認に時間）", 11, "1E293B"
+    R sld, 9.3, 1.95, 3.4, 2, "1E3A5F"
+    T sld, 9.55, 2.15, 0.55, 0.55, "★", 28, "E07A2C", True, 1, 3
+    T sld, 10.2, 2.18, 2.4, 0.35, "KEY INSIGHT", 11, "E07A2C", True
+    T sld, 9.55, 2.85, 3.05, 1, "3Dモデルを「渡すだけ」では効果は出ない。", 14, "FFFFFF", True
+    Set tbl = sld.Shapes.AddTable(5, 3, 0.6 * PT, 4.2 * PT, 12.1 * PT, 2.4 * PT)
+    tbl.Table.Columns(1).Width = 2.2 * PT
+    tbl.Table.Columns(2).Width = 4.5 * PT
+    tbl.Table.Columns(3).Width = 5.4 * PT
+    SC tbl, 1, 1, "工程", "FFFFFF", "1E3A5F", True, 1, 12
+    SC tbl, 1, 2, "結果", "FFFFFF", "1E3A5F", True, 2, 12
+    SC tbl, 1, 3, "読み取り", "FFFFFF", "1E3A5F", True, 1, 12
+    SC tbl, 2, 1, "金型設計", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 2, 2, "59.5h →48.5h ＝-11h", "2D8659", "FBFCFD", True, 2, 11
+    SC tbl, 2, 3, "2D図面作成削減に効果あり", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 3, 1, "工程設計", "1E293B", "FFFFFF", False, 1, 11
+    SC tbl, 3, 2, "7.00h →8.25h ＝+1.25h", "C53030", "FFFFFF", True, 2, 11
+    SC tbl, 3, 3, "3D確認・寸法確認に時間がかかる", "1E293B", "FFFFFF", False, 1, 11
+    SC tbl, 4, 1, "機械加工", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 4, 2, "388.95h →403.85h ＝+14.9h", "C53030", "FBFCFD", True, 2, 11
+    SC tbl, 4, 3, "表示調整や読図確認時間増", "1E293B", "FBFCFD", False, 1, 11
+    SC tbl, 5, 1, "仕上・組立", "1E293B", "FFFFFF", False, 1, 11
+    SC tbl, 5, 2, "30.0h →32.3h ＝+2.3h", "C53030", "FFFFFF", True, 2, 11
+    SC tbl, 5, 3, "寸法確認に時間を要する", "1E293B", "FFFFFF", False, 1, 11
+    T sld, 0.6, 6.7, 12.1, 0.3, "出典：「過去の3Dデータ活用実績」 金型設計 表6-1 ／ 金型仕上・組立 図10-1 ／ 結言 表12-1", 9, "64748B", False, 1, 1, True
+    T sld, 0.6, 7, 12.1, 0.3, "→ 加工時間を除いた確認系作業だけで+32.4%増（設計削減11hに対し製作側+18.45h）。", 12, "1E3A5F", True, 1, 1, True
+    Dim nt As String
+    nt = "過去実績では、設計工程では明確に効果が出ています。設計時間は、山電で59.5hから48.5hへ削減されています。削減時間は8〜11hです。" & vbCrLf & vbCrLf
+    nt = nt & "一方で、工程設計・部品加工/CAM・仕上組立を合わせた製作側では18.45h増加し、加工時間を含めた製作側全体では+4.3％増となった。" & vbCrLf
+    nt = nt & "ただし、加工時間369hは変化していないため、加工時間を除いた確認系作業だけで見ると+32.4％増である。" & vbCrLf
+    nt = nt & "つまり、設計で削減した11.0hに対し、製作側で18.45h増加しており、設計削減分の約1.7倍を後工程の確認増が上回った。" & vbCrLf & vbCrLf
+    nt = nt & "増加したのは加工時間ではなく、3D確認・寸法確認・読図・CAM準備に関わる時間です。" & vbCrLf
+    nt = nt & "今回の活動では、この反省を踏まえます。" & vbCrLf & vbCrLf
+    nt = nt & "出典：提供資料「過去の3Dデータ活用実績.txt」金型設計 表6-1、金型仕上・組立 図10-1、結言 表12-1。"
+    SetNotes sld, nt
+End Sub
+
+'================ スライド4: 前回活動からの改善点 ================
+Sub S4_Improvements(pres As Presentation)
+    Dim sld As Slide, i As Integer
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 04  /  IMPROVEMENTS", 4, 11
+    TTL sld, "前回活動からの改善点", "設計工数削減を現場負荷へ転嫁しない。現場側の確認時間も含めて金型費抑制を見る。"
+    R sld, 0.6, 1.95, 5.9, 0.55, "C53030"
+    T sld, 0.78, 2.08, 0.3, 0.3, "⚠", 16, "FFFFFF", True, 2, 3
+    T sld, 1.15, 1.95, 5.2, 0.55, "前回の課題", 14, "FFFFFF", True, 1, 3
+    R sld, 6.8, 1.95, 5.9, 0.55, "2D8659"
+    T sld, 6.98, 2.08, 0.3, 0.3, "✓", 16, "FFFFFF", True, 2, 3
+    T sld, 7.35, 1.95, 5.2, 0.55, "今回の改善", 14, "FFFFFF", True, 1, 3
+    Dim L(4) As String, Rr(4) As String
+    L(0) = "寸法を3Dモデルから都度探す": Rr(0) = "必要寸法を PMI で表示する"
+    L(1) = "面の意味が分かりにくい": Rr(1) = "面色で 製品面 / PL面 / 摺動面 を明確化"
+    L(2) = "情報不足で問い合わせが増える": Rr(2) = "加工・仕上げに必要な注記を付ける"
+    L(3) = "現場メモが設計へ戻らない": Rr(3) = "部品・面・工程に紐付けてフィードバック"
+    L(4) = "設計削減が現場負荷へ転嫁される": Rr(4) = "3D確認時間・不明点件数も管理する"
     For i = 0 To 4
-        kx = kStartX + i * (KW + KGP)
-        Select Case i
-            Case 0
-                Call AddKPICard(sld, kx, 1.08, KW, KH, "▲2.0%", "金型費比削減", "1金型600万円基準", C_RED, True)
-            Case 1
-                Call AddKPICard(sld, kx, 1.08, KW, KH, "▲36万円", "年間正味削減", "工設▲47 − 型工＋11", C_AMBER)
-            Case 2
-                Call AddKPICard(sld, kx, 1.08, KW, KH, "▲60h", "工設工数削減", "型工へ +22.5h移管", C_BLUE)
-            Case 3
-                Call AddKPICard(sld, kx, 1.08, KW, KH, "▲7.5日", "型工停滞解消", "出図待ち年間合計", C_NAVY)
-            Case 4
-                Call AddKPICard(sld, kx, 1.08, KW, KH, "0件", "手戻りゼロ化", "現行 約10件/年", C_GREEN)
-        End Select
-    Next i
+        Dim y As Single: y = 2.6 + i * 0.9
+        R sld, 0.6, y, 5.9, 0.8, "FFFFFF", "D9E1EA", 1
+        R sld, 0.6, y, 0.08, 0.8, "C53030"
+        T sld, 0.8, y, 5.6, 0.8, L(i), 12.5, "1E293B", False, 1, 3
+        T sld, 6.5, y + 0.22, 0.35, 0.4, "→", 22, "E07A2C", True, 2, 3
+        R sld, 6.8, y, 5.9, 0.8, "FFFFFF", "D9E1EA", 1
+        R sld, 6.8, y, 0.08, 0.8, "2D8659"
+        T sld, 7, y, 5.6, 0.8, Rr(i), 12.5, "1E293B", True, 1, 3
+    Next
+    T sld, 0.6, 7, 12.1, 0.3, "→ 設計側だけの削減ではなく、現場側の確認工数も含めて「金型費抑制」につながるかを見る。", 12, "1E3A5F", True, 1, 1, True
+    SetNotes sld, "前回活動では、設計側の削減効果はありました。" & vbCrLf & "ただし、現場側で確認時間が増えた工程もありました。" & vbCrLf & vbCrLf & "例えば、山電のように、設計で11.0h削減しても、部品加工側で14.9h増、仕上・組立で2.3h増となると、正味では6.2h悪化します。" & vbCrLf & vbCrLf & "今回の活動では、設計側だけの削減ではなく、現場側の確認工数も含めて金型費抑制につながるかを見ます。"
+End Sub
+
+'================ スライド5: 3Dモデルを正とする意味 ================
+Sub S5_SourceOfTruth(pres As Presentation)
+    Dim sld As Slide, tbl As Shape
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 05  /  3D AS SOURCE-OF-TRUTH", 5, 11
+    TTL sld, "3Dモデルを「正」とする意味", "正情報の置き場を 2D図面 → 3Dモデル へ移し、全工程で同じ情報を見て判断する。"
+    R sld, 0.6, 1.95, 12.1, 0.9, "1E3A5F"
+    T sld, 0.85, 2.13, 0.55, 0.55, "■", 36, "FFFFFF", True, 2, 3
+    T sld, 1.55, 1.95, 11, 0.9, "「3D正」とは：金型製作で判断に使う正情報を、2D図面ではなく3Dモデル側に持たせる考え方", 14, "FFFFFF", True, 1, 3
+    Set tbl = sld.Shapes.AddTable(7, 3, 0.6 * PT, 3.05 * PT, 12.1 * PT, 3.6 * PT)
+    tbl.Table.Columns(1).Width = 2.1 * PT
+    tbl.Table.Columns(2).Width = 4.5 * PT
+    tbl.Table.Columns(3).Width = 5.5 * PT
+    SC tbl, 1, 1, "項目", "FFFFFF", "1E293B", True, 1, 13
+    SC tbl, 1, 2, "従来", "FFFFFF", "64748B", True, 1, 13
+    SC tbl, 1, 3, "3D正運用", "FFFFFF", "1E3A5F", True, 1, 13
+    Dim rowsA(5, 2) As String
+    rowsA(0, 0) = "正情報": rowsA(0, 1) = "2D図面 中心": rowsA(0, 2) = "3Dモデル 中心"
+    rowsA(1, 0) = "形状理解": rowsA(1, 1) = "図面から読み取る": rowsA(1, 2) = "モデルで直接確認する"
+    rowsA(2, 0) = "面の意味": rowsA(2, 1) = "公差・経験で判断": rowsA(2, 2) = "面色で判断する"
+    rowsA(3, 0) = "重要寸法": rowsA(3, 1) = "図面に記載": rowsA(3, 2) = "PMIでモデル上に表示"
+    rowsA(4, 0) = "変更情報": rowsA(4, 1) = "図面改訂で追う": rowsA(4, 2) = "モデル改訂と赤色変更箇所で追う"
+    rowsA(5, 0) = "現場メモ": rowsA(5, 1) = "図面記入で埋もれやすい": rowsA(5, 2) = "部品・面・工程に紐付けて返す"
+    Dim r As Integer
+    For r = 0 To 5
+        SC tbl, r + 2, 1, rowsA(r, 0), "1E3A5F", "F1F4F8", True, 1, 13
+        SC tbl, r + 2, 2, rowsA(r, 1), "64748B", "FBFCFD", False, 1, 13
+        SC tbl, r + 2, 3, rowsA(r, 2), "1E293B", "FFF6EE", True, 1, 13
+    Next
+    T sld, 0.6, 7, 12.1, 0.3, "→ 認識違い・確認戻り を減らすため、面色（面の意味）と PMI（重要寸法）を 1つのモデル上に集約する。", 12, "1E3A5F", True, 1, 1, True
+    SetNotes sld, "3Dモデルを正にする意味は、紙図面を減らすことだけではありません。" & vbCrLf & vbCrLf & "重要なのは、設計で作った3D情報を、後工程でも同じ情報として使うことです。" & vbCrLf & "工程、加工、仕上げがそれぞれ別の情報を見て判断すると、認識違いや確認戻りが発生します。" & vbCrLf & vbCrLf & "3Dモデルを正にし、面色で面の意味、PMIで重要寸法を持たせることで、金型製作に必要な情報を一つのモデル上に整理します。"
+End Sub
+
+'================ スライド6: 面色で何を伝えるのか ================
+Sub S6_FaceColor(pres As Presentation)
+    Dim sld As Slide, i As Integer
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 06  /  FACE COLOR", 6, 11
+    TTL sld, "面色で「何を」伝えるのか", "面が金型の中で持つ「役割」を伝え、加工・仕上げ判断を変える情報。"
+    R sld, 0.6, 1.95, 12.1, 0.55, "E07A2C"
+    T sld, 0.78, 2.05, 0.35, 0.35, "●", 18, "FFFFFF", True, 2, 3
+    T sld, 1.2, 1.95, 11.4, 0.55, "「重要な面とそうでない面」を判断し、金型費を抑えるための情報", 13, "FFFFFF", True, 1, 3
+    Dim names_(6) As String, descs(6) As String, fcol(6) As String
+    names_(0) = "製品面": fcol(0) = "C53030": descs(0) = "成形品に転写されるため、傷・段差・加工目に注意"
+    names_(1) = "PL合わせ面": fcol(1) = "D97706": descs(1) = "バリに直結。高さ・カエリ・打痕を管理"
+    names_(2) = "ガス抜き面": fcol(2) = "8B5CF6": descs(2) = "削り過ぎ厳禁。深さ・高さを守る"
+    names_(3) = "摺動面": fcol(3) = "2563EB": descs(3) = "クリアランス・カジリ・面粗さを意識"
+    names_(4) = "逃がし面": fcol(4) = "94A3B8": descs(4) = "干渉回避が目的。過剰な仕上げを避ける"
+    names_(5) = "基準面": fcol(5) = "059669": descs(5) = "加工・組立の基準。勝手に触らない"
+    names_(6) = "改造面": fcol(6) = "DB2777": descs(6) = "変更目的と前回との差分を確認する"
+    For i = 0 To 6
+        Dim col As Integer: col = i Mod 4
+        Dim row As Integer: row = i \ 4
+        Dim x As Single: x = 0.6 + col * 3.08
+        Dim y As Single: y = 2.75 + row * 2.13
+        R sld, x, y, 2.95, 1.95, "FFFFFF", "D9E1EA", 1
+        R sld, x, y, 0.5, 1.95, fcol(i)
+        T sld, x + 0.65, y + 0.15, 2.2, 0.45, names_(i), 16, "1E293B", True
+        R sld, x + 0.65, y + 0.65, 0.4, 0.04, fcol(i)
+        T sld, x + 0.65, y + 0.78, 2.2, 1.1, descs(i), 11, "1E293B"
+    Next
+    T sld, 0.6, 7, 12.1, 0.3, "出典：「過去の3Dデータ活用実績」 金型設計 図6-1 面色ルール", 9, "64748B", False, 1, 1, True
+    SetNotes sld, "面色は、単なる色分けではありません。" & vbCrLf & "型工が加工・仕上げを行う時に、「この面をどう扱うべきか」を判断するための情報です。" & vbCrLf & vbCrLf & "製品面なら、加工目や傷が成形品に影響します。" & vbCrLf & "PL面なら、カエリや打痕がバリにつながります。" & vbCrLf & "摺動面なら、カジリや動作不良に関係します。" & vbCrLf & "逃がし面なら、必要以上に仕上げると工数の無駄になります。" & vbCrLf & vbCrLf & "つまり面色は、重要な面とそうでない面を判断し、金型費を抑えるための情報です。" & vbCrLf & vbCrLf & "出典：提供資料「過去の3Dデータ活用実績.txt」金型設計 図6-1 面色ルール。"
+End Sub
+
+'================ スライド7: PMIで何を伝えるのか ================
+Sub S7_PMI(pres As Presentation)
+    Dim sld As Slide, i As Integer
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 07  /  PMI", 7, 11
+    TTL sld, "PMIで「何を」伝えるのか", "面色だけでは寸法は伝わらない。重要寸法・公差・注記は PMI でモデル上に持たせる。"
+    Dim sym(6) As String, tit(6) As String, dsc(6) As String
+    sym(0) = "↔": tit(0) = "重要寸法": dsc(0) = "加工前に必ず確認する寸法を明確化"
+    sym(1) = "⌀": tit(1) = "穴径・穴深さ": dsc(1) = "加工確認漏れを防止"
+    sym(2) = "∠": tit(2) = "R・角度": dsc(2) = "見た目で判断しにくい形状"
+    sym(3) = "±": tit(3) = "公差": dsc(3) = "特殊公差にはPMIで指示"
+    sym(4) = "▣": tit(4) = "基準面": dsc(4) = "どこを基準に確認するか"
+    sym(5) = "✦": tit(5) = "仕上げ注意": dsc(5) = "磨き、合わせ、肉盛りに関わる注意点"
+    sym(6) = "ⓘ": tit(6) = "部品情報": dsc(6) = "材質、図番、品名"
+    For i = 0 To 6
+        Dim y As Single: y = 1.95 + i * 0.6
+        R sld, 0.6, y, 7.3, 0.55, "FFFFFF", "D9E1EA", 1
+        R sld, 0.6, y, 0.65, 0.55, "4A7AAB"
+        T sld, 0.6, y, 0.65, 0.55, sym(i), 18, "FFFFFF", True, 2, 3
+        T sld, 1.4, y, 1.9, 0.55, tit(i), 13, "1E3A5F", True, 1, 3
+        T sld, 3.4, y, 4.4, 0.55, dsc(i), 11.5, "1E293B", False, 1, 3
+    Next
+    R sld, 8.1, 1.95, 4.6, 2.2, "FFF6EE", "E07A2C", 1
+    T sld, 8.3, 2.13, 0.4, 0.4, "⚠", 22, "D97706", True, 2, 3
+    T sld, 8.8, 2.13, 3.7, 0.4, "過去の現場の声", 13, "D97706", True
+    T sld, 8.3, 2.65, 4.2, 1.4, "• 寸法記載がなく、都度調べる必要がある" & vbCrLf & "• 角度や R が見た目で分からない" & vbCrLf & "• 穴径や穴深さの確認に時間がかかる", 11, "1E293B"
+    R sld, 8.1, 4.3, 4.6, 2.2, "1E3A5F"
+    T sld, 8.3, 4.48, 0.4, 0.4, "★", 22, "F4B57A", True, 2, 3
+    T sld, 8.8, 4.48, 3.7, 0.4, "今回の方針", 13, "E07A2C", True
+    T sld, 8.3, 5, 4.2, 0.5, "型工がすべて自分で探す運用にはしない。", 13, "FFFFFF", True
+    T sld, 8.3, 5.55, 4.2, 0.8, "重要寸法・穴情報・基準面・仕上げ注意は、設計側が PMI として付与する。", 11, "F4B57A"
+    T sld, 0.6, 7, 12.1, 0.3, "出典：「過去の3Dデータ活用実績」 部品加工・CAM工程のデメリット記載", 9, "64748B", False, 1, 1, True
+    SetNotes sld, "過去の実績では、3Dモデル活用時の課題として、寸法記載がないため都度調べる必要がある、角度やRが見た目で分からない、穴径や穴深さを確認するのに時間がかかる、という声が出ています。" & vbCrLf & vbCrLf & "これは、3Dモデルそのものの問題ではなく、3Dモデルに必要情報が入っていないことが問題です。" & vbCrLf & vbCrLf & "今回の活動では、型工が必要寸法をすべて自分で探す運用にはしません。" & vbCrLf & "重要寸法、公差、穴情報、基準面、仕上げ注意は、設計側がPMIとして付与する方針にします。" & vbCrLf & vbCrLf & "出典：提供資料「過去の3Dデータ活用実績.txt」部品加工・CAM工程のデメリット記載。"
+End Sub
+
+'================ スライド8: 工程別 最低限PMI ================
+Sub S8_ByProcess(pres As Presentation)
+    Dim sld As Slide, i As Integer, tbl As Shape
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 08  /  PMI BY PROCESS", 8, 11
+    TTL sld, "工程別：最低限PMI", "各加工工程で、設計が出す最低限の情報を明確化する。"
+    Dim pn(6) As String, pc(6) As String
+    pn(0) = "1. 焼入前MC": pc(0) = "1E40AF"
+    pn(1) = "2. 焼入": pc(1) = "DC2626"
+    pn(2) = "3. 平面研削": pc(2) = "0891B2"
+    pn(3) = "4. MC仕上": pc(3) = "2563EB"
+    pn(4) = "5. ワイヤー": pc(4) = "7C3AED"
+    pn(5) = "6. 型彫放電": pc(5) = "DB2777"
+    pn(6) = "7. 仕上げ・組立": pc(6) = "059669"
+    Dim sw As Single: sw = (12.1 - 6 * 0.08) / 7
+    For i = 0 To 6
+        Dim x As Single: x = 0.6 + i * (sw + 0.08)
+        R sld, x, 1.95, sw, 0.55, pc(i)
+        T sld, x, 1.95, sw, 0.55, pn(i), 10.5, "FFFFFF", True, 2, 3
+    Next
+    Dim det(6) As String
+    det(0) = "原点・基準面・穴数・穴径・穴深さ・タップ有効深さ"
+    det(1) = "材質・熱処理条件・硬度"
+    det(2) = "板厚・基準面・上下面方向"
+    det(3) = "原点・基準面・穴径・穴深さ・タップ有効深さ・公差付き箇所・重要Z寸法"
+    det(4) = "穴数・板厚・公差付き輪郭"
+    det(5) = "電極番号・Z基準・放電深さ・面粗さ"
+    det(6) = "PL高さ・ガス抜き深さ・幅・摺動クリアランス・調整可能面・調整禁止面・組付け位置"
+    Set tbl = sld.Shapes.AddTable(8, 2, 0.6 * PT, 2.7 * PT, 12.1 * PT, 3.9 * PT)
+    tbl.Table.Columns(1).Width = 2.3 * PT
+    tbl.Table.Columns(2).Width = 9.8 * PT
+    SC tbl, 1, 1, "工程", "FFFFFF", "1E3A5F", True, 1, 12
+    SC tbl, 1, 2, "設計が出す最低限情報", "FFFFFF", "1E3A5F", True, 1, 12
+    Dim names2(6) As String
+    names2(0) = "焼入前MC": names2(1) = "焼入工程": names2(2) = "平面研削盤": names2(3) = "MC仕上"
+    names2(4) = "ワイヤー放電": names2(5) = "型彫放電": names2(6) = "仕上げ・組立"
+    For i = 0 To 6
+        SC tbl, i + 2, 1, names2(i), pc(i), IIf(i Mod 2 = 0, "FBFCFD", "FFFFFF"), True, 1, 11
+        SC tbl, i + 2, 2, det(i), "1E293B", IIf(i Mod 2 = 0, "FBFCFD", "FFFFFF"), False, 1, 10.5
+    Next
+    R sld, 0.6, 6.7, 12.1, 0.6, "E07A2C"
+    T sld, 0.78, 6.83, 0.32, 0.32, "✕", 20, "FFFFFF", True, 2, 3
+    T sld, 1.2, 6.7, 11.4, 0.6, "取代・残し代・残す/落とす判断（ワイヤー）は出さない → 作業者判断", 12, "FFFFFF", True, 1, 3
+    Dim nt As String
+    nt = "この表が今回の運用ルールです。" & vbCrLf & vbCrLf
+    nt = nt & "焼入前MCでは、取代・残し代は設計が出しません。" & vbCrLf
+    nt = nt & "焼入工程では、材質、熱処理条件、硬度のみです。" & vbCrLf
+    nt = nt & "平面研削盤では、完成板厚、基準面、上下面方向に絞ります。幾何公差や研削対象面は入れません。" & vbCrLf & vbCrLf
+    nt = nt & "MC仕上では、穴、深さ、公差付き箇所、重要Z寸法を中心にします。" & vbCrLf
+    nt = nt & "ワイヤーでは、スタート穴、穴数、板厚、上下面方向、公差付き輪郭までです。残す・落とす判断は作業者判断です。" & vbCrLf & vbCrLf
+    nt = nt & "型彫放電では、電極番号、放電対象面、Z基準、放電深さ、面粗さ。" & vbCrLf
+    nt = nt & "仕上げでは、PL、ガス抜き、摺動クリアランス、調整可否、組付け位置です。"
+    SetNotes sld, nt
+End Sub
+
+'================ スライド9: 現場メモを設計へ返す仕組み ================
+Sub S9_Feedback(pres As Presentation)
+    Dim sld As Slide, i As Integer, tbl As Shape
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 09  /  FEEDBACK LOOP", 9, 11
+    TTL sld, "現場メモを設計へ返す仕組み", "気付きを「部品・面・工程」に紐付けて返し、設計→次回のルールへ反映する。"
+    Dim bt(2) As String, bs(2) As String, bc(2) As String, bn(2) As String
+    bt(0) = "① 現場で気付く": bs(0) = "加工・仕上げで違和感をメモ": bc(0) = "D97706": bn(0) = "✎"
+    bt(1) = "② 紐付けて返す": bs(1) = "部品 / 面 / 工程 / 内容 を記録": bc(1) = "4A7AAB": bn(1) = "⇄"
+    bt(2) = "③ 設計が反映": bs(2) = "面色・PMIルール／次回設計へ": bc(2) = "1E3A5F": bn(2) = "↻"
+    For i = 0 To 2
+        Dim x As Single: x = 0.6 + i * 4.1
+        R sld, x, 1.95, 3.95, 1.05, bc(i)
+        Ov sld, x + 0.25, 2.2, 0.55, 0.55, "FFFFFF"
+        T sld, x + 0.25, 2.2, 0.55, 0.55, bn(i), 24, bc(i), True, 2, 3
+        T sld, x + 1, 2.1, 2.85, 0.4, bt(i), 15, "FFFFFF", True, 1, 1
+        T sld, x + 1, 2.5, 2.85, 0.4, bs(i), 11, "FFFFFF"
+    Next
+    Set tbl = sld.Shapes.AddTable(7, 2, 0.6 * PT, 3.25 * PT, 7.5 * PT, 3.5 * PT)
+    tbl.Table.Columns(1).Width = 1.8 * PT
+    tbl.Table.Columns(2).Width = 5.7 * PT
+    SC tbl, 1, 1, "項目", "FFFFFF", "1E3A5F", True, 1, 12
+    SC tbl, 1, 2, "例", "FFFFFF", "1E3A5F", True, 1, 12
+    Dim k(5) As String, v(5) As String
+    k(0) = "部品": v(0) = "入れ子 / スライド / プレート"
+    k(1) = "面": v(1) = "製品面 / PL面 / 摺動面 / 逃がし面"
+    k(2) = "工程": v(2) = "MC / ワイヤー / 放電 / 研削 / 仕上げ"
+    k(3) = "内容": v(3) = "PMI不足 / 面色不足 / 加工しにくい / 仕上げ代不足"
+    k(4) = "調整内容": v(4) = "何mm削った / どこを逃がした / どこが当たった"
+    k(5) = "設計反映": v(5) = "次回反映 / 標準化 / 今回限り"
+    For i = 0 To 5
+        SC tbl, i + 2, 1, k(i), "1E3A5F", "F1F4F8", True, 1, 12
+        SC tbl, i + 2, 2, v(i), "1E293B", IIf(i Mod 2 = 0, "FFFFFF", "FBFCFD"), False, 1, 12
+    Next
+    R sld, 8.35, 3.25, 4.35, 3.5, "FFFFFF", "E07A2C", 2
+    R sld, 8.35, 3.25, 4.35, 0.45, "E07A2C"
+    T sld, 8.55, 3.25, 4, 0.45, "運用上の重要ルール", 12, "FFFFFF", True, 1, 3
+    T sld, 8.6, 3.85, 4, 0.4, "型工は正モデルを直接編集しない。", 13, "C53030", True
+    T sld, 8.6, 4.35, 4, 0.7, "正モデルは設計側で管理。" & vbCrLf & "型工側からは下記で返す：", 12, "1E293B"
+    T sld, 8.6, 5.1, 4, 1.1, "• レビュー用データ" & vbCrLf & "• 画面キャプチャ" & vbCrLf & "• モデルビュー番号付き指摘シート", 12, "1E293B"
+    T sld, 8.6, 6.25, 4, 0.4, "→ 廃却されていた現場ノウハウを資産化。", 11, "1E3A5F", True, 1, 1, True
+    SetNotes sld, "これまで、加工メモや仕上げ調整代を図面へ書いても、設計側に返した後の確認手間が大きく、十分に活用されないことがありました。" & vbCrLf & vbCrLf & "今回の活動では、現場メモを単なる個人メモで終わらせず、部品、面、工程、調整内容に紐付けて設計へ返します。" & vbCrLf & vbCrLf & "ただし、型工が正モデルを直接編集する運用にはしません。" & vbCrLf & "正モデルは設計側が管理し、型工はレビュー用データ、画面キャプチャ、モデルビュー番号付きの指摘シートなどで返します。" & vbCrLf & vbCrLf & "これにより、これまで廃却されていた現場ノウハウを、次回設計や面色・PMIルールへ反映できます。"
+End Sub
+
+'================ スライド10: 試行運用と効果確認 ================
+Sub S10_Trial(pres As Presentation)
+    Dim sld As Slide, i As Integer, tbl As Shape
+    Set sld = NS(pres, "F5F7FA")
+    HDR sld, "SLIDE 10  /  TRIAL & METRICS", 10, 11
+    TTL sld, "試行運用と効果確認", "最初から全展開せず、対象部品を絞って試行。指標で「金型費抑制」の手応えを確認する。"
+    R sld, 0.6, 1.95, 5.8, 4.85, "FFFFFF", "D9E1EA", 1
+    R sld, 0.6, 1.95, 5.8, 0.55, "1E3A5F"
+    T sld, 0.78, 2.07, 0.3, 0.3, "🔍", 18, "FFFFFF", True, 2, 3
+    T sld, 1.2, 1.95, 5.1, 0.55, "対象候補（試行スコープ）", 14, "FFFFFF", True, 1, 3
+    Dim tg(5) As String
+    tg(0) = "入れ子部品": tg(1) = "製品面を持つ部品": tg(2) = "PL合わせ面を持つ部品"
+    tg(3) = "摺動面を持つ部品": tg(4) = "逃がし・クリアランス判断が必要な部品"
+    tg(5) = "改造・修正履歴を残したい部品"
+    For i = 0 To 5
+        Dim y As Single: y = 2.8 + i * 0.62
+        Ov sld, 0.9, y + 0.05, 0.4, 0.4, "E07A2C"
+        T sld, 0.9, y + 0.05, 0.4, 0.4, CStr(i + 1), 13, "FFFFFF", True, 2, 3
+        T sld, 1.45, y, 4.8, 0.5, tg(i), 13, "1E293B", False, 1, 3
+    Next
+    R sld, 6.7, 1.95, 6, 4.85, "FFFFFF", "D9E1EA", 1
+    R sld, 6.7, 1.95, 6, 0.55, "4A7AAB"
+    T sld, 6.88, 2.07, 0.3, 0.3, "📊", 18, "FFFFFF", True, 2, 3
+    T sld, 7.3, 1.95, 5.3, 0.55, "効果確認指標", 14, "FFFFFF", True, 1, 3
+    Set tbl = sld.Shapes.AddTable(8, 2, 6.9 * PT, 2.6 * PT, 5.6 * PT, 4.05 * PT)
+    tbl.Table.Columns(1).Width = 2.6 * PT
+    tbl.Table.Columns(2).Width = 3 * PT
+    SC tbl, 1, 1, "指標", "FFFFFF", "4A7AAB", True, 1, 11.5
+    SC tbl, 1, 2, "目的", "FFFFFF", "4A7AAB", True, 1, 11.5
+    Dim mk(6) As String, mv(6) As String
+    mk(0) = "2D図面作成時間": mv(0) = "設計工数削減を見る"
+    mk(1) = "3D確認時間": mv(1) = "型工側の負荷を確認する"
+    mk(2) = "不明点件数": mv(2) = "情報不足を見える化する"
+    mk(3) = "設計問い合わせ件数": mv(3) = "認識合わせの効果を見る"
+    mk(4) = "手戻り件数": mv(4) = "金型費抑制への効果を見る"
+    mk(5) = "外製設計／外製製作の件数": mv(5) = "内製率向上への効果を見る"
+    mk(6) = "面色・PMI修正件数": mv(6) = "ルール改善の進捗を見る"
+    For i = 0 To 6
+        Dim hl As Boolean: hl = (i = 1)
+        SC tbl, i + 2, 1, mk(i), IIf(hl, "C53030", "1E293B"), IIf(hl, "FFF1E6", IIf(i Mod 2 = 0, "FBFCFD", "FFFFFF")), hl, 1, 11.5
+        SC tbl, i + 2, 2, mv(i), IIf(hl, "C53030", "1E293B"), IIf(hl, "FFF1E6", IIf(i Mod 2 = 0, "FBFCFD", "FFFFFF")), hl, 1, 11.5
+    Next
+    R sld, 0.6, 6.92, 12.1, 0.4, "1E3A5F"
+    T sld, 0.8, 6.92, 11.9, 0.4, "「3D確認時間」は必ず計測する。設計工数だけ減っても、現場工数が増えれば金型費は下がらない。", 12, "F4B57A", True, 1, 3
+    SetNotes sld, "今回の活動では、効果指標に型工側の3D確認時間を必ず入れます。" & vbCrLf & vbCrLf & "設計側の工数が減っても、型工側の確認時間が増えれば、金型費全体としては下がりません。" & vbCrLf & "前回の取り組みで現場側の時間が増えた工程があったため、そこを管理する必要があります。" & vbCrLf & vbCrLf & "不明点件数や問い合わせ件数は、初期段階では増えても問題ありません。" & vbCrLf & "重要なのは、それを記録して面色・PMIルールへ反映し、次回以降に減らすことです。"
+End Sub
+
+'================ スライド11: まとめ ================
+Sub S11_Summary(pres As Presentation)
+    Dim sld As Slide, i As Integer
+    Set sld = NS(pres, "0F2440")
+    T sld, 0.6, 0.28, 6, 0.3, "SLIDE 11  /  SUMMARY", 11, "E07A2C", True, 1, 1
+    T sld, 12.3, 7.05, 1, 0.3, "11 / 11", 10, "F4B57A", False, 3, 1
+    T sld, 0.6, 0.62, 12.1, 0.7, "まとめ：今回の活動で目指す姿", 28, "FFFFFF", True
+    T sld, 0.6, 1.32, 12.1, 0.4, "3Dモデルを見やすくする活動ではなく、金型製作の正情報として整備する活動。", 14, "F4B57A"
+    Dim g(6) As String
+    g(0) = "3Dモデルを「正」として扱う"
+    g(1) = "面色で「面の意味」を伝える"
+    g(2) = "PMIで「重要寸法・注意点」を伝える"
+    g(3) = "型工が部品の意味を理解して加工・仕上げ判断"
+    g(4) = "設計・工程・加工・仕上げが同じ情報を見る"
+    g(5) = "問い合わせ・手戻り・過剰作業・外製依存を減らす"
+    g(6) = "少人数設計でも内製で金型設計を回せる状態を作る"
+    For i = 0 To 6
+        Dim x As Single, y As Single, w As Single
+        If i < 4 Then
+            x = 0.6 + i * 3.05: y = 2: w = 3
+        Else
+            x = 0.6 + (i - 4) * 4.075: y = 3.1: w = 4
+        End If
+        Dim sh As Shape
+        Set sh = R(sld, x, y, w, 0.95, "FFFFFF", "E07A2C", 1)
+        sh.Fill.Transparency = 0.9
+        Ov sld, x + 0.15, y + 0.23, 0.5, 0.5, "E07A2C"
+        T sld, x + 0.15, y + 0.23, 0.5, 0.5, Format(i + 1, "00"), 13, "FFFFFF", True, 2, 3
+        T sld, x + 0.78, y + 0.08, w - 0.85, 0.8, g(i), 12, "FFFFFF", True, 1, 3
+    Next
+    R sld, 0.6, 4.55, 12.1, 2.2, "E07A2C"
+    Ov sld, 0.85, 4.78, 1.1, 1.1, "FFFFFF"
+    T sld, 0.85, 4.78, 1.1, 1.1, "✋", 50, "E07A2C", True, 2, 3
+    T sld, 2.15, 4.7, 10.4, 0.5, "型工の皆さんへ", 20, "FFFFFF", True
+    T sld, 2.15, 5.2, 10.4, 0.4, "3Dモデルを「そのまま受け入れる」のではなく、", 14, "FFFFFF"
+    T sld, 2.15, 5.55, 10.4, 0.4, "「何が足りないか」「何が見にくいか」「どの情報が必要か」を具体的に出してほしい。", 15, "FFFFFF", True
+    T sld, 2.15, 6.05, 10.4, 0.4, "現場で使える 3D正データ にするためには、型工の意見が必要です。", 13, "0F2440", False, 1, 1, True
+    T sld, 0.6, 6.95, 12.1, 0.4, "ゴール：金型費を抑え、少人数でも内製で金型設計・製作を回せる状態を作る", 12, "F4B57A", True, 2, 1
+    SetNotes sld, "最後に伝えるべきことは、今回の活動は設計側だけで完結しないということです。" & vbCrLf & vbCrLf & "設計側が面色とPMIを付けても、現場で使えなければ意味がありません。" & vbCrLf & "型工には、加工・仕上げで必要な寸法、面の意味、見にくい箇所、不足している情報を具体的に出してもらう必要があります。" & vbCrLf & vbCrLf & "この活動のゴールは、3Dモデルを見やすくすることではなく、金型費を抑え、少人数でも内製で金型設計・製作を回せる状態を作ることです。"
+End Sub
+
+'================ メイン実行 ================
+Sub Build_3D_Kickoff()
+    Application.DisplayAlerts = ppAlertsNone
+    Dim pres As Presentation
+    Set pres = Application.Presentations.Add(msoTrue)
+    pres.PageSetup.SlideSize = ppSlideSizeOnScreen16x9
+    pres.PageSetup.SlideWidth = 13.333 * PT
+    pres.PageSetup.SlideHeight = 7.5 * PT
     
-    ' 削減効果の内訳（左下）
-    Dim breakX As Double: breakX = 0.38
-    Dim breakW As Double: breakW = 4.6
-    Dim breakStartY As Double: breakStartY = 2.42
+    S0_Title pres
+    S1_Purpose pres
+    S2_WhyNow pres
+    S3_Past pres
+    S4_Improvements pres
+    S5_SourceOfTruth pres
+    S6_FaceColor pres
+    S7_PMI pres
+    S8_ByProcess pres
+    S9_Feedback pres
+    S10_Trial pres
+    S11_Summary pres
     
-    ' ヘッダ
-    Call AddRect(sld, breakX, breakStartY, breakW, 0.28, C_RED)
-    Call AddText(sld, "削減効果の内訳 — 根拠と計算（年間3金型・1金型600万円）", _
-                 breakX, breakStartY, breakW, 0.28, 10, C_WHITE, True, , 2)
-    
-    ' テーブルヘッダ
-    Dim ty As Double: ty = breakStartY + 0.32
-    Call AddRect(sld, breakX, ty, breakW, 0.24, C_CARD_BG2, C_BORDER, 0.5)
-    Call AddText(sld, "項目", breakX + 0.1, ty, 2.3, 0.24, 9.5, C_NAVY, True)
-    Call AddText(sld, "工数変化", breakX + 2.4, ty, 0.95, 0.24, 9.5, C_NAVY, True, , 2)
-    Call AddText(sld, "金額換算", breakX + 3.35, ty, 1.25, 0.24, 9.5, C_NAVY, True, , 2)
-    
-    ' データ行
-    ty = ty + 0.24
-    Dim rowH As Double: rowH = 0.27
-    Dim rowColor As Long
-    Dim row1Color As Long, row2Color As Long, row3Color As Long
-    Dim row1ValColor As Long, row2ValColor As Long, row3ValColor As Long
-    
-    row1Color = C_RED
-    row1ValColor = C_RED
-    row2Color = C_RED
-    row2ValColor = C_RED
-    row3Color = C_AMBER
-    row3ValColor = C_AMBER
-    
-    ' 行1
-    Call AddRect(sld, breakX, ty, breakW, rowH, C_WHITE, C_BORDER, 0.3)
-    Call AddRect(sld, breakX, ty, 0.05, rowH, row1Color)
-    Call AddText(sld, "工設 電極設計（移管）", breakX + 0.13, ty, 2.27, rowH, 10, C_TEXT)
-    Call AddText(sld, "▲ 60 h/年", breakX + 2.4, ty, 0.95, rowH, 10, row1Color, True, , 2)
-    Call AddText(sld, "▲ 40.0 万円", breakX + 3.35, ty, 1.25, rowH, 10.5, row1ValColor, True, , 2)
-    ty = ty + rowH
-    
-    ' 行2
-    Call AddRect(sld, breakX, ty, breakW, rowH, C_CARD_BG, C_BORDER, 0.3)
-    Call AddRect(sld, breakX, ty, 0.05, rowH, row2Color)
-    Call AddText(sld, "工設 手戻り工数（根絶）", breakX + 0.13, ty, 2.27, rowH, 10, C_TEXT)
-    Call AddText(sld, "▲ 10 h/年", breakX + 2.4, ty, 0.95, rowH, 10, row2Color, True, , 2)
-    Call AddText(sld, "▲ 6.7 万円", breakX + 3.35, ty, 1.25, rowH, 10.5, row2ValColor, True, , 2)
-    ty = ty + rowH
-    
-    ' 行3
-    Call AddRect(sld, breakX, ty, breakW, rowH, C_WHITE, C_BORDER, 0.3)
-    Call AddRect(sld, breakX, ty, 0.05, rowH, row3Color)
-    Call AddText(sld, "型工 電極設計（増加）", breakX + 0.13, ty, 2.27, rowH, 10, C_TEXT)
-    Call AddText(sld, "＋ 22.5 h/年", breakX + 2.4, ty, 0.95, rowH, 10, row3Color, True, , 2)
-    Call AddText(sld, "＋ 11.3 万円", breakX + 3.35, ty, 1.25, rowH, 10.5, row3ValColor, True, , 2)
-    ty = ty + rowH
-    
-    ' 小計行
-    Call AddRect(sld, breakX, ty, breakW, 0.32, C_NAVY)
-    Call AddText(sld, "正味削減効果（工設▲ − 型工＋）", breakX + 0.13, ty, 2.27, 0.32, 10, C_WHITE, True)
-    Call AddText(sld, "▲ 47.5 h/年", breakX + 2.4, ty, 0.95, 0.32, 10, C_WHITE, True, , 2)
-    Call AddText(sld, "▲ 36 万円/年", breakX + 3.35, ty, 1.25, 0.32, 11.5, C_WHITE, True, , 2)
-    ty = ty + 0.32
-    
-    ' 結果バー
-    ty = ty + 0.06
-    Call AddRect(sld, breakX, ty, breakW, 0.46, C_RED_LT, C_RED, 1.5)
-    Call AddText(sld, "金型費比削減率： 36万円 ÷ 1,800万円（600万円 × 3件）= ▲ 2.0 %", _
-                 breakX + 0.1, ty, breakW - 0.2, 0.46, 10.5, C_TEXT, , , 2, 3)
-    ty = ty + 0.46
-    
-    ' 単価注記
-    Call AddText(sld, "* 工数単価：工設 6,650円/h ／ 型工 5,000円/h（推定）", _
-                 breakX + 0.1, ty + 0.04, breakW - 0.2, 0.2, 8.5, C_MUTED, , True)
-    
-    ' 方針整合（右下）
-    Dim polX As Double: polX = 5.07
-    Dim polW As Double: polW = 4.55
-    
-    Call AddRect(sld, polX, breakStartY, polW, 0.28, C_GREEN)
-    Call AddText(sld, "工設の方針体系との整合 — 提案のメリット", polX, breakStartY, polW, 0.28, 10, C_WHITE, True, , 2)
-    
-    Dim py As Double: py = breakStartY + 0.34
-    Dim PRH As Double: PRH = 0.58
-    Dim merit1Type As String, merit2Type As String, merit3Type As String, merit4Type As String
-    Dim merit1Txt As String, merit2Txt As String, merit3Txt As String, merit4Txt As String
-    Dim merit1Policy As String, merit2Policy As String, merit3Policy As String, merit4Policy As String
-    Dim bgColor As Long
-    
-    merit1Type = "直接"
-    merit1Txt = "NX-Open半自動化で電極形状を自動生成"
-    merit1Policy = "定型作業のシステム化・自動化"
-    
-    merit2Type = "直接"
-    merit2Txt = "工設60h回収・手戻り根絶 ≈ 36万円/年"
-    merit2Policy = "ペーパーレス化・コスト追及"
-    
-    merit3Type = "典型"
-    merit3Txt = "設計ノウハウ → 電極設計基準書・自動化仕様書として形式知化"
-    merit3Policy = "ナレッジ継承＋基準類見直し"
-    
-    merit4Type = "典型"
-    merit4Txt = "型工主体で工設がシステムで支援する体制"
-    merit4Policy = "行動指針「ささえる」「つながる」"
-    
-    ' メリット1
-    bgColor = C_CARD_BG
-    Call AddRect(sld, polX, py, polW, PRH, bgColor, C_BORDER, 0.5)
-    Call AddTypeBadge(sld, polX + 0.1, py + 0.05, merit1Type)
-    Call AddText(sld, merit1Txt, polX + 0.6, py + 0.04, polW - 0.7, 0.26, 10, C_TEXT, True)
-    Call AddText(sld, "→ " & merit1Policy, polX + 0.6, py + 0.3, polW - 0.7, 0.24, 9.5, C_GREEN, , True)
-    py = py + PRH + 0.05
-    
-    ' メリット2
-    bgColor = C_WHITE
-    Call AddRect(sld, polX, py, polW, PRH, bgColor, C_BORDER, 0.5)
-    Call AddTypeBadge(sld, polX + 0.1, py + 0.05, merit2Type)
-    Call AddText(sld, merit2Txt, polX + 0.6, py + 0.04, polW - 0.7, 0.26, 10, C_TEXT, True)
-    Call AddText(sld, "→ " & merit2Policy, polX + 0.6, py + 0.3, polW - 0.7, 0.24, 9.5, C_GREEN, , True)
-    py = py + PRH + 0.05
-    
-    ' メリット3
-    bgColor = C_CARD_BG
-    Call AddRect(sld, polX, py, polW, PRH, bgColor, C_BORDER, 0.5)
-    Call AddTypeBadge(sld, polX + 0.1, py + 0.05, merit3Type)
-    Call AddText(sld, merit3Txt, polX + 0.6, py + 0.04, polW - 0.7, 0.26, 10, C_TEXT, True)
-    Call AddText(sld, "→ " & merit3Policy, polX + 0.6, py + 0.3, polW - 0.7, 0.24, 9.5, C_GREEN, , True)
-    py = py + PRH + 0.05
-    
-    ' メリット4
-    bgColor = C_WHITE
-    Call AddRect(sld, polX, py, polW, PRH, bgColor, C_BORDER, 0.5)
-    Call AddTypeBadge(sld, polX + 0.1, py + 0.05, merit4Type)
-    Call AddText(sld, merit4Txt, polX + 0.6, py + 0.04, polW - 0.7, 0.26, 10, C_TEXT, True)
-    Call AddText(sld, "→ " & merit4Policy, polX + 0.6, py + 0.3, polW - 0.7, 0.24, 9.5, C_GREEN, , True)
-    
-    Call AddFooter(sld, 3)
+    Application.DisplayAlerts = ppAlertsAll
+    MsgBox "12スライドを作成しました。" & vbCrLf & "「名前を付けて保存」してください。", vbInformation, "完了"
 End Sub
