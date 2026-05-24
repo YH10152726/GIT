@@ -1,1 +1,915 @@
-"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --app="C:\Users\ysmft\Desktop\DailyReport.html"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Attribute VB_Name = "mod_MenshokuStandardGenerator"
+Option Explicit
+
+'============================================================
+' 面色定義標準書 自動生成マクロ
+' 目的:
+'   Word VBAだけで、面色定義標準書のたたき台DOCXを自動生成する。
+'
+' 使い方:
+'   1) Wordを開く
+'   2) Alt + F11
+'   3) 挿入 > 標準モジュール
+'   4) このコードを貼り付け
+'   5) Generate_Menshoku_Standard を実行
+'
+' 注意:
+'   - 出力先は基本的にデスクトップ。
+'   - 画像は任意。マクロ保存先と同じ場所に images フォルダを作り、
+'     fig_5_1.png などを置くと自動挿入する。
+'   - .docx はマクロを保持できないため、このコードを保存する元ファイルは .docm 推奨。
+'============================================================
+
+Private Const DOC_TITLE As String = "面色定義標準書（成形機能部品用）"
+Private Const DOC_REV As String = "Rev.0.8（自動生成たたき台）"
+Private Const DOC_NO As String = "YMDN-3D-MC-001"
+Private Const DEPT As String = "工作部　工機技術課　工設係"
+
+Public Sub Generate_Menshoku_Standard()
+    On Error GoTo EH
+
+    Dim doc As Document
+    Set doc = Documents.Add
+
+    Application.ScreenUpdating = False
+
+    SetupPage doc
+    SetupStyles doc
+
+    AddCover doc
+    AddTocPage doc
+
+    AddRevisionHistory doc
+    AddPrecheckItems doc
+
+    AddChapterPurpose doc
+    AddChapterScope doc
+    AddChapterTerms doc
+    AddChapterBasicPolicy doc
+    AddColorDefinitionTable doc
+    AddFaceColorPrinciples doc
+    AddHoleThreadRules doc
+    AddUsageRules doc
+    AddProcessChecks doc
+    AddIssueJudgement doc
+    AddChecklist doc
+    AddWorkflow doc
+    AddRaci doc
+    AddTrialEvaluation doc
+    AddFeedbackSheets doc
+    AddAppendix doc
+
+    UpdateAllFields doc
+
+    Dim outPath As String
+    outPath = GetDefaultOutputPath("面色定義標準書（成形機能部品用）_Auto.docx")
+
+    doc.SaveAs2 FileName:=outPath, FileFormat:=wdFormatXMLDocument
+
+    Application.ScreenUpdating = True
+    MsgBox "生成完了:" & vbCrLf & outPath, vbInformation
+
+    Exit Sub
+
+EH:
+    Application.ScreenUpdating = True
+    MsgBox "生成中にエラーが発生しました。" & vbCrLf & _
+           "No: " & Err.Number & vbCrLf & _
+           "内容: " & Err.Description, vbCritical
+End Sub
+
+'============================================================
+' 基本設定
+'============================================================
+
+Private Sub SetupPage(ByVal doc As Document)
+    With doc.PageSetup
+        .PaperSize = wdPaperA4
+        .Orientation = wdOrientPortrait
+        .TopMargin = MillimetersToPoints(18)
+        .BottomMargin = MillimetersToPoints(16)
+        .LeftMargin = MillimetersToPoints(16)
+        .RightMargin = MillimetersToPoints(16)
+        .HeaderDistance = MillimetersToPoints(8)
+        .FooterDistance = MillimetersToPoints(8)
+    End With
+
+    With doc.Sections(1).Headers(wdHeaderFooterPrimary).Range
+        .Text = DOC_TITLE & "　" & DOC_REV & "　" & DEPT & "　【試行版】"
+        .Font.Name = "Yu Gothic"
+        .Font.Size = 8
+        .ParagraphFormat.Alignment = wdAlignParagraphLeft
+    End With
+
+    With doc.Sections(1).Footers(wdHeaderFooterPrimary).Range
+        .Text = ""
+        .ParagraphFormat.Alignment = wdAlignParagraphCenter
+        .Fields.Add Range:=doc.Sections(1).Footers(wdHeaderFooterPrimary).Range, Type:=wdFieldPage
+    End With
+End Sub
+
+Private Sub SetupStyles(ByVal doc As Document)
+    With doc.Styles(wdStyleNormal).Font
+        .NameFarEast = "Yu Gothic"
+        .Name = "Yu Gothic"
+        .Size = 10
+    End With
+    With doc.Styles(wdStyleNormal).ParagraphFormat
+        .LineSpacingRule = wdLineSpaceSingle
+        .SpaceAfter = 4
+    End With
+
+    With doc.Styles(wdStyleHeading1).Font
+        .NameFarEast = "Yu Gothic"
+        .Name = "Yu Gothic"
+        .Size = 16
+        .Bold = True
+        .Color = RGB(31, 78, 121)
+    End With
+    With doc.Styles(wdStyleHeading1).ParagraphFormat
+        .SpaceBefore = 14
+        .SpaceAfter = 8
+        .KeepWithNext = True
+    End With
+
+    With doc.Styles(wdStyleHeading2).Font
+        .NameFarEast = "Yu Gothic"
+        .Name = "Yu Gothic"
+        .Size = 12
+        .Bold = True
+        .Color = RGB(31, 78, 121)
+    End With
+    With doc.Styles(wdStyleHeading2).ParagraphFormat
+        .SpaceBefore = 10
+        .SpaceAfter = 6
+        .KeepWithNext = True
+    End With
+End Sub
+
+Private Function GetDefaultOutputPath(ByVal fileName As String) As String
+    Dim basePath As String
+    basePath = Environ$("USERPROFILE") & "\Desktop"
+    If Len(Dir(basePath, vbDirectory)) = 0 Then
+        basePath = Options.DefaultFilePath(wdDocumentsPath)
+    End If
+    GetDefaultOutputPath = basePath & "\" & fileName
+End Function
+
+Private Function GetMacroFolder() As String
+    If Len(ThisDocument.Path) > 0 Then
+        GetMacroFolder = ThisDocument.Path
+    Else
+        GetMacroFolder = Environ$("USERPROFILE") & "\Desktop"
+    End If
+End Function
+
+Private Sub UpdateAllFields(ByVal doc As Document)
+    Dim s As Section
+    Dim hdr As HeaderFooter
+    Dim ftr As HeaderFooter
+
+    doc.Fields.Update
+
+    For Each s In doc.Sections
+        For Each hdr In s.Headers
+            hdr.Range.Fields.Update
+        Next hdr
+        For Each ftr In s.Footers
+            ftr.Range.Fields.Update
+        Next ftr
+    Next s
+End Sub
+
+'============================================================
+' 共通出力部品
+'============================================================
+
+Private Sub AddHeading1(ByVal doc As Document, ByVal text As String)
+    Dim p As Paragraph
+    Set p = doc.Content.Paragraphs.Add
+    p.Range.Text = text
+    p.Range.Style = wdStyleHeading1
+    p.Range.InsertParagraphAfter
+End Sub
+
+Private Sub AddHeading2(ByVal doc As Document, ByVal text As String)
+    Dim p As Paragraph
+    Set p = doc.Content.Paragraphs.Add
+    p.Range.Text = text
+    p.Range.Style = wdStyleHeading2
+    p.Range.InsertParagraphAfter
+End Sub
+
+Private Sub AddPara(ByVal doc As Document, ByVal text As String, Optional ByVal bold As Boolean = False)
+    Dim p As Paragraph
+    Set p = doc.Content.Paragraphs.Add
+    p.Range.Text = text
+    p.Range.Font.Bold = bold
+    p.Range.Font.NameFarEast = "Yu Gothic"
+    p.Range.Font.Name = "Yu Gothic"
+    p.Range.Font.Size = 10
+    p.Range.InsertParagraphAfter
+End Sub
+
+Private Sub AddNote(ByVal doc As Document, ByVal text As String)
+    Dim p As Paragraph
+    Set p = doc.Content.Paragraphs.Add
+    p.Range.Text = text
+    p.Range.Font.NameFarEast = "Yu Gothic"
+    p.Range.Font.Name = "Yu Gothic"
+    p.Range.Font.Size = 9
+    p.Range.Font.Color = RGB(192, 0, 0)
+    p.Range.Shading.BackgroundPatternColor = RGB(255, 242, 204)
+    p.Range.InsertParagraphAfter
+End Sub
+
+Private Sub AddBullet(ByVal doc As Document, ByVal text As String)
+    Dim p As Paragraph
+    Set p = doc.Content.Paragraphs.Add
+    p.Range.Text = text
+    p.Range.ListFormat.ApplyBulletDefault
+    p.Range.Font.NameFarEast = "Yu Gothic"
+    p.Range.Font.Name = "Yu Gothic"
+    p.Range.Font.Size = 10
+    p.Range.InsertParagraphAfter
+End Sub
+
+Private Sub AddPageBreak(ByVal doc As Document)
+    Dim r As Range
+    Set r = doc.Content
+    r.Collapse wdCollapseEnd
+    r.InsertBreak Type:=wdPageBreak
+End Sub
+
+Private Sub SetCellText(ByVal t As Table, ByVal row As Long, ByVal col As Long, ByVal text As String)
+    With t.Cell(row, col).Range
+        .Text = text
+        .Font.NameFarEast = "Yu Gothic"
+        .Font.Name = "Yu Gothic"
+        .Font.Size = 8
+        .ParagraphFormat.Alignment = wdAlignParagraphCenter
+        .ParagraphFormat.SpaceAfter = 0
+    End With
+    t.Cell(row, col).VerticalAlignment = wdCellAlignVerticalCenter
+End Sub
+
+Private Sub SetCellTextLeft(ByVal t As Table, ByVal row As Long, ByVal col As Long, ByVal text As String)
+    With t.Cell(row, col).Range
+        .Text = text
+        .Font.NameFarEast = "Yu Gothic"
+        .Font.Name = "Yu Gothic"
+        .Font.Size = 8
+        .ParagraphFormat.Alignment = wdAlignParagraphLeft
+        .ParagraphFormat.SpaceAfter = 0
+    End With
+    t.Cell(row, col).VerticalAlignment = wdCellAlignVerticalCenter
+End Sub
+
+Private Sub FormatStandardTable(ByVal t As Table, Optional ByVal headerColor As Long = -1)
+    If headerColor = -1 Then headerColor = RGB(31, 78, 121)
+
+    t.Borders.Enable = True
+    t.AllowAutoFit = True
+    t.AutoFitBehavior wdAutoFitWindow
+
+    With t.Rows(1).Range
+        .Font.Bold = True
+        .Font.Color = wdColorWhite
+        .Shading.BackgroundPatternColor = headerColor
+    End With
+
+    Dim c As Cell
+    For Each c In t.Range.Cells
+        c.Range.Font.NameFarEast = "Yu Gothic"
+        c.Range.Font.Name = "Yu Gothic"
+        c.Range.Font.Size = 8
+        c.VerticalAlignment = wdCellAlignVerticalCenter
+    Next c
+End Sub
+
+Private Sub AddCaption(ByVal doc As Document, ByVal text As String)
+    Dim p As Paragraph
+    Set p = doc.Content.Paragraphs.Add
+    p.Range.Text = text
+    p.Range.Font.NameFarEast = "Yu Gothic"
+    p.Range.Font.Name = "Yu Gothic"
+    p.Range.Font.Size = 9
+    p.Range.Font.Italic = True
+    p.Range.ParagraphFormat.Alignment = wdAlignParagraphCenter
+    p.Range.InsertParagraphAfter
+End Sub
+
+Private Sub InsertPictureIfExists(ByVal doc As Document, ByVal fileName As String, ByVal caption As String)
+    Dim p As String
+    p = GetMacroFolder() & "\images\" & fileName
+
+    If Len(Dir(p)) = 0 Then
+        AddNote doc, "【図例貼付予定】" & caption & "　※ " & p & " が存在しないため未挿入"
+        Exit Sub
+    End If
+
+    Dim r As Range
+    Set r = doc.Content
+    r.Collapse wdCollapseEnd
+
+    Dim ils As InlineShape
+    Set ils = doc.InlineShapes.AddPicture(FileName:=p, LinkToFile:=False, SaveWithDocument:=True, Range:=r)
+
+    If ils.Width > CentimetersToPoints(16) Then
+        ils.LockAspectRatio = True
+        ils.Width = CentimetersToPoints(16)
+    End If
+
+    AddCaption doc, caption
+End Sub
+
+'============================================================
+' 文書本体
+'============================================================
+
+Private Sub AddCover(ByVal doc As Document)
+    AddPara doc, DEPT
+    AddPara doc, "技　術　標　準　書", True
+
+    Dim p As Paragraph
+    Set p = doc.Content.Paragraphs.Add
+    With p.Range
+        .Text = DOC_TITLE
+        .Font.NameFarEast = "Yu Gothic"
+        .Font.Name = "Yu Gothic"
+        .Font.Size = 20
+        .Font.Bold = True
+        .ParagraphFormat.Alignment = wdAlignParagraphCenter
+        .InsertParagraphAfter
+    End With
+
+    AddPara doc, DOC_REV
+    AddPara doc, "― 面色により面用途・標準公差・標準仕上げを識別し、寸法値・穴ネジ情報・個別指示をPMI/注記・穴ネジ一覧表・補助図で補足する試行基準 ―"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 8, 2)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "項目": SetCellText t, 1, 2, "内容"
+    SetCellText t, 2, 1, "文書番号": SetCellTextLeft t, 2, 2, DOC_NO
+    SetCellText t, 3, 1, "版数": SetCellTextLeft t, 3, 2, DOC_REV
+    SetCellText t, 4, 1, "改訂日": SetCellTextLeft t, 4, 2, "xxx 年 xxx 月"
+    SetCellText t, 5, 1, "作成部署": SetCellTextLeft t, 5, 2, DEPT
+    SetCellText t, 6, 1, "適用対象": SetCellTextLeft t, 6, 2, "成形機能部品（キャビ・コア・入れ子・スライド・傾斜コア等）"
+    SetCellText t, 7, 1, "対象外": SetCellTextLeft t, 7, 2, "モールドベース・型枠・汎用プレート類・測定工程"
+    SetCellText t, 8, 1, "現場閲覧": SetCellTextLeft t, 8, 2, "JTデータ（NX nativeは工設管理）"
+
+    AddNote doc, "【基本方針】面色は面の用途・標準公差・標準仕上げ条件を示す情報である。寸法値はPMI・3D形状・穴ネジ一覧表・補助図で示す。個別公差がなければ面色の標準公差を適用する。"
+    AddNote doc, "※ 測定工程・測定ビュー・測定点・データムA/B/Cは本標準書の対象外。No.3A（ガスベント）専用色は試行運用で確認し、別途決定する。"
+
+    AddPageBreak doc
+End Sub
+
+Private Sub AddTocPage(ByVal doc As Document)
+    AddHeading1 doc, "目次"
+
+    Dim r As Range
+    Set r = doc.Content
+    r.Collapse wdCollapseEnd
+    doc.TablesOfContents.Add Range:=r, RightAlignPageNumbers:=True, _
+        UseHeadingStyles:=True, UpperHeadingLevel:=1, LowerHeadingLevel:=2, _
+        IncludePageNumbers:=True, AddedStyles:="", UseHyperlinks:=True
+    AddPageBreak doc
+End Sub
+
+Private Sub AddRevisionHistory(ByVal doc As Document)
+    AddHeading1 doc, "改訂履歴"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 4, 5)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "Rev.": SetCellText t, 1, 2, "改訂日": SetCellText t, 1, 3, "改訂箇所": SetCellText t, 1, 4, "主な改訂内容": SetCellText t, 1, 5, "承認者"
+
+    SetCellText t, 2, 1, "0.1〜0.5": SetCellText t, 2, 2, "2026.05": SetCellText t, 2, 3, "全章": SetCellTextLeft t, 2, 4, "初版〜実運用反映": SetCellText t, 2, 5, "xxx"
+    SetCellText t, 3, 1, "0.6": SetCellText t, 3, 2, "2026.05": SetCellText t, 3, 3, "全章": SetCellTextLeft t, 3, 4, "面色に標準公差・標準仕上げを持たせる概念を反映。寸法値と公差の考え方を追加。": SetCellText t, 3, 5, "xxx"
+    SetCellText t, 4, 1, "0.8": SetCellText t, 4, 2, "xxx": SetCellText t, 4, 3, "全章": SetCellTextLeft t, 4, 4, "Word VBA自動生成版。面色定義表、チェックリスト、様式類をコード管理できる構成に整理。": SetCellText t, 4, 5, "xxx"
+End Sub
+
+Private Sub AddPrecheckItems(ByVal doc As Document)
+    AddHeading1 doc, "運用開始前確認項目一覧"
+    AddPara doc, "本標準書内でxxxと記載された項目は、社内確認が必要なため現時点で確定できない項目である。試行運用開始前に確定すること。"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 11, 6)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "No.": SetCellText t, 1, 2, "確認項目": SetCellText t, 1, 3, "現在値": SetCellText t, 1, 4, "確認担当": SetCellText t, 1, 5, "期限": SetCellText t, 1, 6, "完了"
+
+    AddPrecheckRow t, 2, "1", "ガスベント専用色（No.3A：色名・色ID・RGB）★最優先★"
+    AddPrecheckRow t, 3, "2", "NXバージョン（全担当者共通）"
+    AddPrecheckRow t, 4, "3", "JT変換手順（NXバージョン対応）"
+    AddPrecheckRow t, 5, "4", "NX native管理フォルダ・JT発行先フォルダ"
+    AddPrecheckRow t, 6, "5", "発行データ格納システム・ファイル命名規則"
+    AddPrecheckRow t, 7, "6", "穴ネジ一覧表の標準様式・穴番号と3D/JT/補助図の対応方法"
+    AddPrecheckRow t, 8, "7", "承認者名・問い合わせ先"
+    AddPrecheckRow t, 9, "8", "標準レート（評価用円/h）・試行評価対象案件数"
+    AddPrecheckRow t, 10, "9", "外注先へのJT提出可否・代替形式"
+    AddPrecheckRow t, 11, "10", "PMI文字サイズ・NXレイヤ番号・PMIカテゴリ名"
+
+    AddNote doc, "No.1（ガスベント色）は試行運用で最優先で確定すること。No.2〜No.10の標準公差・面粗さは現行カラーパレット値に確定済みとして扱う。"
+End Sub
+
+Private Sub AddPrecheckRow(ByVal t As Table, ByVal r As Long, ByVal noText As String, ByVal itemText As String)
+    SetCellText t, r, 1, noText
+    SetCellTextLeft t, r, 2, itemText
+    SetCellText t, r, 3, "xxx"
+    SetCellText t, r, 4, "xxx"
+    SetCellText t, r, 5, "xxx"
+    SetCellText t, r, 6, "□"
+End Sub
+
+Private Sub AddChapterPurpose(ByVal doc As Document)
+    AddHeading1 doc, "第1章　目的"
+    AddPara doc, "本標準書は、モールド金型のうち成形機能に直接関わるキャビ・コア・入れ子・スライド等の成形機能部品において、面色を用いて面の用途・標準公差・標準仕上げ条件を明確化し、必要な製作情報をPMI/注記、穴ネジ一覧表、補助図へ整理して伝達するための基準を定める。"
+    AddBullet doc, "面色により面の用途・標準公差・標準仕上げ条件を直感的に識別できる状態にする。"
+    AddBullet doc, "穴・ネジ・タップ・Rcタップの情報は原則として穴ネジ一覧表で管理する。"
+    AddBullet doc, "穴ネジ一覧表の穴番号と3D/JT/補助図上の穴位置を対応させる。"
+    AddBullet doc, "PMI/注記は寸法値の表示、個別公差、特殊公差、改造内容、鏡面磨き、肉盛り修正等に限定して使用する。"
+    AddBullet doc, "現行図面にある情報を、面色・穴ネジ一覧表・PMI/注記・補助図へ適切に振り分け、後工程の確認負荷と手戻りを減らす。"
+    AddNote doc, "モールドベース・型枠・汎用プレート類への面色付与は本標準書の対象外とする。測定工程・測定ビュー・測定点・測定記録・データムA/B/Cは対象外とする。"
+End Sub
+
+Private Sub AddChapterScope(ByVal doc As Document)
+    AddHeading1 doc, "第2章　適用範囲"
+
+    AddHeading2 doc, "2.1　対象部品"
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 7, 2)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "対象部品": SetCellText t, 1, 2, "備考"
+    SetCellTextLeft t, 2, 1, "キャビ": SetCellTextLeft t, 2, 2, "製品面・PL面・ガスベント等の成形面を持つ固定側成形部品"
+    SetCellTextLeft t, 3, 1, "コア": SetCellTextLeft t, 3, 2, "製品面・PL面・突き出し機構に関わる可動側成形部品"
+    SetCellTextLeft t, 4, 1, "入れ子（駒）": SetCellTextLeft t, 4, 2, "キャビまたはコアに組み込む成形機能部品"
+    SetCellTextLeft t, 5, 1, "スライド": SetCellTextLeft t, 5, 2, "スライド機構を持つ成形機能部品"
+    SetCellTextLeft t, 6, 1, "傾斜コア": SetCellTextLeft t, 6, 2, "傾斜方向に動作する成形機能部品"
+    SetCellTextLeft t, 7, 1, "コアピン・入れ子ピン": SetCellTextLeft t, 7, 2, "成形品の穴・ボス等を形成する成形機能部品"
+
+    AddHeading2 doc, "2.2　対象外部品"
+    Dim t2 As Table
+    Set t2 = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 5, 2)
+    FormatStandardTable t2
+    SetCellText t2, 1, 1, "対象外部品": SetCellText t2, 1, 2, "備考"
+    SetCellTextLeft t2, 2, 1, "モールドベース（外注製作）": SetCellTextLeft t2, 2, 2, "成形機能面を持たない"
+    SetCellTextLeft t2, 3, 1, "型枠・取付板": SetCellTextLeft t2, 3, 2, "標準構成部品"
+    SetCellTextLeft t2, 4, 1, "スペーサーブロック・受板": SetCellTextLeft t2, 4, 2, "標準構成部品"
+    SetCellTextLeft t2, 5, 1, "汎用プレート類（全般）": SetCellTextLeft t2, 5, 2, "成形機能面を持たない"
+
+    AddHeading2 doc, "2.3　対象工程"
+    AddBullet doc, "金型設計：面色付与、PMI/注記作成、穴ネジ一覧表作成、補助図要否判断、発行判定。"
+    AddBullet doc, "工程設計：面色・穴ネジ一覧表・補助図による加工計画、外注判断。"
+    AddBullet doc, "CAM：面色による加工対象面・逃がし面・ガスベント面の識別と加工計画。"
+    AddBullet doc, "MC：穴ネジ一覧表・PMI/注記・補助図を用いた穴・タップ・加工寸法確認。"
+    AddBullet doc, "仕上げ・組立：PL面・逃がし面・ガスベント面・摺動面の面色確認と仕上げ作業。"
+End Sub
+
+Private Sub AddChapterTerms(ByVal doc As Document)
+    AddHeading1 doc, "第3章　用語定義"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 10, 2)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "用語": SetCellText t, 1, 2, "定義"
+
+    SetCellTextLeft t, 2, 1, "面色": SetCellTextLeft t, 2, 2, "NXシステムカラーパレットを用いて3Dモデルの各面に付与する色。面の用途・加工上の扱い・標準公差・標準仕上げ条件を示す情報。"
+    SetCellTextLeft t, 3, 1, "PMI/注記": SetCellTextLeft t, 3, 2, "3Dモデル上に付与する寸法値、個別指示、個別公差、特殊公差、改造内容等の情報。"
+    SetCellTextLeft t, 4, 1, "穴ネジ一覧表": SetCellTextLeft t, 4, 2, "穴番号・穴径・穴深さ・タップ径×深さ・貫通/止まり等を一覧で管理する表。"
+    SetCellTextLeft t, 5, 1, "穴番号": SetCellTextLeft t, 5, 2, "穴ネジ一覧表に記載する穴の識別番号。3Dモデル・JTまたは穴番号付き補助図上の穴位置と対応させる。"
+    SetCellTextLeft t, 6, 1, "標準公差": SetCellTextLeft t, 6, 2, "各面色に紐づく標準的な寸法公差。個別公差がない場合に適用する。"
+    SetCellTextLeft t, 7, 1, "個別公差": SetCellTextLeft t, 7, 2, "面色の標準公差と異なる公差を2D図面・PMI/注記・補助図で明示する公差値。"
+    SetCellTextLeft t, 8, 1, "特殊公差": SetCellTextLeft t, 8, 2, "標準公差では表現できない個別公差指定が必要な面・部位。Brown（No.13）で示し、PMI/注記/補助図で必ず明示する。"
+    SetCellTextLeft t, 9, 1, "JTデータ": SetCellTextLeft t, 9, 2, "NX nativeから変換した現場閲覧用の3Dデータ。"
+    SetCellTextLeft t, 10, 1, "ガスベント": SetCellTextLeft t, 10, 2, "PL面等に設ける成形時のガス抜き溝。No.3A専用色は継続検討中。"
+End Sub
+
+Private Sub AddChapterBasicPolicy(ByVal doc As Document)
+    AddHeading1 doc, "第4章　基本方針"
+
+    AddHeading2 doc, "4.1　面色・PMI/注記・穴ネジ一覧表・補助図の役割分担"
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 10, 4)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "情報": SetCellText t, 1, 2, "主な伝達手段": SetCellText t, 1, 3, "補足手段": SetCellText t, 1, 4, "方針"
+    AddPolicyRow t, 2, "面の用途", "面色", "注記", "面色で識別"
+    AddPolicyRow t, 3, "標準公差", "面色", "必要時PMI/注記", "現行カラーパレット値を適用"
+    AddPolicyRow t, 4, "標準仕上げ", "面色", "必要時PMI/注記", "面色定義表の標準面粗さを適用"
+    AddPolicyRow t, 5, "寸法値", "PMI・3D形状・穴ネジ一覧表・補助図", "2D補助図", "公差は面色定義を適用"
+    AddPolicyRow t, 6, "穴・ネジ・タップ", "穴ネジ一覧表", "必要時PMI/注記", "穴番号と3D/JT/補助図の対応必須"
+    AddPolicyRow t, 7, "標準外公差", "PMI/注記/補助図", "No.13 Brown", "個別公差を優先"
+    AddPolicyRow t, 8, "特殊公差", "Brown + PMI/注記/補助図", "—", "該当面・部位のみ。部品全体禁止"
+    AddPolicyRow t, 9, "改造内容", "Red + PMI/注記", "—", "面色のみで完結禁止"
+    AddPolicyRow t, 10, "測定情報", "対象外", "対象外", "本標準書の対象外"
+
+    AddHeading2 doc, "4.2　寸法値と寸法公差の考え方"
+    AddBullet doc, "寸法値は、PMI、3D形状、穴ネジ一覧表、補助図により示す。面色そのものは寸法値を持たない。"
+    AddBullet doc, "寸法値に適用する標準公差は、対象面の面色定義表の標準公差欄に従う。"
+    AddBullet doc, "PMI/注記/補助図/2D図面で個別公差が明示されている場合は、面色の標準公差より個別公差を優先する。"
+    AddBullet doc, "特殊公差が必要な面・部位はNo.13 Brownで示し、公差値・公差種別を必ず明示する。"
+    AddNote doc, "優先順位：2D図面個別公差 ＞ PMI/注記/補助図の個別公差 ＞ 面色定義表の標準公差"
+
+    AddHeading2 doc, "4.3　面色付与の原則"
+    AddPara doc, "原則として、全ての面に面色を付与する。未着色面（デフォルト色）はD判定対象とする。PMIに寸法値がある面が未着色の場合もD判定対象とする。微小R・面取り・CAD分割小面は、親面と同色にする。"
+End Sub
+
+Private Sub AddPolicyRow(ByVal t As Table, ByVal r As Long, ByVal a As String, ByVal b As String, ByVal c As String, ByVal d As String)
+    SetCellTextLeft t, r, 1, a
+    SetCellTextLeft t, r, 2, b
+    SetCellTextLeft t, r, 3, c
+    SetCellTextLeft t, r, 4, d
+End Sub
+
+Private Sub AddColorDefinitionTable(ByVal doc As Document)
+    AddHeading1 doc, "第5章　面色定義表"
+    AddHeading2 doc, "5.1　面色定義表（現行カラーパレット値反映・14色＋No.3A）"
+    AddNote doc, "本表の対象は成形機能部品のみ。モールドベース・型枠・汎用プレートへの適用は禁止。"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 16, 11)
+    FormatStandardTable t
+
+    SetCellText t, 1, 1, "No."
+    SetCellText t, 1, 2, "用途"
+    SetCellText t, 1, 3, "標準公差"
+    SetCellText t, 1, 4, "標準面粗さ"
+    SetCellText t, 1, 5, "色名"
+    SetCellText t, 1, 6, "色ID"
+    SetCellText t, 1, 7, "RGB"
+    SetCellText t, 1, 8, "使用対象"
+    SetCellText t, 1, 9, "主工程"
+    SetCellText t, 1, 10, "PMI/注記要否"
+    SetCellText t, 1, 11, "注意"
+
+    Dim r As Long
+    r = 2
+    AddColorRow t, r, "1", "基準面", "0（基準位置）", "Ra1.6", "Yellow", "6", "255/255/0", "加工・組付け基準面", "全工程", "必要時", "基準位置を示す。加工公差0を意味しない。", RGB(255, 255, 0): r = r + 1
+    AddColorRow t, r, "2", "製品面", "±0.02", "Ra1.6", "Powder Gray", "15", "242/242/242", "製品接触面（成形面）", "CAM・仕上げ", "通常不要", "鏡面磨き・肉盛り修正・個別公差はPMI/注記で明示。", RGB(242, 242, 242): r = r + 1
+    AddColorRow t, r, "3", "PL合わせ面", "±0.01", "Ra1.6", "Orange", "78", "255/153/0", "PL合わせ面", "仕上げ・組立", "原則不要", "ガスベントも暫定的にNo.3 Orangeに含む。", RGB(255, 153, 0): r = r + 1
+    AddColorRow t, r, "3A", "ガスベント", "xxx（暫定±0.01）", "xxx（暫定Ra1.6）", "xxx", "xxx", "xxx", "ガスベント溝", "CAM・仕上げ", "必要時", "専用色は試行運用で確定。加工条件未確定時はPMI/注記または補助図で明示。", RGB(255, 229, 153): r = r + 1
+    AddColorRow t, r, "4", "駒入れ合わせ面1（+）", "+0.01〜0", "Ra1.6", "Magenta", "181", "255/0/255", "入れ子合わせ面（+側）", "MC・仕上げ", "必要時", "方向混同注意。個別公差・調整代がある場合はPMI/注記で明示。", RGB(255, 0, 255): r = r + 1
+    AddColorRow t, r, "5", "駒入れ合わせ面2（−）", "0〜-0.01", "Ra1.6", "Cyan", "31", "0/255/255", "入れ子合わせ面（−側）", "MC・仕上げ", "必要時", "No.4との使い分けを徹底。", RGB(0, 255, 255): r = r + 1
+    AddColorRow t, r, "6", "駒ツバ・はまり1（+）", "+0.02〜0", "Ra1.6", "Strong Moss", "136", "0/88/40", "入れ子ツバ・はまり面（+側）", "MC・仕上げ", "必要時", "視認性注意。個別指示がある場合のみPMI/注記。", RGB(0, 88, 40): r = r + 1
+    AddColorRow t, r, "7", "駒ツバ・はまり2（−）", "0〜-0.02", "Ra1.6", "Medium Gray", "159", "125/125/125", "入れ子ツバ・はまり面（−側）", "MC・仕上げ", "必要時", "Powder Grayとの視認性差に注意。", RGB(125, 125, 125): r = r + 1
+    AddColorRow t, r, "8", "逃がし", "0〜-0.1", "Ra6.3", "Green", "36", "0/255/0", "干渉回避目的の逃げ面", "CAM・MC", "原則不要", "標準と異なる逃がし量はPMI/注記で明示。", RGB(0, 255, 0): r = r + 1
+    AddColorRow t, r, "9", "嵌め合い（摺動部）", "H7/h7", "Ra1.6", "Cornflower", "103", "0/153/255", "摺動面", "MC・研削", "必要時", "個別公差が明示されている場合は個別公差を優先。", RGB(0, 153, 255): r = r + 1
+    AddColorRow t, r, "10", "嵌め合い（その他）", "H5/h5", "Ra1.6", "Purple", "164", "102/51/204", "位置決め嵌め合い面", "MC・研削", "必要時", "個別公差が明示されている場合は個別公差を優先。", RGB(102, 51, 204): r = r + 1
+    AddColorRow t, r, "11", "並目タップ", "—", "—", "Blue", "211", "0/0/255", "タップ穴", "MC", "穴ネジ一覧表", "タップ径×深さを一覧表で管理。", RGB(0, 0, 255): r = r + 1
+    AddColorRow t, r, "12", "Rcタップ", "—", "—", "Dark Gray", "173", "51/51/51", "冷却水穴", "MC", "穴ネジ一覧表", "Rcサイズ・深さを一覧表で管理。", RGB(51, 51, 51): r = r + 1
+    AddColorRow t, r, "13", "特殊公差", "PMI/注記で個別明示", "PMI/注記で個別明示", "Brown", "125", "153/102/51", "該当面・部位", "全工程", "◎必須", "部品全体をBrownにしない。面色のみで特殊公差を確定しない。", RGB(153, 102, 51): r = r + 1
+    AddColorRow t, r, "14", "改造", "PMI/注記で個別明示", "PMI/注記で個別明示", "Red", "186", "255/0/0", "改造面・部位", "全工程", "◎必須", "改造内容・理由・変更前後寸法を必ず明示。", RGB(255, 0, 0)
+
+    InsertPictureIfExists doc, "fig_5_1.png", "図5-1　面色付与全体例（Rev.0.8 自動生成版）"
+End Sub
+
+Private Sub AddColorRow(ByVal t As Table, ByVal r As Long, ByVal noText As String, ByVal useText As String, ByVal tolText As String, _
+                        ByVal roughText As String, ByVal colorName As String, ByVal colorId As String, ByVal rgbText As String, _
+                        ByVal targetText As String, ByVal processText As String, ByVal pmiText As String, ByVal cautionText As String, _
+                        ByVal fillColor As Long)
+    SetCellText t, r, 1, noText
+    SetCellTextLeft t, r, 2, useText
+    SetCellText t, r, 3, tolText
+    SetCellText t, r, 4, roughText
+    SetCellText t, r, 5, colorName
+    SetCellText t, r, 6, colorId
+    SetCellText t, r, 7, rgbText
+    SetCellTextLeft t, r, 8, targetText
+    SetCellText t, r, 9, processText
+    SetCellText t, r, 10, pmiText
+    SetCellTextLeft t, r, 11, cautionText
+
+    t.Cell(r, 1).Shading.BackgroundPatternColor = fillColor
+    If fillColor = RGB(0, 0, 255) Or fillColor = RGB(51, 51, 51) Or fillColor = RGB(102, 51, 204) Or fillColor = RGB(153, 102, 51) Or fillColor = RGB(255, 0, 0) Or fillColor = RGB(0, 88, 40) Then
+        t.Cell(r, 1).Range.Font.Color = wdColorWhite
+    End If
+End Sub
+
+Private Sub AddFaceColorPrinciples(ByVal doc As Document)
+    AddHeading2 doc, "5.2　面色付与の原則（全面必須）"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 11, 2)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "面の種類": SetCellText t, 1, 2, "面色付与方針"
+    AddTwoColRow t, 2, "製品面", "必須（Powder Gray）→標準公差±0.02・Ra1.6を適用"
+    AddTwoColRow t, 3, "PL面", "必須（Orange）→標準公差±0.01・Ra1.6を適用"
+    AddTwoColRow t, 4, "ガスベント面", "必須（No.3A専用色xxx、暫定はOrangeまたは案件別方法）"
+    AddTwoColRow t, 5, "摺動面", "必須（Cornflower）→標準公差H7/h7・Ra1.6を適用"
+    AddTwoColRow t, 6, "逃がし面", "必須（Green）→標準公差0〜-0.1・Ra6.3を適用"
+    AddTwoColRow t, 7, "特殊公差面", "必須（Brown）→該当面・部位のみ。PMI/注記/補助図で個別公差を明示"
+    AddTwoColRow t, 8, "改造面", "必須（Red）→該当部位のみ。PMI/注記で改造内容を明示"
+    AddTwoColRow t, 9, "微小R・面取り", "親面と同色。省略不可"
+    AddTwoColRow t, 10, "CAD分割で発生した小面", "親面と同色"
+    AddTwoColRow t, 11, "全ての面", "いずれかの面色を必ず付与。未着色面はD判定対象"
+End Sub
+
+Private Sub AddTwoColRow(ByVal t As Table, ByVal r As Long, ByVal a As String, ByVal b As String)
+    SetCellTextLeft t, r, 1, a
+    SetCellTextLeft t, r, 2, b
+End Sub
+
+Private Sub AddHoleThreadRules(ByVal doc As Document)
+    AddHeading2 doc, "5.3　穴ネジ一覧表の管理ルール"
+
+    AddBullet doc, "穴数は、成形機能部品内に存在する穴・タップ穴・Rcタップ穴・ワイヤー下穴・加工用下穴の合計数で判断する。"
+    AddBullet doc, "同一径・同一深さの穴であっても、加工漏れ防止のため個数として数える。"
+    AddBullet doc, "タップ穴またはRcタップ穴が1箇所でもある場合は、穴数に関係なく穴ネジ一覧表を作成する。"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 7, 2)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "条件": SetCellText t, 1, 2, "穴ネジ一覧表のルール"
+    AddTwoColRow t, 2, "穴が5箇所以上ある場合", "穴ネジ一覧表を必ず作成する。"
+    AddTwoColRow t, 3, "タップ穴が1箇所でもある場合", "穴ネジ一覧表を作成し、タップ径×深さを記載する。例：M6×12"
+    AddTwoColRow t, 4, "Rcタップが1箇所でもある場合", "穴ネジ一覧表を作成し、Rcサイズ・深さを記載する。"
+    AddTwoColRow t, 5, "穴が5箇所未満でタップ穴・Rcタップなし", "穴ネジ一覧表は任意。PMI/注記で対応可。"
+    AddTwoColRow t, 6, "記載形式", "穴番号・径・深さ・タップ径×深さ・貫通/止まり・数量・備考"
+    AddTwoColRow t, 7, "穴番号と3D/JT/補助図の対応", "穴ネジ一覧表の穴番号と、3Dモデル・JTまたは補助図上の穴位置が対応するようにする。"
+End Sub
+
+Private Sub AddUsageRules(ByVal doc As Document)
+    AddHeading1 doc, "第6章　面色ごとの使用ルール"
+
+    AddUsageBlock doc, "No.1　基準面 ／ Yellow", Array( _
+        "基準面はYellowで示す。用途は加工・組付けの基準となる面。", _
+        "標準公差：0（基準位置）、標準面粗さ：Ra1.6。", _
+        "寸法公差0は基準位置として扱うことを示す。加工公差を無条件に0とする意味ではない。" _
+    )
+
+    AddUsageBlock doc, "No.2　製品面 ／ Powder Gray", Array( _
+        "製品面はPowder Grayで示す。用途は成形品の外観・寸法精度に直結する金型面。", _
+        "標準公差：±0.02、標準面粗さ：Ra1.6。", _
+        "鏡面磨き・肉盛り修正・個別公差が必要な場合はPMI/注記で明示する。" _
+    )
+
+    AddUsageBlock doc, "No.3　PL合わせ面 ／ Orange", Array( _
+        "PL合わせ面はOrangeで示す。標準公差：±0.01、標準面粗さ：Ra1.6。", _
+        "PL面自体にPMIは原則不要。個別指示が必要な場合のみPMI/注記で補足する。", _
+        "No.3A専用色確定までは、ガスベントも案件ごとに識別方法を明確化する。" _
+    )
+
+    AddUsageBlock doc, "No.3A　ガスベント ／ xxx", Array( _
+        "ガスベント面はNo.3A専用色で示す。専用色は試行運用で確定する。", _
+        "面色はガスベントであることを識別する情報であり、深さ・幅・長さを省略してよい意味ではない。", _
+        "標準外条件または標準加工条件未確定の場合はPMI/注記または補助図で明示する。" _
+    )
+
+    AddUsageBlock doc, "No.4〜No.8　合わせ面・はまり面・逃がし", Array( _
+        "No.4 Magenta：駒入れ合わせ面（+側）。標準公差+0.01〜0。", _
+        "No.5 Cyan：駒入れ合わせ面（−側）。標準公差0〜-0.01。", _
+        "No.6 Strong Moss：駒ツバ・はまり（+側）。標準公差+0.02〜0。", _
+        "No.7 Medium Gray：駒ツバ・はまり（−側）。標準公差0〜-0.02。", _
+        "No.8 Green：逃がし。標準公差0〜-0.1、Ra6.3。" _
+    )
+
+    AddUsageBlock doc, "No.9〜No.14　嵌め合い・タップ・特殊公差・改造", Array( _
+        "No.9 Cornflower：嵌め合い（摺動部）。標準公差H7/h7。", _
+        "No.10 Purple：嵌め合い（その他）。標準公差H5/h5。", _
+        "No.11 Blue：並目タップ。詳細は穴ネジ一覧表で管理する。", _
+        "No.12 Dark Gray：Rcタップ。詳細は穴ネジ一覧表で管理する。", _
+        "No.13 Brown：特殊公差。該当面・部位のみ。PMI/注記/補助図で個別公差を必ず明示する。", _
+        "No.14 Red：改造。改造内容・理由・変更前後寸法をPMI/注記で必ず明示する。" _
+    )
+End Sub
+
+Private Sub AddUsageBlock(ByVal doc As Document, ByVal title As String, ByVal items As Variant)
+    AddHeading2 doc, title
+
+    Dim i As Long
+    For i = LBound(items) To UBound(items)
+        AddBullet doc, CStr(items(i))
+    Next i
+End Sub
+
+Private Sub AddProcessChecks(ByVal doc As Document)
+    AddHeading1 doc, "第8章　工程別の確認項目"
+
+    AddHeading2 doc, "8.1　工程設計"
+    AddBullet doc, "3D・面色・穴ネジ一覧表・補助図で材料サイズ、加工基準、外注可否が判断できるか確認する。"
+    AddBullet doc, "各面の面色から面の用途・標準公差・標準仕上げが判断できるか確認する。"
+    AddBullet doc, "基準面、製品面、PL合わせ面、ガスベント面の範囲を確認する。"
+
+    AddHeading2 doc, "8.2　CAM"
+    AddBullet doc, "加工対象面・逃がし面・ガスベント面を面色で区別できることを確認する。"
+    AddBullet doc, "各面の標準公差が面色定義表で確認できることを確認する。"
+    AddBullet doc, "穴・ネジ情報を穴ネジ一覧表で確認する。"
+
+    AddHeading2 doc, "8.3　MC"
+    AddBullet doc, "基準面で正しく基準を取れることを確認する。"
+    AddBullet doc, "穴径・穴深さ・貫通止まりの別を穴ネジ一覧表で確認してから加工する。"
+    AddBullet doc, "穴ネジ一覧表の穴番号と3D/JT/補助図の穴位置が対応していることを確認する。"
+
+    AddHeading2 doc, "8.4　仕上げ・組立"
+    AddBullet doc, "PL面、逃がし面、摺動面、ガスベント面の面色を確認する。"
+    AddBullet doc, "特殊公差面と改造面は、PMI/注記の内容を確認してから作業する。"
+End Sub
+
+Private Sub AddIssueJudgement(ByVal doc As Document)
+    AddHeading1 doc, "第11-2章　発行判定基準"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 5, 3)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "判定": SetCellText t, 1, 2, "状態": SetCellText t, 1, 3, "扱い"
+    AddThreeColRow t, 2, "A", "面色・PMI/注記・穴ネジ一覧表・補助図が適切に整備され、後工程が迷わず判断できる。", "発行可"
+    AddThreeColRow t, 3, "B", "軽微な不足はあるが、製作に支障がない。", "発行可。ただし記録する"
+    AddThreeColRow t, 4, "C", "穴ネジ一覧表、穴番号対応、補助図などに不足があり、追加が必要。", "不足資料追加後に発行"
+    AddThreeColRow t, 5, "D", "未着色面、対象外部品への誤適用、Brown/Redの注記不足など重大不備がある。", "発行禁止・差し戻し"
+
+    AddNote doc, "未着色面、PMI寸法値がある面の未着色、対象外部品への面色誤適用、No.13/No.14の注記不足はD判定対象。"
+End Sub
+
+Private Sub AddThreeColRow(ByVal t As Table, ByVal r As Long, ByVal a As String, ByVal b As String, ByVal c As String)
+    SetCellText t, r, 1, a
+    SetCellTextLeft t, r, 2, b
+    SetCellTextLeft t, r, 3, c
+End Sub
+
+Private Sub AddChecklist(ByVal doc As Document)
+    AddHeading1 doc, "第11章　設計者チェックリスト（様式1）"
+
+    AddPara doc, "判定：□OK　□NG=修正が必要（NGのまま発行禁止）　□該当なし=本部品に存在しない場合"
+    AddPara doc, "共通：案件名：xxx　金型番号：xxx　部品番号：xxx　Rev：xxx　設計者名：xxx　確認日：xxx　発行判定：□A / □B / □C / □D"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 11, 4)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "No.": SetCellText t, 1, 2, "チェック項目": SetCellText t, 1, 3, "判定": SetCellText t, 1, 4, "記録"
+
+    AddChecklistRow t, 2, "1", "対象部品が成形機能部品であることを確認した。"
+    AddChecklistRow t, 3, "2", "モールドベース等の対象外部品に面色を誤適用していない。"
+    AddChecklistRow t, 4, "3", "原則すべての面に面色を付けている。未着色面がない。"
+    AddChecklistRow t, 5, "4", "微小R・面取り・CAD分割小面は親面と同色になっている。"
+    AddChecklistRow t, 6, "5", "面色定義表の標準公差・標準面粗さを確認した。"
+    AddChecklistRow t, 7, "6", "個別公差が必要な箇所はPMI/注記/補助図で明示した。"
+    AddChecklistRow t, 8, "7", "No.13 Brownは該当面・部位のみに使用し、公差値を明示した。"
+    AddChecklistRow t, 9, "8", "No.14 Redは改造内容・理由・変更前後寸法を明示した。"
+    AddChecklistRow t, 10, "9", "穴ネジ一覧表の要否を判断し、必要時に作成した。"
+    AddChecklistRow t, 11, "10", "穴番号と3D/JT/補助図の穴位置が対応している。"
+End Sub
+
+Private Sub AddChecklistRow(ByVal t As Table, ByVal r As Long, ByVal noText As String, ByVal itemText As String)
+    SetCellText t, r, 1, noText
+    SetCellTextLeft t, r, 2, itemText
+    SetCellText t, r, 3, "□OK / □NG / □該当なし"
+    SetCellTextLeft t, r, 4, ""
+End Sub
+
+Private Sub AddWorkflow(ByVal doc As Document)
+    AddHeading1 doc, "第13章　運用フロー"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 8, 4)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "Step": SetCellText t, 1, 2, "担当": SetCellText t, 1, 3, "作業内容": SetCellText t, 1, 4, "確認・記録"
+    AddFlowRow t, 2, "1", "設計者", "対象部品が成形機能部品か確認する。", "対象外部品は適用禁止"
+    AddFlowRow t, 3, "2", "設計者", "面色定義表に従い、全面へ面色を付与する。", "未着色面はD判定"
+    AddFlowRow t, 4, "3", "設計者", "個別公差・特殊公差・改造内容をPMI/注記で明示する。", "Brown/Redは注記必須"
+    AddFlowRow t, 5, "4", "設計者", "穴ネジ一覧表と穴番号対応を確認する。", "穴番号不対応は禁止"
+    AddFlowRow t, 6, "5", "設計者", "発行判定を実施する。", "A/Bは発行可、C/Dは是正"
+    AddFlowRow t, 7, "6", "各工程担当", "JT・穴ネジ一覧表・補助図を確認する。", "不足時は差し戻し"
+    AddFlowRow t, 8, "7", "関係者", "製作中の不明点・問題点を記録し、標準書改訂要否を判断する。", "様式4・5を使用"
+End Sub
+
+Private Sub AddFlowRow(ByVal t As Table, ByVal r As Long, ByVal stepText As String, ByVal ownerText As String, ByVal workText As String, ByVal recordText As String)
+    SetCellText t, r, 1, stepText
+    SetCellTextLeft t, r, 2, ownerText
+    SetCellTextLeft t, r, 3, workText
+    SetCellTextLeft t, r, 4, recordText
+End Sub
+
+Private Sub AddRaci(ByVal doc As Document)
+    AddHeading1 doc, "第13-2章　責任分担表（RACI）"
+    AddPara doc, "R=Responsible（実行責任）　A=Accountable（承認責任）　C=Consulted（確認・助言）　I=Informed（情報共有）"
+
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 7, 6)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "項目": SetCellText t, 1, 2, "設計者": SetCellText t, 1, 3, "工設係": SetCellText t, 1, 4, "工程設計": SetCellText t, 1, 5, "型工": SetCellText t, 1, 6, "CAM"
+    AddRaciRow t, 2, "面色付与（面色定義表の標準公差を適用）", "R", "A", "C", "C", "C"
+    AddRaciRow t, 3, "PMI/注記作成", "R", "A", "C", "C", "I"
+    AddRaciRow t, 4, "穴ネジ一覧表作成", "R", "A", "C", "C", "C"
+    AddRaciRow t, 5, "補助図要否判断", "R", "A", "C", "C", "C"
+    AddRaciRow t, 6, "発行判定", "R", "A", "C", "C", "C"
+    AddRaciRow t, 7, "フィードバック記録", "C", "A", "R", "R", "R"
+End Sub
+
+Private Sub AddRaciRow(ByVal t As Table, ByVal r As Long, ByVal itemText As String, ByVal a As String, ByVal b As String, ByVal c As String, ByVal d As String, ByVal e As String)
+    SetCellTextLeft t, r, 1, itemText
+    SetCellText t, r, 2, a
+    SetCellText t, r, 3, b
+    SetCellText t, r, 4, c
+    SetCellText t, r, 5, d
+    SetCellText t, r, 6, e
+End Sub
+
+Private Sub AddTrialEvaluation(ByVal doc As Document)
+    AddHeading1 doc, "第14章　試行評価方法"
+
+    AddHeading2 doc, "14.1　評価観点"
+    AddBullet doc, "後工程の確認負荷が下がったか。"
+    AddBullet doc, "穴ネジ一覧表・穴番号対応により、加工漏れ・確認戻りが減ったか。"
+    AddBullet doc, "特殊公差・改造・鏡面磨き・肉盛り修正の伝達漏れが減ったか。"
+    AddBullet doc, "No.3Aガスベント専用色の視認性・実運用性を評価できたか。"
+
+    AddHeading2 doc, "14.2　正味削減時間の算式"
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 2, 2)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "評価式": SetCellText t, 1, 2, "算式"
+    SetCellTextLeft t, 2, 1, "正味削減時間"
+    SetCellTextLeft t, 2, 2, "= 2D図面削減時間 − 面色付与時間 − 穴ネジ一覧表作成時間 − PMI/注記作成時間 + 型工問い合わせ削減時間"
+End Sub
+
+Private Sub AddFeedbackSheets(ByVal doc As Document)
+    AddHeading1 doc, "第15章　フィードバック様式と標準書改訂ルール"
+
+    AddHeading2 doc, "15.1　様式4：フィードバック記録表"
+    Dim t As Table
+    Set t = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 5, 8)
+    FormatStandardTable t
+    SetCellText t, 1, 1, "No.": SetCellText t, 1, 2, "発生日": SetCellText t, 1, 3, "部品名": SetCellText t, 1, 4, "工程": SetCellText t, 1, 5, "問題内容": SetCellText t, 1, 6, "不足情報": SetCellText t, 1, 7, "必要な対応": SetCellText t, 1, 8, "標準書改訂"
+    Dim i As Long
+    For i = 2 To 5
+        SetCellText t, i, 1, CStr(i - 1)
+        SetCellText t, i, 8, "□要 / □否"
+    Next i
+
+    AddHeading2 doc, "15.2　様式5：試行案件レビューシート"
+    Dim r As Table
+    Set r = doc.Tables.Add(doc.Content.Paragraphs.Add.Range, 12, 2)
+    FormatStandardTable r
+    SetCellText r, 1, 1, "項目": SetCellText r, 1, 2, "記載欄"
+    AddTwoColRow r, 2, "案件名・金型番号", "xxx"
+    AddTwoColRow r, 3, "部品名・Rev", "xxx"
+    AddTwoColRow r, 4, "設計者名・確認日", "xxx"
+    AddTwoColRow r, 5, "発行判定", "□A / □B / □C / □D"
+    AddTwoColRow r, 6, "差し戻し有無", "□有（件数：　）/ □無"
+    AddTwoColRow r, 7, "正味削減時間（h）", "2D削減：　面色付与：　穴ネジ一覧表：　PMI/注記：　問い合わせ削減："
+    AddTwoColRow r, 8, "面色標準公差を適用した寸法数", "件"
+    AddTwoColRow r, 9, "標準公差外PMI/注記が必要だった寸法数", "件"
+    AddTwoColRow r, 10, "問い合わせ件数", "件"
+    AddTwoColRow r, 11, "穴番号不対応による差し戻し件数", "件"
+    AddTwoColRow r, 12, "ガスベント色の決定状況", "□確定（色名：　　　）/ □未確定（仮色・案件別識別）"
+End Sub
+
+Private Sub AddAppendix(ByVal doc As Document)
+    AddHeading1 doc, "付録　画像貼付欄"
+    AddPara doc, "以下の画像は、マクロ保存先のimagesフォルダに該当ファイルが存在する場合のみ自動挿入する。"
+    InsertPictureIfExists doc, "fig_10_1.png", "図10-1　PMI/注記・補助図の記入例"
+    InsertPictureIfExists doc, "fig_11_1.png", "図11-1　発行判定チェック例"
+    AddNote doc, "本自動生成版はたたき台であり、正式配布前にレイアウト、表幅、改ページ、社内承認情報、xxx項目を確認すること。"
+End Sub
