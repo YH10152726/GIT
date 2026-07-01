@@ -57,1205 +57,189 @@
 
 
 
-
-
-
-
-
-
-Attribute VB_Name = "MenshokuStandardGen"
-'=====================================================================================
-' 面色定義標準書（成形機能部品用）Rev.0.7  自動生成マクロ
-'   工作部 工機技術課 工設係  【試行版】
-'-------------------------------------------------------------------------------------
-' ■ 使い方（会社PC）
-'   1) Excel（またはWord）を開き、Alt+F11 でVBEを起動
-'   2) 挿入 → 標準モジュール に本ファイルの内容を貼り付け
-'   3) マクロ一覧から  BuildMenshokuStandard  を実行
-'   → Wordが起動し、本標準書を新規文書として生成します（参照設定の変更不要）
-'
-' ■ 特徴
-'   ・Word遅延バインディング（CreateObject）なのでExcel/Wordどちらからでも実行可
-'   ・第5章 面色定義表は現行カラーパレットのRGB値でセルを実着色
-'   ・図例（スクリーンショット）はVBAで再現不可のためプレースホルダ枠を挿入
-'
-' ■ メンテ方針
-'   ・各章は Ch01_〜 のSubに分離（VBAの「プロシージャが大きすぎます」回避）
-'   ・表は Tbl(Array(Array(...),...)) で記述。改訂時はこの配列を編集するだけ
-'   ・xxx は運用開始前に確定する項目（巻頭の確認項目一覧を参照）
-'=====================================================================================
-Option Explicit
-
-'--- Word列挙定数（遅延バインディング用に自前定義：参照設定不要） -------------------
-Private Const wdStyleNormal As Long = -1
-Private Const wdStyleHeading1 As Long = -2
-Private Const wdStyleHeading2 As Long = -3
-Private Const wdStyleHeading3 As Long = -4
-Private Const wdAlignParagraphLeft As Long = 0
-Private Const wdAlignParagraphCenter As Long = 1
-Private Const wdAlignParagraphRight As Long = 2
-Private Const wdStory As Long = 6
-Private Const wdPaperA4 As Long = 7
-Private Const wdHeaderFooterPrimary As Long = 1
-Private Const wdFieldPage As Long = 33
-Private Const wdFieldNumPages As Long = 26
-Private Const wdAutoFitWindow As Long = 1
-Private Const wdAutoFitContent As Long = 2
-Private Const wdListBullet As Long = -3   ' ApplyBulletDefault相当は別処理
-Private Const wdLineStyleSingle As Long = 1
-Private Const wdColorAutomatic As Long = -16777216
-
-'--- モジュール内共有オブジェクト ----------------------------------------------------
-Private wdApp As Object
-Private doc As Object
-Private sel As Object
-
-Private Const BODY_FONT As String = "ＭＳ Ｐ明朝"
-Private Const HEAD_FONT As String = "ＭＳ Ｐゴシック"
-Private Const BODY_SIZE As Single = 10.5
-
-
-'=====================================================================================
-' メインエントリ
-'=====================================================================================
-Public Sub BuildMenshokuStandard()
-    On Error GoTo ErrH
-
-    Set wdApp = CreateObject("Word.Application")
-    wdApp.Visible = True
-    Set doc = wdApp.Documents.Add
-    Set sel = wdApp.Selection
-
-    SetupDocument
-
-    Ch00_TitleAndHistory
-    Ch00_PreCheck
-    Ch01_Purpose
-    Ch02_Scope
-    Ch03_Terms
-    Ch04_Policy
-    Ch05_ColorTable
-    Ch06_ColorVsPMI
-    Ch07_ProcessChecks
-    Ch08_PMIRules
-    Ch08b_NXJT
-    Ch09_AuxConditions
-    Ch09b_FlowChart
-    Ch10_DesignerChecklist
-    Ch10b_IssueJudge
-    Ch11_ToolmakerChecklist
-    Ch11b_Reject
-    Ch12_OperationFlow
-    Ch13_RACI_DataSet
-    Ch14_Evaluation
-    Ch15_Feedback
-    Ch16_Materials
-    Ch17_Examples
-    AppendixFigures
-
-    GoTo Done
-
-ErrH:
-    MsgBox "生成中にエラーが発生しました。" & vbCrLf & _
-           "Err " & Err.Number & " : " & Err.Description, vbCritical
-    On Error Resume Next
-    If Not wdApp Is Nothing Then wdApp.Visible = True
-    Exit Sub
-
-Done:
-    ' 先頭へカーソルを戻す
-    sel.HomeKey Unit:=wdStory
-    MsgBox "面色定義標準書（Rev.0.7）の生成が完了しました。" & vbCrLf & _
-           "Wordで内容を確認し、図例の差し込み・xxx項目の確定を行ってください。", vbInformation
-    Set sel = Nothing
-    Set doc = Nothing
-    Set wdApp = Nothing
-End Sub
-
-
-'=====================================================================================
-' 文書セットアップ（用紙・余白・既定フォント・ヘッダ／フッタ）
-'=====================================================================================
-Private Sub SetupDocument()
-    With doc.PageSetup
-        .PaperSize = wdPaperA4
-        .Orientation = 0                       ' 縦
-        .TopMargin = wdApp.CentimetersToPoints(2#)
-        .BottomMargin = wdApp.CentimetersToPoints(2#)
-        .LeftMargin = wdApp.CentimetersToPoints(2#)
-        .RightMargin = wdApp.CentimetersToPoints(2#)
-        .HeaderDistance = wdApp.CentimetersToPoints(1.2)
-        .FooterDistance = wdApp.CentimetersToPoints(1.2)
-    End With
-
-    ' 既定（標準）スタイルのフォント
-    With doc.Styles(wdStyleNormal).Font
-        .Name = BODY_FONT
-        .NameAscii = "Century"
-        .NameFarEast = BODY_FONT
-        .Size = BODY_SIZE
-    End With
-
-    ' 見出しを和文ゴシックに
-    Dim hs As Variant, k As Long
-    For Each hs In Array(wdStyleHeading1, wdStyleHeading2, wdStyleHeading3)
-        With doc.Styles(hs).Font
-            .Name = HEAD_FONT
-            .NameFarEast = HEAD_FONT
-            .Bold = True
-            .Color = RGB(31, 56, 100)
-        End With
-    Next hs
-
-    ' ヘッダ
-    Dim hdr As Object
-    Set hdr = doc.Sections(1).Headers(wdHeaderFooterPrimary).Range
-    hdr.Text = "面色定義標準書（成形機能部品用）Rev.0.7　工機技術課 工設係　【試行版】"
-    hdr.Font.Size = 8
-    hdr.Font.NameFarEast = HEAD_FONT
-    hdr.ParagraphFormat.Alignment = wdAlignParagraphLeft
-    hdr.Borders(3).LineStyle = wdLineStyleSingle    ' 下罫線
-
-    ' フッタ（ページ番号 - n -）
-    Dim ftr As Object
-    Set ftr = doc.Sections(1).Footers(wdHeaderFooterPrimary).Range
-    ftr.Text = "- "
-    ftr.Collapse 0                                  ' wdCollapseEnd
-    ftr.Fields.Add ftr, wdFieldPage
-    Set ftr = doc.Sections(1).Footers(wdHeaderFooterPrimary).Range
-    ftr.InsertAfter " -"
-    ftr.ParagraphFormat.Alignment = wdAlignParagraphCenter
-    ftr.Font.Size = 9
-End Sub
-
-
-'=====================================================================================
-' 共通ヘルパー
-'=====================================================================================
-Private Sub GoEnd()
-    sel.EndKey Unit:=wdStory
-End Sub
-
-' 見出し（lvl=1/2/3）
-Private Sub Hdg(ByVal txt As String, Optional ByVal lvl As Long = 1)
-    GoEnd
-    Select Case lvl
-        Case 1: sel.Style = doc.Styles(wdStyleHeading1)
-        Case 2: sel.Style = doc.Styles(wdStyleHeading2)
-        Case Else: sel.Style = doc.Styles(wdStyleHeading3)
-    End Select
-    sel.TypeText txt
-    sel.TypeParagraph
-    sel.Style = doc.Styles(wdStyleNormal)
-End Sub
-
-' 本文段落
-Private Sub Para(ByVal txt As String, Optional ByVal sz As Single = 0)
-    GoEnd
-    sel.Style = doc.Styles(wdStyleNormal)
-    If sz > 0 Then sel.Font.Size = sz
-    sel.TypeText txt
-    sel.TypeParagraph
-    If sz > 0 Then sel.Font.Size = BODY_SIZE
-End Sub
-
-' 箇条書き（・始まりの簡易リスト）
-Private Sub Bullet(ByVal txt As String)
-    GoEnd
-    sel.Style = doc.Styles(wdStyleNormal)
-    sel.ParagraphFormat.LeftIndent = wdApp.CentimetersToPoints(0.6)
-    sel.TypeText "・" & txt
-    sel.TypeParagraph
-    sel.ParagraphFormat.LeftIndent = 0
-End Sub
-
-' 注意・補足（網掛けなしの目立つ行）
-Private Sub Note(ByVal txt As String)
-    GoEnd
-    sel.Style = doc.Styles(wdStyleNormal)
-    sel.Font.Bold = True
-    sel.Font.Color = RGB(192, 0, 0)
-    sel.TypeText txt
-    sel.Font.Bold = False
-    sel.Font.Color = wdColorAutomatic
-    sel.TypeParagraph
-End Sub
-
-' 空行
-Private Sub Blank()
-    GoEnd
-    sel.TypeParagraph
-End Sub
-
-' 改ページ
-Private Sub PageBreak()
-    GoEnd
-    sel.InsertBreak Type:=7                      ' wdPageBreak
-End Sub
-
-'--- 表生成：rows はジャグ配列 Array(Array(...row1...), Array(...row2...), ...)
-'    1行目はヘッダ行として網掛け＋太字。fit:0=内容,1=ウィンドウ
-Private Function Tbl(ByVal rows As Variant, _
-                     Optional ByVal fit As Long = 0, _
-                     Optional ByVal sz As Single = 9) As Object
-    Dim nR As Long, nC As Long, i As Long, j As Long
-    Dim t As Object, r As Variant
-    nR = UBound(rows) + 1
-    nC = UBound(rows(0)) + 1
-
-    GoEnd
-    Set t = doc.Tables.Add(sel.Range, nR, nC)
-    t.Borders.InsideLineStyle = wdLineStyleSingle
-    t.Borders.OutsideLineStyle = wdLineStyleSingle
-    t.Range.Font.Size = sz
-    t.Range.Font.NameFarEast = BODY_FONT
-    t.Range.ParagraphFormat.SpaceAfter = 0
-    t.Range.ParagraphFormat.SpaceBefore = 0
-
-    For i = 0 To nR - 1
-        r = rows(i)
-        For j = 0 To nC - 1
-            If j <= UBound(r) Then t.Cell(i + 1, j + 1).Range.Text = CStr(r(j))
-        Next j
-    Next i
-
-    With t.Rows(1)
-        .Range.Font.Bold = True
-        .Shading.BackgroundPatternColor = RGB(217, 226, 243)
-        .HeadingFormat = True
-    End With
-
-    If fit = wdAutoFitWindow Then
-        t.AutoFitBehavior wdAutoFitWindow
-    Else
-        t.AutoFitBehavior wdAutoFitContent
-        t.AutoFitBehavior wdAutoFitWindow
-    End If
-
-    Set Tbl = t
-    GoEnd
-    sel.TypeParagraph
-End Function
-
-'--- 図例プレースホルダ（外枠付き、グレー背景） ------------------------------------
-Private Sub Fig(ByVal figNo As String, ByVal caption As String, _
-                Optional ByVal note As String = "")
-    Dim t As Object
-    GoEnd
-    Set t = doc.Tables.Add(sel.Range, 1, 1)
-    t.Borders.InsideLineStyle = wdLineStyleSingle
-    t.Borders.OutsideLineStyle = wdLineStyleSingle
-    t.Rows(1).Height = wdApp.CentimetersToPoints(3.2)
-    t.Cell(1, 1).Shading.BackgroundPatternColor = RGB(242, 242, 242)
-    With t.Cell(1, 1).Range
-        .ParagraphFormat.Alignment = wdAlignParagraphCenter
-        .Font.Size = 9
-        .Font.Color = RGB(110, 110, 110)
-        .Text = "【図例貼付欄】 " & figNo & vbCrLf & caption & _
-                IIf(note = "", "", vbCrLf & note)
-    End With
-    GoEnd
-    sel.TypeParagraph
-End Sub
-
-
-'=====================================================================================
-' 表紙・改訂履歴
-'=====================================================================================
-Private Sub Ch00_TitleAndHistory()
-    GoEnd
-    sel.Style = doc.Styles(wdStyleNormal)
-    sel.ParagraphFormat.Alignment = wdAlignParagraphCenter
-    sel.Font.Size = 11
-    sel.TypeText "工作部 工機技術課 工設係"
-    sel.TypeParagraph
-    sel.Font.Size = 14
-    sel.Font.Bold = True
-    sel.TypeText "技 術 標 準 書"
-    sel.TypeParagraph
-    sel.Font.Size = 16
-    sel.Font.Color = RGB(31, 56, 100)
-    sel.TypeText "面色定義標準書（成形機能部品用）"
-    sel.TypeParagraph
-    sel.Font.Size = 11
-    sel.Font.Color = wdColorAutomatic
-    sel.TypeText "Rev.0.7（試行版）"
-    sel.TypeParagraph
-    sel.Font.Bold = False
-    sel.Font.Size = 9
-    sel.TypeText "― 面色により面用途・標準公差・標準仕上げを識別し、" & vbCrLf & _
-                 "寸法値・穴ネジ情報・個別指示をPMI/注記・穴ネジ一覧表・補助図で補足する試行基準 ―"
-    sel.TypeParagraph
-    sel.ParagraphFormat.Alignment = wdAlignParagraphLeft
-    sel.Font.Size = BODY_SIZE
-    Blank
-
-    Tbl Array( _
-        Array("項目", "内容"), _
-        Array("文書番号", "xxx"), _
-        Array("版数", "Rev.0.7（試行版・現行カラーパレット値反映）"), _
-        Array("改訂日", "26年6月"), _
-        Array("作成部署", "工作部 工機技術課 工設係"), _
-        Array("適用対象", "成形機能部品（キャビ・コア・入れ子・スライド・傾斜コア等）"), _
-        Array("対象外", "モールドベース"), _
-        Array("型工閲覧", "JTデータ（NXモデルは工設管理）"), _
-        Array("承認者", "xxx"), _
-        Array("保管場所", "xxx") _
-    ), wdAutoFitWindow
-
-    PageBreak
-    Hdg "改訂履歴", 2
-    Tbl Array( _
-        Array("Rev.", "改訂日", "改訂箇所", "主な改訂内容", "承認者"), _
-        Array("0.1〜0.5", "2026.05", "全章", "初版〜実運用反映", ""), _
-        Array("0.6", "2026.05", "全章", "面色に標準公差・標準仕上げを持たせる概念を全章に反映・第4章寸法値と公差の考え方追加", ""), _
-        Array("0.7", "xxx", "全章", "現行カラーパレット値を面色定義表に反映・No.13「全面」→「該当面・部位」修正・No.1基準面「0」補足・No.9/10嵌め合い補足・測定表現整理・2D優先と面色公差の関係明確化＋適用例追加・穴番号対応ルール追加・穴数の数え方定義・PMI寸法値＋未着色をD判定に統一・RACI表現修正・ガスベント暫定扱い追記", "") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 運用開始前確認項目一覧
-'=====================================================================================
-Private Sub Ch00_PreCheck()
-    Hdg "【運用開始前確認】本書使用前に確定すべき項目一覧", 2
-    Note "■ 本標準書内でxxxと記載された項目は確認が必要なため現時点で確定できない項目です。試行運用開始前に確定すること。"
-    Tbl Array( _
-        Array("No.", "確認項目", "現在値", "確認担当", "期限", "完了"), _
-        Array("1", "ガスベント専用色（No.3A：色名・色ID・RGB）★最優先★", "xxx", "xxx", "xxx", "□"), _
-        Array("2", "NXバージョン（全担当者共通）", "xxx", "xxx", "xxx", "□"), _
-        Array("3", "JT変換手順（NXバージョン対応）", "xxx", "xxx", "xxx", "□"), _
-        Array("4", "NXモデル管理フォルダ・JT発行先フォルダ", "xxx", "xxx", "xxx", "□"), _
-        Array("5", "発行データファイル命名規則", "xxx", "xxx", "xxx", "□"), _
-        Array("6", "穴ネジ一覧表の標準様式・穴番号と3D/JT/補助図の対応方法", "xxx", "xxx", "xxx", "□"), _
-        Array("7", "承認者名・問い合わせ先", "xxx", "xxx", "xxx", "□"), _
-        Array("8", "標準レート（円/h）・試行評価対象案件数", "xxx", "xxx", "xxx", "□"), _
-        Array("9", "外注先へのJT提出可否・代替形式", "xxx", "xxx", "xxx", "□"), _
-        Array("10", "PMI文字サイズ・NXレイヤ番号・PMIカテゴリ名", "xxx", "xxx", "xxx", "□") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第1章 目的
-'=====================================================================================
-Private Sub Ch01_Purpose()
-    Hdg "第1章 目的", 1
-    Para "本標準書は、モールド金型のうち成形機能に直接関わるキャビ・コア・入れ子・スライド等の成形機能部品において、面色を用いて面の用途・標準公差・標準仕上げ条件を明確化し、必要な製作情報をPMI/注記、穴ネジ一覧表、補助図へ整理して伝達するための基準を定めるものである。"
-    Bullet "本標準書では、面の用途・標準公差・標準仕上げ条件を示す情報として扱う。標準公差・標準面粗さの値は現行カラーパレットの値を第5章面色定義表に定める。"
-    Blank
-    Para "面色・寸法値・公差の役割分担："
-    Bullet "寸法値はPMI、3D形状、穴ネジ一覧表、補助図で示す"
-    Bullet "その寸法値に適用する標準公差は、対象面の面色定義表に従う"
-    Bullet "2D図面・PMI/注記・補助図に個別公差が明示されている場合は個別公差を優先する"
-    Bullet "面色定義の標準公差と異なる公差・または標準公差だけでは判断できない場合はPMI/注記/補助図で個別公差を明示する"
-    Bullet "特殊公差が必要な面・部位はNo.13 Brownで示し、公差値・公差種別をPMI/注記/補助図で必ず明示する"
-    Blank
-    Para "具体的には以下を目的とする。"
-    Bullet "面色により面の用途・標準公差・標準仕上げ条件を直感的に識別できる状態にすること"
-    Bullet "穴・ネジ・タップ・Rcタップの情報は原則として穴ネジ一覧表で管理すること"
-    Bullet "穴ネジ一覧表の穴番号と3D/JT/補助図上の穴位置を対応させること"
-    Bullet "PMI/注記は寸法値の表示・特殊公差・改造内容・鏡面磨き・肉盛り修正等に限定して使用すること"
-    Bullet "現行図面にある情報を、面色・穴ネジ一覧表・PMI/注記・補助図へ適切に振り分けることで後工程の確認負荷と手戻りを減らすこと"
-    Blank
-    Note "⚠ モールドベース類への面色付与は本標準書の対象外とする。"
-    Note "⚠ 測定工程・測定ビュー・測定点・測定記録・データムA/B/Cは本標準書の対象外とする。"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第2章 適用範囲
-'=====================================================================================
-Private Sub Ch02_Scope()
-    Hdg "第2章 適用範囲", 1
-    Hdg "2.1 本標準書が対象とする部品", 2
-    Para "本標準書の面色定義は、成形品形状・PL合わせ・入れ子合わせ・逃がし・仕上げ調整に関係する以下の成形機能部品を対象とする。"
-    Tbl Array( _
-        Array("対象部品", "備考"), _
-        Array("キャビ", "製品面・PL面・ガスベント等の成形面を持つ固定側成形部品"), _
-        Array("コア", "製品面・PL面・突き出し機構に関わる可動側成形部品"), _
-        Array("入れ子（駒）", "キャビまたはコアに組み込む成形機能部品"), _
-        Array("スライド", "スライド機構を持つ成形機能部品"), _
-        Array("傾斜コア", "傾斜方向に動作する成形機能部品"), _
-        Array("コアピン・入れ子ピン", "成形品の穴・ボス等を形成する成形機能部品") _
-    ), wdAutoFitWindow
-
-    Hdg "2.2 対象外部品", 2
-    Note "⚠ 以下の部品は本標準書による面色付与の対象外とする。"
-    Tbl Array( _
-        Array("対象外部品", "備考"), _
-        Array("モールドベース（外注製作）", "成形機能面を持たない") _
-    ), wdAutoFitWindow
-
-    Hdg "2.3 例外規定", 2
-    Para "■ 対象外部品でも成形機能面を持つ場合は、設計者・工程設計・型工代表で協議の上、例外適用可。適用理由をフィードバック様式（様式4）に記録すること。"
-
-    Hdg "2.4 対象工程", 2
-    Tbl Array( _
-        Array("工程", "本標準書が規定する内容"), _
-        Array("金型設計", "面色付与（用途・標準公差・標準仕上げの識別）、PMI/注記作成（寸法値・個別公差・特殊公差等）、穴ネジ一覧表作成（穴番号と3D/JT/補助図の対応含む）、補助図要否判断、発行判定"), _
-        Array("工程設計", "面色・穴ネジ一覧表・補助図による加工計画、外注判断"), _
-        Array("CAM", "面色による加工対象面・逃がし面・ガスベント面の識別と加工計画"), _
-        Array("MC", "面色による加工対象面・穴ネジ一覧表・PMI/注記・補助図を用いた穴・タップ・加工寸法確認"), _
-        Array("ワイヤー放電", "抜き形状確認、穴番号表・補助図による加工順確認"), _
-        Array("型彫放電", "当面は電極配置図・電極図による従来運用"), _
-        Array("研削", "基準面（Yellow）・板厚・必要寸法の確認"), _
-        Array("仕上げ・組立", "PL面・逃がし面・ガスベント面・摺動面の面色確認と仕上げ作業") _
-    ), wdAutoFitWindow
-
-    Hdg "2.5 対象案件", 2
-    Bullet "新作金型"
-    Bullet "改作金型（No.14「改造」面色適用）"
-    Bullet "修理金型"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第3章 用語定義
-'=====================================================================================
-Private Sub Ch03_Terms()
-    Hdg "第3章 用語定義", 1
-    Tbl Array( _
-        Array("用語", "定義"), _
-        Array("面色", "NXシステムカラーパレットを用いて3Dモデルの各面に付与する色。面の用途・加工上の扱い・標準公差・標準仕上げ条件を示す情報。標準公差の値は第5章面色定義表に定める（現行カラーパレット値に準拠）。ただし、寸法値そのものを示すものではない。"), _
-        Array("PMI（Product Manufacturing Information）", "3Dモデルに直接付与する製造情報。本標準書では、寸法値の表示、面色標準公差外の特殊公差（No.13 Brown）、改造内容、鏡面磨き、肉盛り修正等に使用する。面色の標準公差で管理できる場合は、PMIに公差値を全て記載する必要はない。"), _
-        Array("穴ネジ一覧表", "図面または3Dモデル上の穴・タップ・Rcタップに対応して、穴記号・穴径・穴深さ・タップ径×深さ・貫通/止まり等を一覧で管理する表。"), _
-        Array("穴記号", "穴ネジ一覧表に記載する穴の識別番号。3Dモデル・JTまたは穴番号付き補助図上の穴位置と対応させること。"), _
-        Array("標準公差（面色定義による）", "各面色に紐づく標準的な寸法公差の範囲（第5章面色定義表に定める現行カラーパレット値）。"), _
-        Array("特殊公差", "標準公差では表現できない個別公差指定が必要な面・部位。Brown（No.13）で示し、公差値・公差種別をPMI/注記で必ず明示する。No.13は該当する面・部位のみに適用する。"), _
-        Array("3DAモデル", "面色・PMI・工程別ビューを含む、製作情報を包含した3Dモデル。面色は面の用途・標準公差・標準仕上げを示し、PMI/注記は寸法値・特殊公差等を補足する。"), _
-        Array("JTデータ", "NXから変換した閲覧用の3Dデータ。閲覧・確認の主データとして使用する。NXデータは工設係が管理する。"), _
-        Array("ガスベント", "PL面等に設ける成形時のガス抜き溝。現行カラーパレットではNo.3 Orange（±0.01、Ra1.6）に含まれる。Rev.0.7ではガスベント専用色No.3Aを継続検討中とし、専用色確定後に本標準書を更新する。"), _
-        Array("成形機能部品", "成形品形状・PL合わせ・入れ子合わせ・摺動・逃がし・仕上げ調整・測定に直接関係するキャビ・コア・入れ子・スライド・傾斜コア等の部品。"), _
-        Array("基準面", "加工・測定・組付けの基準となる面。Yellow（色ID:6）を適用。"), _
-        Array("製品面", "成形品の外観・寸法精度に直結する金型面。Powder Gray（色ID:15）を適用。面内の重要度の差はPMIで補足する。"), _
-        Array("PL合わせ面", "パーティングライン（型割り面）の合わせ面。Orange（色ID:78）を適用。"), _
-        Array("発行判定", "3DAモデルを発行してよいかの総合判定（A/B/C/D判定、第10-2章参照）。"), _
-        Array("差し戻し", "型工側が情報不足と判断し、設計者へ修正を依頼する行為（第11-2章参照）。"), _
-        Array("xxx", "社内確認・環境確認が必要なため現時点で確定できない項目。巻頭「運用開始前確認項目一覧」を参照して確定すること。") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第4章 基本方針
-'=====================================================================================
-Private Sub Ch04_Policy()
-    Hdg "第4章 基本方針", 1
-    Hdg "4.1 面色・PMI/注記・穴ネジ一覧表・補助図の役割分担", 2
-    Tbl Array( _
-        Array("情報", "主な伝達手段", "補足手段", "備考"), _
-        Array("面の用途", "面色", "注記", "面色で識別"), _
-        Array("標準公差", "面色", "必要時PMI/注記", "現行カラーパレット値を適用"), _
-        Array("標準仕上げ", "面色", "必要時PMI/注記", "現行カラーパレット値を適用"), _
-        Array("寸法値", "PMI・3D形状・穴ネジ一覧表", "2D補助図", "公差は面色定義を適用"), _
-        Array("穴・ネジ・タップ", "穴ネジ一覧表（基本）", "必要時PMI/注記", "穴番号と3D/JT/補助図の対応必須"), _
-        Array("特殊公差", "Brown（No.13）＋PMI/注記/補助図", "—", "該当面・部位のみ。"), _
-        Array("改造内容", "Red（No.14）＋PMI/注記", "—", "面色のみで完結禁止"), _
-        Array("鏡面磨き・肉盛り修正", "Powder Gray＋PMI/注記", "—", "注記を必ず付与"), _
-        Array("電極・放電", "電極配置図・電極図", "—", "当面従来運用を維持") _
-    ), wdAutoFitWindow
-
-    Hdg "4.2 寸法値と寸法公差の考え方", 2
-    Tbl Array( _
-        Array("No.", "区分", "内容"), _
-        Array("1", "寸法値", "寸法値は、PMI、3D形状、穴ネジ一覧表により示す。面色そのものは寸法値を持たない。"), _
-        Array("2", "標準公差", "寸法値に適用する標準公差は、対象面の面色定義表の「標準公差」欄に従う（カラーパレット値を適用）。"), _
-        Array("4", "特殊公差", "特殊公差が必要な面・部位はNo.13 Brownで示し、公差値・公差種別をPMI/注記/補助図で必ず明示する。") _
-    ), wdAutoFitWindow
-
-    Hdg "4.4 面色公差の適用例", 2
-    Bullet "【例1】 基準面からOrange面（PL合わせ面）までを3Dモデル上で測定し、寸法値が12mmであった。Orangeの標準公差が±0.01であるため、適用寸法は 12±0.01 とする。"
-    Bullet "【例2】 PMIに寸法値「12」のみが記載されており、対象面がOrange（PL合わせ面）である。Orangeの標準公差が±0.01であるため、適用寸法は 12±0.01 とする。"
-    Bullet "【例3】 対象面がBrown（No.13 特殊公差）である。Brownは特殊公差面であるため、面色のみでは公差を確定してはならない。PMI/注記で明示された公差値を適用する。"
-
-    Hdg "4.5 面色付与の原則（全面必須）", 2
-    Para "■ 原則として、全ての面に面色を付与すること。未着色面（デフォルト色）はD判定対象とする。PMIに寸法値がある面が未着色の場合もD判定対象とする。微小R・面取りは、親面と同色にすること（省略は認めない）。"
-
-    Hdg "4.6 基準面の扱い", 2
-    Bullet "基準面はYellowで示す"
-    Bullet "現行運用ではデータムA/B/Cによる管理は行わない（本標準書対象外）"
-    Bullet "基準は基準線で補足する"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第5章 面色定義表（RGB実着色）
-'=====================================================================================
-Private Sub Ch05_ColorTable()
-    Hdg "第5章 面色定義表", 1
-    Hdg "5.1 面色定義表（現行カラーパレット値反映・14色＋No.3A）", 2
-    Note "⚠ 本表の対象は成形機能部品のみ。モールドベース・型枠・汎用プレートへの適用は禁止。"
-
-    Dim rows As Variant
-    rows = Array( _
-        Array("No.", "用途", "標準公差", "標準面粗さ", "色名", "色ID", "RGB", "使用対象（成形機能部品）", "PMI/注記要否", "注意"), _
-        Array("1", "基準面", "0（基準位置）", "Ra1.6", "Yellow", "6", "255/255/0", "キャビ・コア・入れ子・スライドの加工基準面", "必要時（注記可）", "寸法公差「0」は基準位置として扱う。基準面自体の加工公差を無条件に0とする意味ではない。データムA/B/Cは使用しない"), _
-        Array("2", "製品面", "±0.02", "Ra1.6", "Powder Gray", "15", "242/242/242", "キャビ・コア・入れ子の製品接触面（成形面）", "通常不要（鏡面磨き・肉盛り・個別公差時は必須）", "寸法値は3D形状または必要時PMIで確認。公差は標準公差（±0.02）を適用"), _
-        Array("3", "PL合わせ面", "±0.01", "Ra1.6", "Orange", "78", "255/153/0", "キャビ・コア・入れ子のPL合わせ面", "原則不要（個別指示時のみ）", "公差は標準公差（±0.01）を適用。ガスベントもNo.3に含まれるがNo.3A専用色を継続検討中"), _
-        Array("3A", "ガスベント", "xxx（暫定:±0.01）", "xxx（暫定:Ra1.6）", "xxx（試行決定）", "xxx", "xxx", "ガスベント溝の面（キャビ・コア・入れ子）", "必要時（注記または一覧表）", "専用色は試行運用で確定。No.3A未確定の間は案件ごとに識別方法を明確化。深さ・幅・長さ等はPMI/注記で明示"), _
-        Array("4", "駒入れ合わせ面1（+）", "+0.01〜0", "Ra1.6", "Magenta", "181", "255/0/255", "入れ子（駒）合わせ面（+公差側）", "必要時（個別公差・注記可）", "方向混同注意。標準公差は+0.01〜0"), _
-        Array("5", "駒入れ合わせ面2（−）", "0〜-0.01", "Ra1.6", "Cyan", "31", "0/255/255", "入れ子（駒）合わせ面（-公差側）", "必要時（個別公差・注記可）", "No.4との使い分け徹底。標準公差は0〜-0.01"), _
-        Array("6", "駒ツバ・はまり1（+）", "+0.02〜0", "Ra1.6", "Strong Moss", "136", "0/88/40", "入れ子ツバはまり面（+側）", "必要時（個別公差・注記可）", "視認性注意。標準公差は+0.02〜0"), _
-        Array("7", "駒ツバ・はまり2（−）", "0〜-0.02", "Ra1.6", "Medium Gray", "159", "125/125/125", "入れ子ツバはまり面（-側）", "必要時（個別公差・注記可）", "Powder Grayとの視認性差注意。標準公差は0〜-0.02"), _
-        Array("8", "逃がし", "0〜-0.1", "Ra6.3", "Green", "36", "0/255/0", "成形機能部品内の逃げ面（干渉回避）", "原則不要（個別逃がし量指定時は注記）", "公差は標準公差（0〜-0.1）を適用。標準と異なる逃がし量はPMI/注記で明示"), _
-        Array("9", "嵌め合い（摺動部）", "H7/h7", "Ra1.6", "Cornflower", "103", "0/153/255", "スライド・傾斜コア・摺動入れ子・Eピンの摺動面", "必要時（個別公差時はPMI/注記）", "H7/h7は本面色に紐づく標準公差区分。"), _
-        Array("10", "嵌め合い（その他）", "H5/h5", "Ra1.6", "Purple", "164", "102/51/204", "コアピンなど嵌め合い面", "必要時（個別公差時はPMI/注記）", "H5/h5は本面色に紐づく標準公差区分。"), _
-        Array("11", "並目タップ", "—", "—", "Blue", "211", "0/0/255", "成形機能部品内のタップ穴のみ", "穴ネジ一覧表を基本", "詳細は穴ネジ一覧表で管理。穴番号と3D/JTを対応"), _
-        Array("12", "Rcタップ", "—", "—", "Dark Gray", "173", "51/51/51", "キャビ・コア・入れ子の冷却水穴のみ", "穴ネジ一覧表を基本（Rcサイズ・深さ）", "詳細は穴ネジ一覧表で管理。穴番号と3D/JTを対応"), _
-        Array("13", "特殊公差", "PMI/注記で個別明示", "PMI/注記で個別明示", "Brown", "125", "153/102/51", "標準公差外の個別公差指定が必要な該当面・部位", "◎必須（PMI/注記）", "公差値・公差種別・必要な仕上げ条件をPMI/注記/補助図で必ず明示。面色のみで確定禁止（D判定対象）"), _
-        Array("14", "改造", "PMI/注記で個別明示", "PMI/注記で個別明示", "Red", "186", "255/0/0", "改造を施した部品の面・部位", "◎必須（PMI/注記）", "面色のみで完結禁止（D判定対象）。改造内容・理由・変更前後寸法を必ず明示") _
-    )
-
-    Dim t As Object
-    Set t = Tbl(rows, wdAutoFitWindow, 8)
-
-    ' 色名セル（5列目）をRGBで実着色（コントラストに応じて文字色を白/黒に）
-    Dim rgbArr As Variant, i As Long, c As Long, lum As Double
-    Dim rr As Long, gg As Long, bb As Long
-    rgbArr = Array( _
-        RGB(255, 255, 0), RGB(242, 242, 242), RGB(255, 153, 0), -1, _
-        RGB(255, 0, 255), RGB(0, 255, 255), RGB(0, 88, 40), RGB(125, 125, 125), _
-        RGB(0, 255, 0), RGB(0, 153, 255), RGB(102, 51, 204), RGB(0, 0, 255), _
-        RGB(51, 51, 51), RGB(153, 102, 51), RGB(255, 0, 0))
-
-    For i = 0 To UBound(rgbArr)
-        c = rgbArr(i)
-        If c >= 0 Then
-            t.Cell(i + 2, 5).Shading.BackgroundPatternColor = c   ' +2: ヘッダ行を飛ばす
-            rr = (c And &HFF&)
-            gg = (c \ &H100&) And &HFF&
-            bb = (c \ &H10000) And &HFF&
-            lum = 0.299 * rr + 0.587 * gg + 0.114 * bb
-            If lum < 140 Then t.Cell(i + 2, 5).Range.Font.Color = RGB(255, 255, 255)
-        End If
-    Next i
-
-    Fig "図5-1", "面色付与全体例（Rev.0.7版・現行カラーパレット値反映）", _
-        "キャビ/コアの3Dモデル全体に面色を付与したNX画面スクリーンショット（標準公差一覧も併記）"
-
-    Hdg "5.2 面色付与の原則（全面必須）", 2
-    Tbl Array( _
-        Array("面の種類", "面色付与方針（Rev.0.7）"), _
-        Array("製品面", "必須（Powder Gray）→標準公差±0.02・Ra1.6を適用"), _
-        Array("PL面", "必須（Orange）→標準公差±0.01・Ra1.6を適用"), _
-        Array("ガスベント面", "必須（No.3A専用色xxx、暫定はOrangeまたは案件別方法）"), _
-        Array("摺動面", "必須（Cornflower）→標準公差H7/h7・Ra1.6を適用"), _
-        Array("逃がし面", "必須（Green）→標準公差0〜-0.1・Ra6.3を適用"), _
-        Array("特殊公差面", "必須（Brown）→該当面・部位のみ。PMI/注記/補助図で個別公差を明示"), _
-        Array("改造面", "必須（Red）→該当部位のみ。PMI/注記で改造内容を明示"), _
-        Array("微小R", "親面と同色（省略は認めない）→親面の標準公差を適用"), _
-        Array("面取り", "親面と同色（省略は認めない）→親面の標準公差を適用"), _
-        Array("CAD分割で発生した小面", "親面と同色→親面の標準公差を適用"), _
-        Array("全ての面", "いずれかの面色を必ず付与。未着色面はD判定対象") _
-    ), wdAutoFitWindow
-
-    Para "穴数の数え方："
-    Bullet "穴数は、成形機能部品内に存在する穴・タップ穴・Rcタップ穴の合計数で判断する"
-    Bullet "同一径・同一深さの穴であっても、加工漏れ防止のため個数として数える"
-    Bullet "タップ穴またはRcタップ穴が1箇所でもある場合は、穴数に関係なく穴ネジ一覧表を作成すること"
-    Tbl Array( _
-        Array("条件", "穴ネジ一覧表のルール（Rev.0.7）"), _
-        Array("穴が5箇所以上ある場合（合計穴数で判断）", "穴ネジ一覧表を必ず作成すること（C判定条件）"), _
-        Array("タップ穴が1箇所でもある場合", "穴ネジ一覧表を作成し、タップ径×深さを記載すること（例：M6×12）（C判定条件）"), _
-        Array("Rcタップが1箇所でもある場合", "穴ネジ一覧表を作成し、Rcサイズ・深さを記載すること（C判定条件）"), _
-        Array("穴が5箇所未満でタップ穴・Rcタップなし", "穴ネジ一覧表は任意。PMI/注記で対応可"), _
-        Array("記載形式", "穴番号・径・深さ・タップ径×深さ（例M6×12）・貫通/止まり・数量・備考"), _
-        Array("穴番号と3D/JT/補助図の対応", "穴ネジ一覧表の穴番号と、3Dモデル・JT・または補助図上の穴位置が対応するようにすること（必須）") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第6章 面色とPMIの使い分け
-'=====================================================================================
-Private Sub Ch06_ColorVsPMI()
-    Hdg "第6章 面色とPMIの使い分け", 1
-    Para "以下の表を用いて、各情報を面色・PMI・補助図のいずれで伝えるかを判断すること。"
-    Tbl Array( _
-        Array("情報項目", "面色", "PMI/注記", "穴ネジ一覧表/補助図", "備考"), _
-        Array("面の用途", "◎", "必要時", "—", "面色で判断"), _
-        Array("標準公差", "◎（面色定義）", "必要時", "—", "面色定義表の標準公差を適用"), _
-        Array("標準面粗さ", "◎（面色定義）", "必要時", "—", "面色定義表の標準面粗さを適用"), _
-        Array("寸法値", "—", "○", "○", "PMI・3D形状・穴ネジ一覧表・補助図で示す"), _
-        Array("穴・タップ寸法", "○（種別識別）", "必要時", "◎ 穴ネジ一覧表", "穴ネジ一覧表を基本。穴番号と3D/JT/補助図の対応必須"), _
-        Array("特殊公差", "No.13 Brown（該当面のみ）", "◎", "必要時", "面色のみで確定禁止。"), _
-        Array("改造内容", "No.14 Red", "◎", "必要時", "改造内容・理由・変更前後寸法を明示"), _
-        Array("鏡面磨き", "○（No.2）", "◎（注記）", "必要時", "面色＋注記必須"), _
-        Array("肉盛り修正", "○（No.2）", "◎（注記）", "必要時", "面色＋注記必須"), _
-        Array("PL面", "○（No.3 ±0.01）", "原則不要", "—", "面色で識別。標準公差は±0.01"), _
-        Array("ガスベント", "◎（No.3A xxx暫定）", "必要時", "必要時", "面色で識別が基本。標準外・未確定時はPMI/注記"), _
-        Array("電極・放電", "対象外", "対象外", "◎電極配置図・電極図", "従来通り電極配置図・電極図") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第7章 工程別の確認項目
-'=====================================================================================
-Private Sub Ch07_ProcessChecks()
-    Hdg "第7章 工程別の確認項目", 1
-    Hdg "7.1 工程設計", 2
-    Tbl Array( _
-        Array("No.", "確認項目", "情報源"), _
-        Array("1", "3D・面色・穴ネジ一覧表・補助図で材料サイズ・加工基準・外注可否が判断できるか", "面色・穴ネジ一覧表・補助図"), _
-        Array("2", "各面の面色から面の用途・標準公差・標準仕上げが判断できるか", "面色定義表"), _
-        Array("3", "基準面（Yellow）の位置が確認できること", "面色"), _
-        Array("4", "製品面（Powder Gray）の範囲が把握できること", "面色"), _
-        Array("5", "PL合わせ面（Orange）とガスベント面の区別が確認できること", "面色"), _
-        Array("6", "外注可否判断に必要な情報が確認できること", "面色・一覧表・補助図") _
-    ), wdAutoFitWindow
-
-    Hdg "7.2 CAM", 2
-    Tbl Array( _
-        Array("No.", "確認項目", "情報源"), _
-        Array("1", "加工対象面・逃がし面（Green 0〜-0.1）・ガスベント面を面色で区別できること", "面色"), _
-        Array("2", "各面の標準公差が面色定義表で確認できること", "面色定義表"), _
-        Array("3", "穴・ネジ情報を穴ネジ一覧表で確認すること", "穴ネジ一覧表"), _
-        Array("4", "仕上げ調整代は原則現場判断とする（PMI必須としない）", "（現場判断）"), _
-        Array("5", "ガスベントの識別方法・加工条件が発行前に明確化されていることを確認", "No.3A識別方法") _
-    ), wdAutoFitWindow
-
-    Hdg "7.3 MC（マシニングセンタ）", 2
-    Tbl Array( _
-        Array("No.", "確認項目", "情報源"), _
-        Array("1", "基準面（Yellow）で正しく基準を取れることを確認すること", "面色"), _
-        Array("2", "穴径・穴深さ・貫通止まりの別を穴ネジ一覧表で確認してから加工すること", "穴ネジ一覧表（基本）"), _
-        Array("3", "穴ネジ一覧表の穴番号と3D/JT/補助図の穴位置が対応していることを確認", "穴記号対応"), _
-        Array("4", "タップ径・タップ深さを穴ネジ一覧表で確認してから加工すること", "穴ネジ一覧表（基本）"), _
-        Array("5", "PMIがある場合は寸法値と個別公差を確認（2D図面個別公差が優先）", "PMI（個別公差時）"), _
-        Array("6", "特殊公差面（Brown）の公差値注記を確認してから加工すること", "注記・PMI") _
-    ), wdAutoFitWindow
-
-    Hdg "7.4 ワイヤー放電", 2
-    Tbl Array( _
-        Array("No.", "確認項目", "情報源"), _
-        Array("1", "抜き形状の輪郭が3Dモデルで確認できること", "3Dモデル"), _
-        Array("2", "穴数・穴番号が穴番号表で確認でき、3D/JT/補助図と対応していること", "穴番号表・一覧表"), _
-        Array("3", "テーパ等の個別公差（PMI/注記）を確認すること", "PMI/注記（必要時）") _
-    ), wdAutoFitWindow
-
-    Hdg "7.5 型彫放電", 2
-    Tbl Array( _
-        Array("No.", "確認項目", "情報源"), _
-        Array("1", "当面は電極配置図・電極図による従来運用を維持すること", "電極配置図・電極図（従来）"), _
-        Array("2", "電極配置図・電極図で電極必要箇所を確認してから放電作業を開始すること", "電極配置図・電極図"), _
-        Array("3", "面色（逃がし面Green等）は補助情報として活用する", "面色（補助）") _
-    ), wdAutoFitWindow
-
-    Hdg "7.6 研削", 2
-    Tbl Array( _
-        Array("No.", "確認項目", "情報源"), _
-        Array("1", "基準面（Yellow）を確認し研削基準を正しく取ること", "面色"), _
-        Array("2", "板厚・仕上げ寸法を図面または注記で確認すること", "図面・注記"), _
-        Array("3", "研削で仕上げる面と逃がす面（Green）を区別すること", "面色") _
-    ), wdAutoFitWindow
-
-    Hdg "7.7 仕上げ・組立", 2
-    Tbl Array( _
-        Array("No.", "確認項目", "情報源"), _
-        Array("1", "PL合わせ面（Orange ±0.01）・逃がし面（Green 0〜-0.1）を面色で確認すること", "面色"), _
-        Array("2", "ガスベント面の識別方法（No.3A暫定または案件別方法）を確認すること", "ガスベント識別方法"), _
-        Array("3", "摺動面（Cornflower H7/h7）を面色で識別すること", "面色・図面"), _
-        Array("4", "仕上げ調整代は原則現場判断とする", "（現場判断）"), _
-        Array("5", "改造箇所（Red）・鏡面磨き・肉盛り修正箇所の注記を確認してから作業すること", "注記・PMI") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第8章 PMI作成ルール
-'=====================================================================================
-Private Sub Ch08_PMIRules()
-    Hdg "第8章 PMI作成ルール", 1
-    Hdg "8.1 PMI/注記使用の基本方針", 2
-    Para "PMI/注記を使用すること："
-    Bullet "寸法値を3Dモデル上で明示したい場合（公差は対象面の面色定義に従う）"
-    Bullet "面色定義の標準公差と異なる個別公差を指定する場合"
-    Bullet "特殊公差を指定する場合（No.13 Brown面色の該当面・部位と合わせて使用）"
-    Bullet "改造内容を示す場合（No.14 Red面色と合わせて使用）"
-    Bullet "鏡面磨き・肉盛り修正などの個別指示がある場合"
-    Bullet "面色だけでは誤認する恐れがある個別指示がある場合"
-    Blank
-    Para "PMI/注記を使用しなくてよい場合："
-    Bullet "面色の標準公差で管理できる面（全公差値をPMIで記載する必要はない）"
-    Bullet "全ての穴径・穴深さ（→穴ネジ一覧表で管理）"
-    Bullet "全てのタップ径・深さ（→穴ネジ一覧表で管理）"
-    Bullet "すきま量（→現行図面と同様に数値公差で管理）"
-    Bullet "仕上げ調整代（→原則現場判断）"
-
-    Hdg "8.2 工程別ビューの作成条件", 2
-    Tbl Array( _
-        Array("ビュー名称", "Rev.0.7の扱い", "備考"), _
-        Array("全体面色確認ビュー", "◎全案件必須", "面色・標準公差の全体確認に使用"), _
-        Array("MC加工ビュー", "試行運用で検証", "必要性を確認してから判断"), _
-        Array("ワイヤー加工ビュー", "試行運用で検証", "必要性を確認してから判断"), _
-        Array("型彫放電ビュー", "必須としない（従来運用）", "電極配置図・電極図で対応"), _
-        Array("仕上げ・PL確認ビュー", "必須としない", "面色で対応"), _
-        Array("改造確認ビュー", "改造案件のみ必要", "改造内容の確認に使用") _
-    ), wdAutoFitWindow
-
-    Hdg "8.3 PMI表示の禁止事項", 2
-    Bullet "面色の定義と矛盾する情報をPMIで表示しないこと"
-    Bullet "PMIを設計者の備忘録として使用しないこと（公式情報として扱う）"
-    Bullet "不要・重複したPMIを残さないこと（視認性低下の原因）"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第8章（NX/JT運用ルール）※原本どおり章番号重複
-'=====================================================================================
-Private Sub Ch08b_NXJT()
-    Hdg "第8章 NX/JT運用ルール", 1
-    Note "【運用前確認】NXバージョンはxxx。JT変換手順はxxx。NX native管理フォルダはxxx。JT発行先フォルダはxxx。ファイル命名規則はxxx。"
-    Hdg "8.1 NX / JT データの管理方針", 2
-    Tbl Array( _
-        Array("データ種類", "管理方針"), _
-        Array("NXモデル", "工設係が管理。誤変更防止のため直接配布しない（保管フォルダ：xxx）"), _
-        Array("JTデータ（閲覧用）", "NXから変換した閲覧用データ。閲覧・確認の主データとして使用する"), _
-        Array("穴ネジ一覧表", "設計者が作成し、JTデータと一緒に発行する。穴記号と3D/JT/補助図上の穴位置が対応していること"), _
-        Array("電極配置図・電極図", "従来通り管理（当面変更なし）"), _
-        Array("補助図", "必要時に作成。") _
-    ), wdAutoFitWindow
-
-    Hdg "8.2 JT変換手順（概要）", 2
-    Bullet "NXでモデルを開き、面色付与・穴ネジ一覧表・PMI/注記を全て完成させる"
-    Bullet "発行判定（第11-2章）でA/B判定を確認してからJT変換を行うこと"
-    Bullet "JT変換メニュー（xxx）を選択し、変換設定（xxx）でJTファイルを作成する"
-    Bullet "JTで穴番号が表示できない場合は穴番号付き補助図を添付してからJT発行すること"
-    Bullet "JTファイルをJT発行先フォルダ（xxx）へ保存する（命名規則：xxx）"
-    Bullet "NXモデルは工設管理フォルダ（xxx）に保存。直接配布は行わないこと"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第9章 補助図・一覧表を残す条件
-'=====================================================================================
-Private Sub Ch09_AuxConditions()
-    Hdg "第9章 補助図・一覧表を残す条件", 1
-    Tbl Array( _
-        Array("No.", "条件", "必須資料", "備考"), _
-        Array("1", "穴（タップ・Rcタップ含む合計）が5箇所以上ある", "穴ネジ一覧表（◎必須）", "穴番号・径・深さ・種類を記載"), _
-        Array("2", "タップ穴が1箇所でもある", "穴ネジ一覧表（◎必須）", "径×深さ（例：M6×12）を記載"), _
-        Array("3", "Rcタップが1箇所でもある", "穴ネジ一覧表（◎必須）", "Rcサイズ・深さを記載"), _
-        Array("5", "型彫放電・電極が必要", "電極配置図・電極図（◎従来必須）", "当面は従来通りの電極図運用"), _
-        Array("6", "外注先が3D/JT未対応", "2D補助図（◎必須）", "外注先対応形式はxxx"), _
-        Array("7", "改造案件", "改造内容・変更前後寸法の注記または補助図", "Red面色＋PMI/注記と連携"), _
-        Array("8", "標準公差外の個別公差がある面", "PMI/注記/補助図（No.13 Brown時は必須）", "面色のみで個別公差を確定してはならない") _
-    ), wdAutoFitWindow
-
-    Hdg "9.1 穴番号と3D/JT/補助図の対応ルール", 2
-    Para "■ 穴ネジ一覧表を使用する場合は、穴番号と3Dモデル・JT・または穴番号付き補助図上の穴位置が対応するようにすること。穴番号と位置が不対応の状態で発行してはならない。"
-    Bullet "穴番号は穴ネジ一覧表・3Dモデル・JT・補助図で一致させること"
-    Bullet "穴番号付き補助図がない状態での発行は差し戻し対象とする（第12-2章 No.11参照）"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第9-2章 補助図・一覧表の判断フロー
-'=====================================================================================
-Private Sub Ch09b_FlowChart()
-    Hdg "第9-2章 補助図・一覧表の判断フロー", 1
-    Tbl Array( _
-        Array("Step", "確認項目", "YES（該当）", "NO（非該当）"), _
-        Array("1", "対象部品は成形機能部品か？", "→ Step 2へ", "→ 本標準の対象外"), _
-        Array("2", "外注加工を行うか？", "→ Step 2aへ（外注先確認）", "→ Step 3へ"), _
-        Array("2a", "外注先がJT・PMI・面色に対応しているか？", "→ Step 3へ", "→ 2D補助図を作成してStep 3へ"), _
-        Array("3", "穴（タップ・Rc含む合計）が5箇所以上またはタップ穴があるか？", "→ 穴ネジ一覧表を作成。Step 3aへ", "→ Step 4へ"), _
-        Array("3a", "JTで穴番号が表示できるか？", "→ Step 4へ", "→ 穴番号付き補助図を作成してStep 4へ"), _
-        Array("4", "電極・型彫放電が必要か？", "→ 電極配置図・電極図を作成（従来運用）。Step 5へ", "→ Step 5へ"), _
-        Array("5", "標準公差外の個別公差・特殊公差・改造・鏡面磨き・肉盛り修正があるか？", "→ PMI/注記を付与。Step 6へ", "→ Step 6へ"), _
-        Array("6", "発行判定（第11-2章）でA/B判定か？", "→ 必要資料を含む発行DSとして発行可", "→ 不足資料を追加してから発行") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第10章 設計者チェックリスト（様式1）
-'=====================================================================================
-Private Sub Ch10_DesignerChecklist()
-    Hdg "第10章 設計者チェックリスト（様式1）", 1
-    Para "※ 本チェックリストは発行帳票として使用する（保管場所：xxx）。"
-    Para "※ 判定：□OK □NG=修正が必要（NGのまま発行禁止） □該当なし=本部品に存在しない場合"
-    Tbl Array( _
-        Array("No.", "チェック項目（備考）", "判定", "記録"), _
-        Array("共通", "案件名：xxx 金型番号：xxx 部品番号：xxx Rev：xxx 設計者名：xxx 確認日：xxx", "発行判定：□A / □B / □C / □D", ""), _
-        Array("1", "対象部品が成形機能部品（第2章）であることを確認した", "□OK / □NG", ""), _
-        Array("2", "モールドベース等の対象外部品に面色を誤適用していない", "□OK / □NG", ""), _
-        Array("3", "原則すべての面に面色を付けている（未着色面はD判定。PMI寸法値がある面の未着色もD判定）", "□OK / □NG", ""), _
-        Array("4", "微小R・面取り・CAD分割小面は親面と同色になっている", "□OK / □NG", ""), _
-        Array("5", "面色定義表により対象面の標準公差が判断できる状態になっている", "□OK / □NG", ""), _
-        Array("6", "穴が5箇所以上ある場合、穴ネジ一覧表を作成した", "□OK / □NG / □該当なし", ""), _
-        Array("7", "タップ穴がある場合、穴ネジ一覧表に径×深さを記載した（例：M6×12）", "□OK / □NG / □該当なし", ""), _
-        Array("8", "Rcタップがある場合、穴ネジ一覧表にRcサイズ・深さを記載した", "□OK / □NG / □該当なし", ""), _
-        Array("9", "穴ネジ一覧表の穴番号と3D/JTまたは補助図上の穴位置が対応している", "□OK / □NG / □該当なし", ""), _
-        Array("10", "ガスベント面の識別方法（No.3A暫定または案件別方法）が明確になっている", "□OK / □NG / □該当なし", ""), _
-        Array("11", "特殊公差面（No.13 Brown）にPMI/注記/補助図で公差値・公差種別を明示した", "□OK / □NG / □該当なし", ""), _
-        Array("12", "改造面（No.14 Red）にPMI/注記で改造内容・理由・変更前後寸法を明示した", "□OK / □NG / □該当なし", ""), _
-        Array("13", "鏡面磨き・肉盛り修正指示が必要な場合、PMI/注記を付けた", "□OK / □NG / □該当なし", ""), _
-        Array("14", "PMIに寸法値を記載した場合、標準公差を面色定義で判断できる状態になっている", "□OK / □NG / □該当なし", ""), _
-        Array("15", "面色標準と異なる個別公差がある場合、PMI/注記/補助図で公差値を明示している", "□OK / □NG / □該当なし", ""), _
-        Array("16", "全体面色確認ビューを作成した（全案件必須）", "□OK / □NG", ""), _
-        Array("17", "電極が必要な場合、電極配置図・電極図を作成した（従来運用）", "□OK / □NG / □該当なし", ""), _
-        Array("18", "JT変換前にNX native上で全面の面色を最終確認した", "□OK / □NG", ""), _
-        Array("19", "発行データセットに必要資料が揃っている（第13-3章の発行DSを確認）", "□OK / □NG", ""), _
-        Array("差し戻し", "差し戻し有無：□有 / □無　差し戻し理由：　修正完了日：xxx　承認者：xxx", "", "") _
-    ), wdAutoFitWindow
-    Note "■ NGが1項目でもある場合は修正し再確認すること。NGのまま発行禁止。"
-    Fig "図11-1", "設計者チェックリスト記入例（Rev.0.7版）", _
-        "穴番号対応確認・面色標準公差確認項目を含む記入済みサンプル"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第10-2章 3DAモデル発行判定基準
-'=====================================================================================
-Private Sub Ch10b_IssueJudge()
-    Hdg "第10-2章 3DAモデル発行判定基準", 1
-    Tbl Array( _
-        Array("判定", "状態", "具体的な条件", "発行可否"), _
-        Array("A", "問題なし", "面色・穴ネジ一覧表（穴番号対応含む）・PMI/注記・電極配置図等が全て揃っている。CL全項目OKまたは該当なし。", "◎ 発行可"), _
-        Array("B", "軽微な不足", "製作情報そのものに不足がない場合に限り認める。後工程代表が問題なしと確認した上で発行すること。", "△ 条件付き発行可"), _
-        Array("C", "情報不足", "下表のいずれかの情報が不足している", "✕ 発行不可"), _
-        Array("D", "重大な問題", "下表のいずれかの重大問題がある", "✕ 発行禁止") _
-    ), wdAutoFitWindow
-
-    Hdg "10-2.2 D判定となる条件（Rev.0.7版）", 2
-    Para "■ 以下のいずれかに該当する場合はD判定とし、発行禁止とする。修正後に再判定すること。"
-    Tbl Array( _
-        Array("D判定条件", "対応"), _
-        Array("対象外部品（モールドベース等）に面色を誤適用している", "面色を削除し対象部品のみに適用して再判定"), _
-        Array("未着色面がある（デフォルト色のまま）", "親面と同色または適切な面色を付与して再判定"), _
-        Array("PMIに寸法値がある面が未着色であり公差区分が判断できない", "対象面に適切な面色を付与（D判定対象・発行禁止）"), _
-        Array("特殊公差面（No.13 Brown）に公差値または公差種別の明示がない", "PMI/注記/補助図で公差値・公差種別を明示して再判定"), _
-        Array("No.13 Brownを部品全体に誤適用している", "Brownは該当面・部位のみに適用し直すこと"), _
-        Array("改造面（No.14 Red）に改造内容・理由・変更前後寸法がない", "PMI/注記で改造内容を明示して再判定"), _
-        Array("Rev不明またはRevが管理されていない", "Rev管理を行い正しいRevで再発行") _
-    ), wdAutoFitWindow
-
-    Hdg "10-2.3 C判定となる条件（Rev.0.7版・「該当する場合」のみ）", 2
-    Tbl Array( _
-        Array("C判定条件", "確認方法"), _
-        Array("穴（合計）が5箇所以上あるのに穴ネジ一覧表がない", "穴数を数える。タップ・Rcを含む合計で判断"), _
-        Array("タップ穴があるのに径×深さが一覧表にない", "Blue（No.11）の面色がある場合は一覧表を確認"), _
-        Array("Rcタップがあるのに情報が一覧表にない", "Dark Gray（No.12）の面色がある場合は一覧表を確認"), _
-        Array("穴ネジ一覧表の穴番号と3D/JT/補助図上の穴位置が対応していない", "穴番号と3D/JT/補助図の穴位置の対応を確認"), _
-        Array("ガスベント面色（No.3A等）が判別できない", "ガスベントの識別方法が案件ごとに明確化されているか確認"), _
-        Array("鏡面磨き・肉盛り修正指示が必要なのにPMI/注記がない", "製品面で特殊仕上げが必要な箇所を確認"), _
-        Array("電極が必要なのに電極配置図・電極図がない", "型彫放電が必要な部品の確認") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第11章 型工側チェックリスト（様式2）
-'=====================================================================================
-Private Sub Ch11_ToolmakerChecklist()
-    Hdg "第11章 型工側チェックリスト（様式2）", 1
-    Para "※ 本チェックリストは受領帳票として使用する（保管場所：xxx）。"
-    Para "※ 判定：□OK / □不足（差し戻し） / □該当なし"
-    Tbl Array( _
-        Array("工程", "確認項目", "判定", "不足時の対応"), _
-        Array("工程設計", "JT・面色（用途・標準公差）・穴ネジ一覧表・補助図で工程計画が判断できるか", "□OK / □不足 / □該当なし", "設計へ差し戻し"), _
-        Array("CAM", "加工対象面・逃がし面（Green）・ガスベント面を面色で判断できるか。標準公差が確認できるか", "□OK / □不足 / □該当なし", "設計へ差し戻し"), _
-        Array("MC", "穴ネジ一覧表で穴径・深さ・タップ情報を確認できるか。穴番号と3D/JT/補助図の対応", "□OK / □不足 / □該当なし", "一覧表・穴番号補助図追加依頼"), _
-        Array("ワイヤー放電", "穴番号表・補助図で加工順・穴位置を確認できるか", "□OK / □不足 / □該当なし", "穴番号表・補助図追加依頼"), _
-        Array("型彫放電", "電極配置図・電極図で電極必要箇所を確認できるか（従来運用）", "□OK / □不足 / □該当なし", "電極図追加依頼"), _
-        Array("研削", "基準面（Yellow）・板厚・必要寸法が確認できるか", "□OK / □不足 / □該当なし", "設計へ確認"), _
-        Array("仕上げ・組立", "PL面（Orange ±0.01）・逃がし面（Green 0〜-0.1）・ガスベント面・摺動面を面色で確認できるか", "□OK / □不足 / □該当なし", "設計へ確認") _
-    ), wdAutoFitWindow
-    Tbl Array( _
-        Array("受領確認共通項目", "記載欄"), _
-        Array("案件名・金型番号", "xxx"), _
-        Array("部品番号・Rev", "xxx"), _
-        Array("確認者名・確認日", "xxx"), _
-        Array("差し戻し有無", "□有 / □無"), _
-        Array("保管場所・承認者", "xxx") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第11-2章 設計への問い合わせ・差し戻し条件
-'=====================================================================================
-Private Sub Ch11b_Reject()
-    Hdg "第11-2章 設計への問い合わせ・差し戻し条件", 1
-    Para "■ 以下の情報が穴ネジ一覧表・PMI/注記・補助図・電極配置図のいずれでも確認できない場合は作業開始禁止。様式3に記録の上、設計者へ連絡すること。"
-    Tbl Array( _
-        Array("No.", "差し戻し条件", "重大度", "設計者への依頼内容"), _
-        Array("1", "穴（合計）が5箇所以上あるのに穴ネジ一覧表がない", "C判定対象", "穴ネジ一覧表を作成してください（穴番号付きで）"), _
-        Array("2", "タップ穴があるのに径×深さが穴ネジ一覧表にない", "C判定対象", "タップ径×深さを記載してください（例：M6×12）"), _
-        Array("3", "Rcタップがあるのに情報が穴ネジ一覧表にない", "C判定対象", "Rcサイズ・深さを記載してください"), _
-        Array("4", "穴番号と3D/JT/補助図上の穴位置が対応していない", "C判定対象", "穴番号と穴位置を対応させてください（または穴番号付き補助図を添付）"), _
-        Array("5", "JTで穴番号が表示できないのに穴番号付き補助図がない", "C判定対象", "穴番号付き補助図を添付してください"), _
-        Array("6", "ガスベント面色が判別できない", "C判定対象", "ガスベントの識別方法（No.3A等）を明確化してください"), _
-        Array("7", "特殊公差面（Brown）の公差値・公差種別が不明", "C判定対象", "PMI/注記/補助図で公差値・公差種別を明示してください"), _
-        Array("8", "No.13 Brownを部品全体に誤適用している", "D判定対象", "Brownは標準公差外の該当面・部位のみに適用してください"), _
-        Array("9", "改造内容・理由・変更前後寸法が不明", "C判定対象", "PMI/注記で改造内容を明示してください"), _
-        Array("10", "鏡面磨き・肉盛り修正指示が不明", "C判定対象", "注記で明示してください"), _
-        Array("11", "電極必要箇所が不明（型彫放電）", "C判定対象", "電極配置図・電極図を添付してください（従来運用）"), _
-        Array("12", "未着色面がある（デフォルト色のまま）", "D判定対象", "親面と同色または適切な面色を付与してください"), _
-        Array("13", "PMIに寸法値がある面が未着色であり公差区分が判断できない", "D判定対象", "対象面に適切な面色を付与してください（発行禁止）") _
-    ), wdAutoFitWindow
-    Para "【様式3：差し戻し連絡票】"
-    Tbl Array( _
-        Array("項目", "記載欄"), _
-        Array("案件名・金型番号", "xxx"), _
-        Array("部品番号・部品名・Rev", "xxx"), _
-        Array("連絡者（型工側）・連絡日", "xxx"), _
-        Array("差し戻し条件（No.）", "No.　内容："), _
-        Array("設計者への依頼内容", ""), _
-        Array("設計者回答・対応日", "xxx"), _
-        Array("処置結果", ""), _
-        Array("承認者・保管場所", "xxx") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第12章 運用フロー
-'=====================================================================================
-Private Sub Ch12_OperationFlow()
-    Hdg "第12章 運用フロー", 1
-    Tbl Array( _
-        Array("Step", "担当", "作業内容", "確認・記録"), _
-        Array("1", "設計者", "3Dモデルを作成する", "形状・機能の確認"), _
-        Array("2", "設計者", "成形機能部品であることを確認する（第2章）", "対象外部品への誤適用がないことを確認"), _
-        Array("3", "設計者", "全ての面に面色を付与する（微小R・面取りは親面と同色）。面色定義表に従った標準公差が適用できる状態にする", "未着色面がないことを確認。PMI寸法値がある面の未着色もD判定"), _
-        Array("4", "設計者", "穴・ネジがある場合、穴ネジ一覧表を作成（タップ穴1箇所でも必須、5穴以上で必須）。穴番号と3D/JT/補助図を対応させる", "穴番号と3D/JT/補助図の対応を確認。表示できない場合は補助図添付"), _
-        Array("5", "設計者", "標準公差外の個別公差・特殊公差・改造・鏡面磨き・肉盛り修正がある場合PMI/注記を付ける。2D図面個別公差がある場合は2D図面を優先", "面色のみで個別公差・特殊公差を完結していないことを確認"), _
-        Array("6", "設計者", "ガスベント面の識別方法を確認し、加工条件が伝達できる状態にする", "No.3A未確定時は案件ごとに識別方法を明確化"), _
-        Array("7", "設計者", "全体面色確認ビューを作成する（全案件必須）", "全案件必須"), _
-        Array("8", "設計者", "電極が必要な場合、電極配置図・電極図を作成する（従来通り）", "電極図の内容を確認"), _
-        Array("9", "設計者", "設計者チェックリスト（第11章・様式1）で自己確認する", "全項目OKまたは該当なしを確認"), _
-        Array("10", "設計者", "発行判定（第11-2章）でA/B判定を確認する", "C/D判定なら修正してStep 3へ戻る"), _
-        Array("11", "設計者（工設）", "JTに変換して現場閲覧用データを発行する。NX nativeは工設管理フォルダに保管", "JT発行先フォルダ（xxx）へ保管。直接配布不可"), _
-        Array("12", "各工程担当", "JT・穴ネジ一覧表・電極配置図・補助図を受領確認する（様式2）", "不足時は様式3で差し戻し"), _
-        Array("13", "各工程担当", "製作中の不明点・問題点をフィードバック様式（様式4）に記録する", "フィードバック様式記入"), _
-        Array("14", "設計者・関係者", "製作完了後に問題点を整理し標準書改訂要否を判断する（様式5）", "改訂案を作成"), _
-        Array("15", "工設係", "標準書を改訂し次案件へ展開する", "改訂履歴を更新・周知・承認者：xxx") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第13章 RACI・発行データセット
-'=====================================================================================
-Private Sub Ch13_RACI_DataSet()
-    Hdg "第13-1章 責任分担表（RACI）", 1
-    Para "※ R=実行責任　A=承認責任　C=確認・助言"
-    Tbl Array( _
-        Array("作業", "設計者（工設）", "工程設計", "CAM", "型工代表", "承認者", "備考"), _
-        Array("面色付与", "R", "C", "C", "C", "A", ""), _
-        Array("穴ネジ一覧表作成（穴番号対応含む）", "R", "C", "C", "C", "A", ""), _
-        Array("PMI/注記作成（個別公差・特殊公差等）", "R", "C", "C", "C", "A", ""), _
-        Array("電極配置図・電極図作成", "R", "C", "C", "C", "A", "従来運用"), _
-        Array("JT変換・発行", "R", "C", "C", "C", "A", "NXは工設管理"), _
-        Array("受領確認", "C", "R", "R", "R", "C", ""), _
-        Array("差し戻し判断", "C", "R", "R", "R", "A", "第12-2章"), _
-        Array("フィードバック記録", "C", "R", "R", "R", "A", "様式4"), _
-        Array("試行運用評価", "C", "R", "R", "R", "A", "第14章"), _
-        Array("標準書改訂案作成", "R", "C", "C", "C", "A", ""), _
-        Array("標準書改訂承認", "C", "C", "C", "C", "A", "承認者：xxx") _
-    ), wdAutoFitWindow
-
-    Hdg "第13-2章 3DA発行データセット", 1
-    Para "型工へ渡す正式データは以下の構成とする。JTデータが閲覧の主データで、NXモデルは工設が管理する。"
-    Note "【運用前確認】発行先フォルダ・ファイル命名規則はxxx。JT変換手順はxxx。"
-    Tbl Array( _
-        Array("発行物", "管理・配布先", "必須/条件付き", "形式・備考", "保管場所"), _
-        Array("NXモデル", "工設係が管理（直接配布しない）", "工設保管のみ", "誤変更防止のため工設管理", "xxx"), _
-        Array("JTデータ", "閲覧用・全工程担当へ配布", "◎必須", "面色・標準公差が正しく表示されることを確認", "xxx（発行フォルダ）"), _
-        Array("全体面色確認ビュー（JT内）", "JTデータに含む", "◎必須", "面色が正しく表示されることを確認", "（JT内）"), _
-        Array("穴ネジ一覧表（穴番号対応済み）", "型工へ配布（MC・ワイヤー等）", "条件付き必須（タップ1箇所以上または5穴以上）", "穴番号・径・深さ・タップ径×深さを記載", "xxx"), _
-        Array("穴番号付き補助図", "穴ネジ一覧表と同時に配布", "条件付き必須（JTで穴番号表示不可時）", "穴番号と3D/補助図の穴位置を対応", "xxx"), _
-        Array("電極配置図", "型彫放電担当へ配布", "条件付き必須（電極必要時）", "従来通り電極配置図で管理", "xxx"), _
-        Array("電極図", "型彫放電担当へ配布", "条件付き必須（電極必要時）", "従来通り電極図で管理", "xxx"), _
-        Array("補助図", "必要な工程用に配布", "必要時", "外注先未対応・特殊部品時等", "xxx"), _
-        Array("改造注記/改造履歴", "全工程担当へ配布", "改造時必須", "Red面色＋PMI/注記と連携", "（JT/注記内）") _
-    ), wdAutoFitWindow
-    Note "■ NX nativeは工設管理フォルダ（xxx）に保管し、直接配布は行わないこと。"
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第14章 試行運用の評価項目
-'=====================================================================================
-Private Sub Ch14_Evaluation()
-    Hdg "第14章 試行運用の評価項目", 1
-    Hdg "14.1 評価指標一覧（Rev.0.7）", 2
-    Tbl Array( _
-        Array("評価指標", "内容", "計測方法・備考"), _
-        Array("2D図面削減時間（h/案件）", "従来の作図工数との差分", "設計者が自己記録（比較案件：xxx）"), _
-        Array("面色付与時間（h/部品）", "面色付与（標準公差区分の適用含む）に要した時間", "設計者が自己記録"), _
-        Array("穴ネジ一覧表作成時間（h/案件）", "一覧表作成・穴番号対応に要した追加時間", "設計者が自己記録"), _
-        Array("PMI/注記作成時間（h/部品）", "個別公差・特殊公差・改造等の注記作成時間", "設計者が自己記録"), _
-        Array("面色標準公差を適用した寸法数", "面色標準公差が適用されPMI公差省略できた寸法の数", "案件ごとに記録"), _
-        Array("標準公差外としてPMI/注記が必要だった寸法数", "標準公差では対応できずPMI/注記で個別公差を明示した寸法の数", "案件ごとに記録"), _
-        Array("CAM確認時間（h/案件）", "面色で加工対象面・ガスベント面・標準公差を判断できたか", "CAM担当者が記録"), _
-        Array("型工問い合わせ件数", "情報不足による問い合わせの件数", "フィードバック様式で集計"), _
-        Array("差し戻し件数・理由", "差し戻しの件数と主な理由", "様式3で集計・分類"), _
-        Array("穴記号不対応による差し戻し件数", "穴番号と3D/JT/補助図の不対応による差し戻し数", "別途集計") _
-    ), wdAutoFitWindow
-
-    Hdg "14.2 正味削減時間の算式", 2
-    Tbl Array( _
-        Array("評価式", "算式"), _
-        Array("正味削減時間", "= {2D図面作成時間 − 3Dモデル作成時間（面色付与時間・穴ネジ一覧表作成時間・PMI/注記作成時間）} + 型工モデル確認時間") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第15章 フィードバック様式と標準書改訂ルール
-'=====================================================================================
-Private Sub Ch15_Feedback()
-    Hdg "第15章 フィードバック様式と標準書改訂ルール", 1
-    Hdg "15.1 様式4：フィードバック記録表", 2
-    Tbl Array( _
-        Array("No.", "発生日", "部品名", "工程", "問題内容", "不足情報", "必要な対応", "標準書改訂", "完了"), _
-        Array("1", "", "", "", "", "", "", "□要/□否", "□"), _
-        Array("2", "", "", "", "", "", "", "□要/□否", "□"), _
-        Array("3", "", "", "", "", "", "", "□要/□否", "□"), _
-        Array("共通", "案件名：xxx 金型番号：xxx 設計者名：xxx 確認日：xxx 承認者：xxx 保管場所：xxx", "", "", "", "", "", "", "") _
-    ), wdAutoFitWindow
-
-    Hdg "15.2 様式5：試行案件レビューシート", 2
-    Tbl Array( _
-        Array("項目", "記載欄"), _
-        Array("案件名・金型番号", "xxx"), _
-        Array("部品名・Rev", "xxx"), _
-        Array("設計者名・確認日", "xxx"), _
-        Array("発行判定", "□A / □B / □C / □D"), _
-        Array("差し戻し有無", "□有（件数：　）/ □無"), _
-        Array("正味削減時間（h）", "2D削減：　面色付与：　穴ネジ一覧表：　PMI/注記："), _
-        Array("面色標準公差を適用した寸法数", "　件"), _
-        Array("標準公差外PMI/注記が必要だった寸法数", "　件"), _
-        Array("問い合わせ件数", "　件"), _
-        Array("差し戻し件数", "　件"), _
-        Array("穴番号不対応による差し戻し件数", "　件"), _
-        Array("ガスベント色の決定状況", "□確定（色名：　）/ □未確定（仮色・案件別識別）"), _
-        Array("改善要望", ""), _
-        Array("承認者・保管場所", "xxx") _
-    ), wdAutoFitWindow
-
-    Hdg "15.3 標準書改訂ルール", 2
-    Tbl Array( _
-        Array("項目", "ルール"), _
-        Array("改訂の発議", "フィードバック様式（様式4）の提出をもって改訂発議とする"), _
-        Array("改訂の承認", "工設係担当者が案を作成し、承認者の最終承認を経て改訂する"), _
-        Array("改訂の周知", "改訂後は関係者全員へ周知し旧版の廃棄を確認する（保管場所：xxx）"), _
-        Array("正式版への移行", "試行運用終了後（目安：xxx案件）に総括レビューを実施し正式版（Rev.1.0）へ移行する") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第16章 資料
-'=====================================================================================
-Private Sub Ch16_Materials()
-    Hdg "第16章 資料", 1
-    Hdg "16.1 必要な付属資料一覧", 2
-    Tbl Array( _
-        Array("No.", "資料名", "内容・目的", "主な対象者", "状態"), _
-        Array("1", "様式1：設計者チェックリスト", "第11章（穴番号対応確認・面色標準公差確認追加）", "設計者", "第11章"), _
-        Array("2", "様式2：型工側受領チェックリスト", "第12章（穴番号対応確認追加）", "型工全員", "第12章"), _
-        Array("3", "様式3：差し戻し連絡票", "第12-2章（穴番号対応・PMI+未着色D判定）", "型工全員", "第12-2章"), _
-        Array("4", "様式4：フィードバック記録表", "第15章", "全員", "第15章"), _
-        Array("5", "様式5：試行案件レビューシート", "第15章（標準公差適用寸法数・穴番号不対応件数追加）", "設計者・係長", "第15章"), _
-        Array("6", "面色早見表（Rev.0.7版）", "面色14色＋No.3A・現行カラーパレット値を1枚に集約", "型工全員（掲示）", "別途作成"), _
-        Array("7", "穴ネジ一覧表テンプレート", "穴番号・径・深さ・タップ径×深さ等の標準様式", "設計者・型工全員", "別途作成"), _
-        Array("8", "面色公差適用例シート", "例1〜4（第4章4.5節）を1枚にまとめた現場配布用教材", "設計者・型工全員", "別途作成"), _
-        Array("9", "JT閲覧手順", "JTデータの開き方・面色確認・標準公差確認方法（ver.xxx）", "型工全員", "別途作成"), _
-        Array("10", "ガスベント識別ガイド（試行版）", "No.3A仮色または案件別識別方法。色確定後に更新予定", "CAM・仕上げ", "別途作成") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 第17章 代表例・NG例
-'=====================================================================================
-Private Sub Ch17_Examples()
-    Hdg "第17章 代表例・NG例", 1
-    Hdg "17.1 面色公差の適用 OK例", 2
-    Tbl Array( _
-        Array("No.", "OK例", "ポイント"), _
-        Array("1", "基準面（Yellow）からOrange面までを3Dモデル上で測定し寸法値12mm。Orangeの標準公差±0.01のため、適用寸法は12±0.01とする", "例1（第4章4.5節）の具体例。面色公差の基本的な適用"), _
-        Array("2", "PMIに寸法値「15」のみ記載、対象面がPowder Gray（製品面）。標準公差±0.02のため、適用寸法は15±0.02とする", "PMIに寸法値のみ記載でよい（公差は面色定義に従う）"), _
-        Array("3", "2D図面に「12 +0.02/0」と個別公差。Orange面（標準公差±0.01）であっても2D図面の個別公差を優先する", "2D図面個別公差＞面色標準公差の優先順位"), _
-        Array("4", "摺動面（Cornflower）にH7/h7の標準公差。2D図面に個別公差がないため面色定義のH7/h7を適用する", "H7/h7は面色定義による標準公差区分"), _
-        Array("5", "特殊公差が必要な面にのみNo.13 Brownを適用し、PMI/注記で「+0.005/0 締まりばめ」と明示", "No.13は該当面・部位のみ。部品全体禁止"), _
-        Array("6", "穴ネジ一覧表に穴番号（H1〜H8）を記載し、穴番号付き補助図で3D/JT上の位置と対応", "穴番号と3D/JT/補助図の対応が確認できる状態") _
-    ), wdAutoFitWindow
-
-    Hdg "17.2 面色公差の適用 NG例", 2
-    Tbl Array( _
-        Array("No.", "NG例（問題点）", "正しい対応"), _
-        Array("1", "寸法値だけPMIで表示されているが対象面が未着色 → D判定", "対象面に適切な面色を付与し、面色定義表で標準公差が確認できる状態にする"), _
-        Array("2", "No.13 Brownを部品全体に適用 → D判定（誤適用）", "Brownは該当面・部位のみに適用する。部品全体は禁止"), _
-        Array("3", "No.13 Brownを使用しているが公差値の注記がない → D判定", "No.13には必ずPMI/注記/補助図で公差値・公差種別を明示する"), _
-        Array("4", "Cornflower（摺動面）に2D図面「h6」の個別公差があるのに面色定義のH7/h7を使用", "2D個別公差がある場合は個別公差優先。h6を適用する"), _
-        Array("5", "穴ネジ一覧表を作成したが穴番号と3D/JT/補助図の穴位置が対応していない → C判定", "穴番号と穴位置を必ず対応させる。表示できない場合は補助図を添付"), _
-        Array("6", "No.1基準面（Yellow）の公差「0」を公差ゼロで加工と解釈", "「0」は基準位置として扱う意味。加工精度は2D図面・PMI/注記・補助図の個別指示に従う") _
-    ), wdAutoFitWindow
-
-    Hdg "17.3 全般的なOK/NG例", 2
-    Tbl Array( _
-        Array("No.", "OK例", "NG例（問題点）"), _
-        Array("1", "穴が5箇所以上（合計）あるため穴ネジ一覧表を添付。穴番号と3D/JT/補助図が対応", "面色未設定面がある → D判定"), _
-        Array("2", "タップ穴はBlue（No.11）で識別し、穴ネジ一覧表にM6×12を記載", "穴番号と3D/JT/補助図上の穴位置が対応していない → C判定"), _
-        Array("3", "Orange面（PL合わせ面 ±0.01）の寸法値をPMIで明示。公差は面色定義を適用", "No.13 Brownを部品全体に誤適用 → D判定"), _
-        Array("4", "特殊公差面にのみBrownを使用し、PMI/注記で公差値・公差種別を明示", "測定ビュー不足をNGにしている → 測定は本標準書対象外") _
-    ), wdAutoFitWindow
-    PageBreak
-End Sub
-
-
-'=====================================================================================
-' 巻末：図例（参考図）プレースホルダ集
-'=====================================================================================
-Private Sub AppendixFigures()
-    Hdg "巻末：参考図（図例貼付欄）", 1
-    Para "※ 以下はNX画面スクリーンショット・概念図等を貼り付ける欄です。VBAでは図そのものを生成できないため、各欄に対応する画像を後から差し込んでください。"
-    Blank
-    Fig "図17", "第17章 代表例・NG例", "オレンジ12±0.01 OK・茶色は対象面のみ OK・全面茶色 NG・未着色D判定・穴番号不一致 NG・個別公差PMI OK"
-    Fig "図16", "第16章 教育・展開資料", "面色クイックリファレンス（サマリー表）と現場向けポスター例"
-    Fig "図15", "第15章 フィードバックと改訂", "フィードバックフォーム記入例・改訂意思決定フロー"
-    Fig "図14", "第14章 試行運用の評価項目", "正味削減時間の計算式・面色公差で処理できた寸法数・差し戻し件数のグラフイメージ"
-    Fig "図13-2/13-3", "RACI責任分担表と3DA標準データセット", "JT・穴ネジ一覧表・補助図・電極配置図・電極図"
-    Fig "図13", "第13章 運用フロー", "3Dモデル作成→面色付与→穴ネジ一覧表→PMI/注記→設計者チェック→JT発行→型工受領→加工・仕上げ→フィードバック"
-    Fig "図12", "第12章 穴ネジ一覧表と図面（穴番号）の対応", "穴番号H1〜H5と3D/JTまたは補助図上の穴位置の対応例"
-    Fig "図11/12", "第11章・第12章 チェックと差し戻し", "発行判定基準（A/B/C/D）・差し戻し手順フロー・チェックリスト記入例・差し戻し票記入例"
-    Fig "図10", "第10章 補助図・一覧表を残す条件", "穴ネジ一覧表の要否判断フローチャート"
-    Fig "図9", "第9章 PMI・注記作成ルール", "(a)寸法値のみPMI→面色標準公差適用 (b)個別公差あり→個別公差優先 (c)茶色→PMI注記必須"
-    Fig "図8", "第8章 工程別確認項目", "工程ごとに必要な資料（面色・PMI・穴ネジ一覧表・補助図）の確認マトリクス"
-    Fig "図7", "第7章 使い分け", "面色・PMI/注記・穴ネジ一覧表・補助図の情報置き分けと使い分けのポイント"
-    Fig "図6", "第6章 面色ごとの使用ルール", "8色の代表例（イエロー基準面・オレンジPL面・グリーン逃がし面・コーンフラワー摺動部等）"
-    Fig "図5.3", "第5章 5.3節 穴数カウント例", "貫通穴H・タップ穴M・Rcタップ穴Rc・ワイヤー開始穴Wの合計で判断"
-    Fig "図4", "第4章 基本方針", "役割分担・情報の優先順位（個別公差の考え方）・適用例（面色と個別公差の関係）"
-    Fig "図3", "第3章 用語定義", "NX native → JTデータ → 現場閲覧までのデータの流れと各資料の位置付け"
-    Fig "図2", "第2章 適用範囲", "対象部品（キャビ・コア・入れ子等）と対象外部品（モールドベース・型枠）の例"
-    Fig "図1", "第1章 目的", "面色・標準公差・穴ネジ一覧表・PMIを組み合わせた情報共有の概念図"
-End Sub
+金型設計者スキルマップ									
+当該業務実行に要求されるスキルを整理。原則、要求スキルを満たす人員を優先するが、要求スキルに1段階足りない場合は、上位スキル保有者のサポートをつける。									
+スキル／技術項目	新作							改作	修正
+	部品図・2D図面作成	電極設計	"金型3D構造設計
+（流用 ※1）"	"生産設計
+（形状チェック）"	"CAE
+（流動解析）"	"金型3D構造設計
+（簡易新規）"	"金型3D構造設計
+（コア ※2）"	改作	修正
+① 業務・製品理解									
+1. 金型設計フローの理解									
+2. 製品知識（成形品要求・QC工程・公差）									
+3. 機械製図（幾何公差・寸法公差）									
+② CAD・ツール操作									
+4. NX 3Dモデリング									
+5. NX 2D製図									
+6. NXアセンブリ運用（図番取得・部品情報・レイヤー・座標系）									
+7. データ変換・他CAD連携（パラソリッド→NX11）									
+8. Moldflow 操作（取込〜メッシュ〜条件〜解析）									
+9. CAM（MCCAM 等）の理解									
+③ 設計基準・標準									
+10. 金型執務要領書／設計基準の理解									
+11. 電極設計基準（3R・WED・標準サイズ・採番・減寸・揺動）									
+12. 面色定義・PMI 運用ルール									
+13. 標準機構ユニット・ミスミ部品の理解									
+④ 金型構造設計									
+14. 金型仕様書作成・型要件盛り込み									
+15. パーティング作成・勾配付け									
+16. 駒割・入れ子分割									
+17. モールドベース設計・選定									
+18. スプルー・ランナー・ゲート設計									
+19. 冷却回路設計									
+20. 部品配置・穴サブトラクト・干渉チェック									
+21. 取り数・型レイアウト判断									
+⑤ 生産設計・CAE・成形									
+22. 形状チェック力（問題点洗い出し＋指摘基準）									
+23. CAE 解析条件設定と結果の読み解き									
+24. 樹脂特性・成形不良メカニズム									
+25. 材料選定・表面処理									
+⑥ 加工制約（製造知識）									
+26. MC（マシニング）加工									
+27. 研削加工									
+28. ワイヤー放電加工									
+29. 型彫り放電加工									
+30. 加工方法・段取り・加工性									
+⑦ レビュー・マネジメント・その他									
+31. 設計レビュー・照査／検認（DR・図面チェック）									
+32. 手配業務（材料・購入品・モールドベース手配）									
+33. 品質管理・統計									
+34. コスト・工数感覚									
+35. トラブル対応・原因分析									
+36. プログラミング（VBA／Python）									
+⑧ 改作・修正対応									
+37. 既存型の構造把握・図面読解									
+38. 変更影響範囲の特定（改作）									
+39. 成形不良の原因診断（バリ・ショート・ヒケ）									
+40. 寸法NGの原因特定と修正方法選定（削り・肉盛り・入れ子交換・設計変更）									
+41. 型トライ・成形立会での評価									
+目標（到達年次）	1年目	2年目	2年目	3年目	3年目	3年目	4〜5年目	3〜4年目	3〜4年目
+必要経験（昇格要件）	研修	部品図・2D作成 経験、電極図作成 実績	電極設計 経験、流用構造設計 1型以上	流用設計 経験、形状チェック 指導下で実施	生産設計 経験、Moldflow 講習・実務	流用設計 2型以上、生産設計／CAE 実務	簡易新規＋CAE 複数、計画〜出図 主担当	流用/新規設計 経験、改作を指導下で実施	生産設計/成形立会 経験、寸法NG修正を指導下で実施
+必要人数（年間製作 ○型 想定）									
+									
+注記									
+※ 列は仕事の種類で構成：新作（流用〜コア）／改作（製品形状変更・不具合による改造）／修正（成形不良・寸法NG）。									
+※1 流用設計：標準型・過去の類似型をベースに設計できる、または参考にできる型がある場合。									
+※2 コア設計：新規要素（改良含む）が大部分を占める設計（既存を流用せず、ゼロベースで再設計）。									
+※ 生産設計（形状チェック）とCAE（流動解析）は専門トラック。									
+									
+レベル凡例									
+E	基礎：指導を受けながら実施できる								
+D	応用：独力で標準的な作業ができる								
+C	上級：難易度の高い判断・非定型に対応できる								
+空欄	その作業では要求なし								
+※ B・A（指導・技術確立レベル）は本表の対象外。									
+
+
+
+
+							
+		金型設計者 スキル説明					
+							
+	No.	スキル項目	レベル				
+			E	D	C	B	A
+		レベルの目安	"指導を受けながら業務が遂行できるレベル
+初心者（人に聞きながらできる、知識として知っている）"	"独自で業務が遂行できるレベル
+やや初心者（概ね自分でできる）"	"所内で技術指導ができるレベル
+中級者（理解して自分ででき、人に教えることができる）"	"社内で講師ができるレベル
+上級者（応用できる）"	"社外で講師ができるレベル
+熟練者"
+	1	金型設計フローの理解	"・設計着手〜出図までの流れを知っている
+・各工程の名称と目的を知っている"	・生産設計〜計画DR〜出図までを独力で進められる	"・型構想〜製作〜型トライ〜量産移行までの全体工程を理解し後工程と連携できる
+・工程の抜け・リスクを事前に指摘できる"	・フロー全体を最適化し標準・基準へ落とし込める	社外講師ができる
+			執務要領書を読んだ	サポート設計者として計画DR〜出図を経験した	主担当として型トライ〜量産移行まで経験した	メイン設計者として ○型以上経験した	社外講師ができる
+	2	製品知識（成形品要求・QC工程・公差）	・成形品と要求（外観・寸法・機能）を知っている	・製品のQC工程・重要寸法を把握し型仕様へ反映できる	・製品設計／品証と対等に会話し、成形性の観点から製品側へ提案できる	・コンカレントに製品設計へ関与し設計変更を主導できる	社外講師ができる
+			カタログ・製品図を読んだ	対象製品の金型を1型以上担当	製品設計に複数回関与（コンカレント）	製品設計変更を複数回主導	社外講師ができる
+	3	機械製図（幾何公差・寸法公差）	"サポートなしでできる：三角法で正確に描ける／表面粗さを理解
+サポートが必要：幾何公差・はめあい・一般公差・JIS表記・基準の取り方を理解している"	・左記を全てサポートなしでできる	"・最適な公差の選択ができる
+・2D部品図の図面照査ができる"	・公差設計の指導、社内標準の見直しができる	社外講師ができる
+			未経験者で研修を受けた	部品図バラシ2型以上 or 設計経験者	型設計を2型以上 or ベテラン設計経験者	設計者として ○型以上	社外講師ができる
+	4	NX 3Dモデリング	"・簡単な部品/入れ子の3Dモデル修正ができる
+・履歴の基本操作を理解している"	"・サポートなしで型構造の3Dモデルを作成できる
+・修正に強い堅牢な履歴で作れる"	"・ほとんどの形状を最適手順でモデリングできる
+・WAVE/リンク・式を活用できる"	・モデリング標準・テンプレートを整備し指導できる	社外講師ができる
+			未経験者で研修を受けた	部品図バラシ2型以上かつ3Dモデル修正経験	型設計を4型以上	メイン設計者として ○型以上	社外講師ができる
+	5	NX 2D製図	・3Dから2Dへ変換し寸法を入れられる	・サポートなしで部品図・組図を作成できる	"・作図に必要な機能を全て理解し最適な時間で作成できる
+・図面照査ができる"	・作図標準の整備・指導ができる	社外講師ができる
+			未経験者で研修を受けた	部品図バラシ2型以上	2D組図を2型以上 or ベテラン	設計者として ○型以上	社外講師ができる
+	6	NXアセンブリ運用（図番取得・部品情報・レイヤー・座標系）	・アセンブリを開き部品構成・図番を確認できる	・アセンブリ展開、図番取得、部品情報付加、レイヤー/座標系設定を独力でできる	・大規模アセンブリの構成ルールを整備し干渉・整合を管理できる	・アセンブリ運用標準を整備・指導できる	社外講師ができる
+			研修を受けた	型設計でアセンブリ運用を1型以上	4型以上／ルール整備経験	○型以上	社外講師ができる
+	7	データ変換・他CAD連携（パラソリッド→NX11）	・手順書に沿ってexport/importができる	・変換・NX11取込みを独力でトラブルなくできる	"・変換不良（面欠け等）の原因を特定し修復できる
+・他CAD混在環境の連携を判断できる"	・変換フローの標準化・指導ができる	社外講師ができる
+			手順書で学習	生産設計/CAEで変換を複数回実施	変換不良対応の経験	標準整備	社外講師ができる
+	8	Moldflow 操作（取込〜メッシュ〜条件〜解析）	・取込み・簡易ランナー等の基本操作を知っている	・射出位置設定、メッシュ、材料選定、条件設定、解析実行まで一通りできる	・メッシュ品質・条件を適正に判断し信頼できる解析を独力で完結できる	・解析手順の標準化・指導ができる	社外講師ができる
+			講習受講	解析を複数件実施	解析を ○件以上実施し結果を設計反映	標準整備・指導	社外講師ができる
+	9	CAM（MCCAM 等）の理解	・加工の流れ・ツールパスの概念を知っている	"・電極/部品の加工図を意識した設計ができる
+・おおよその加工時間感覚を持つ"	・加工手順・工具アクセスを踏まえ加工しやすい形状を設計できる	・加工性基準の整備・指導ができる	社外講師ができる
+			見学・研修	加工図作成経験	加工現場と連携した設計を4型以上	○型以上	社外講師ができる
+	10	金型執務要領書／設計基準の理解	・基準があることを知り参照できる	・執務要領書／設計基準に則った設計ができる	・基準の背景を理解し改定が必要な場合に提案できる	・基準の見直し・整備を主導できる	社外講師ができる
+			要領書を一読	型設計を4型以上	基準改定に関与	○型以上	社外講師ができる
+	11	電極設計基準（3R・WED・標準サイズ・採番・減寸・揺動）	・3R/WED電極の違い・採番ルールを知っている	"・基準書に基づき標準サイズ選定・電極設計・配置図/加工図作成ができる
+・減寸・揺動を理解し設定できる"	・複雑形状/深リブ等で最適な電極分割・減寸・揺動を判断でき、指導できる	・電極設計基準の見直し・整備ができる	社外講師ができる
+			基準書を一読	電極設計を ○本以上	難形状の電極設計を複数、指導経験	基準整備	社外講師ができる
+	12	面色定義・PMI 運用ルール	・面色定義/PMIの目的とルールを知っている	・ルールに沿って面色分け・PMI付与ができる	・後工程が迷わない最小PMIを判断し運用を指導できる	・面色/PMI標準の整備ができる	社外講師ができる
+			標準書を一読	型設計で運用を複数回	運用ルール整備・指導	標準整備	社外講師ができる
+	13	標準機構ユニット・ミスミ部品の理解	・エジェクタピン/スプリング/型開き防止プレート等の役割を知っている	・標準部品を選定・配置し干渉なく組み込める	・機構全体を理解し最適な標準ユニットの選定・組合せができる	・標準部品ライブラリの整備ができる	社外講師ができる
+			カタログ・資料で学習	型設計で部品配置を複数回	4型以上	○型以上	社外講師ができる
+	14	金型仕様書作成・型要件盛り込み	・仕様書の項目を知っている	・製品要求から型仕様書を作成し型要件を盛り込める	・成形性・製作性・コストを踏まえ最適な型仕様を立案できる	・仕様検討の指導・標準化ができる	社外講師ができる
+			資料一読	流用設計を ○型以上	新規設計を ○型以上	メイン ○型以上	社外講師ができる
+	15	パーティング作成・勾配付け	・抜き勾配の意味を理解し指示に沿って勾配付けできる	・PLを設定し勾配付けまで独力でできる	・アンダー・食い切り・見切りを考慮し最適なPLを判断できる	・PL設計の指導・標準化ができる	社外講師ができる
+			研修/資料で学習	流用設計を ○型以上	新規設計を ○型以上	○型以上	社外講師ができる
+	16	駒割・入れ子分割	・駒割/入れ子分割の目的を知っている	・加工性・メンテ性を考えた基本的な駒割ができる	・加工限界（放電/ワイヤー/研削）を踏まえ最適な分割を判断できる	・駒割設計の指導・標準化ができる	社外講師ができる
+			資料で学習	流用 ○型以上	新規 ○型以上	○型以上	社外講師ができる
+	17	モールドベース設計・選定	・ベースの構成・図面作成・手配ができる	・製品/取り数に応じたベース選定・設計ができる	・強度・加工性・コストを踏まえ最適なベースを判断できる	・ベース選定の指導・標準化ができる	社外講師ができる
+			図面作成経験	流用 ○型以上	新規 ○型以上	○型以上	社外講師ができる
+	18	スプルー・ランナー・ゲート設計	・ゲート方式・ランナーの種類を知っている	・標準的なスプルー/ランナー/ゲートを設計できる	・流動・圧力バランスを考慮しゲート位置/方式を最適化できる	・ゲート設計の指導・標準化ができる	社外講師ができる
+			資料で学習	流用 ○型以上	新規 ○型以上／CAE連携	○型以上	社外講師ができる
+	19	冷却回路設計	・冷却の目的・基本構成を知っている	・標準的な冷却回路を配置できる	・冷却バランス・反り対策を考慮した回路（コンフォーマル含む）を設計できる	・冷却設計の指導・標準化ができる	社外講師ができる
+			資料で学習	流用 ○型以上	新規 ○型以上	○型以上	社外講師ができる
+	20	部品配置・穴サブトラクト・干渉チェック	・部品配置・干渉チェックの操作を知っている	・部品配置、穴サブトラクト、干渉チェックを独力で行える	・全体アセンブリで干渉・整合を管理し3D構造チェックを主導できる	・チェック手順の指導・標準化ができる	社外講師ができる
+			研修	流用 ○型以上	新規 ○型以上	○型以上	社外講師ができる
+	21	取り数・型レイアウト判断	・取り数・レイアウトの考え方を知っている	・製品/設備制約から妥当な取り数・レイアウトを設定できる	・生産性・コスト・成形性を総合し最適な取り数を判断できる	・取り数判断の指導ができる	社外講師ができる
+			資料で学習	流用 ○型以上	新規 ○型以上	○型以上	社外講師ができる
+	22	形状チェック力（問題点洗い出し＋指摘基準）	"・コア/キャビ色分け・勾配付与など準備操作ができる
+・薄肉/シャープエッジ/アンダーカット等の指摘基準を知っている"	・生産設計結果シートを作成し、必ず指摘する内容（薄肉0.8mm・シャープエッジ・アンダーカット・食い切り・加工不可R 等）を洗い出せる	・経験/知見から成形性・型強度・作り易さの問題点を的確に指摘し製品側へ改善提案できる	・指摘基準の整備・後進の指導ができる	社外講師ができる
+			手順・基準を学習	形状チェックを指導下で複数実施	主担当で ○件以上、指摘を製品反映	基準整備・指導	社外講師ができる
+	23	CAE 解析条件設定と結果の読み解き	・充填/圧力/ヒケ/ウェルド/反りの用語と意味を知っている	・解析条件を設定し結果から指摘事項をまとめられる	・結果を設計変更（ゲート/冷却/肉厚）へ的確に反映し成形不良を未然防止できる	・解析主導・後進の指導ができる	社外講師ができる
+			講習受講	解析を複数件	○件以上、設計反映・効果検証	指導	社外講師ができる
+	24	樹脂特性・成形不良メカニズム	・主要樹脂の収縮/流動/ガスの基本を知っている	・材質ごとの特性を踏まえた設計配慮ができる	・成形不良（ヒケ/ウェルド/ソリ/ガス焼け等）の発生機構を説明し対策できる	・不良対策の指導・標準化ができる	社外講師ができる
+			資料で学習	型設計で特性を考慮	不良対策を複数経験	指導	社外講師ができる
+	25	材料選定・表面処理	・型材/表面処理（めっき等）の種類を知っている	・標準的な型材選定・表面処理の使い分けができる	・要求/コスト/加工性から最適な型材・処理を選定し基準を見直せる	・材料選定の指導・標準化ができる	社外講師ができる
+			マニュアル一読	型設計を ○型以上	○型以上／基準見直し	○型以上	社外講師ができる
+	26	MC（マシニング）加工	・MC加工の特徴・工具アクセスの概念を知っている	・加工性（隅R・工具長）を考えた部品形状にできる	・加工時のひずみ・加工限界を考慮した設計ができる	・加工性設計の指導ができる	社外講師ができる
+			見学/研修	設計経験者	型設計を4型以上	○型以上	社外講師ができる
+	27	研削加工	・研削の特徴・面出し/寸法出しの概念を知っている	・研削を前提とした入れ子分割・逃がしを設計できる	・研削の精度限界を踏まえ最適な分割/公差配分ができる	・指導ができる	社外講師ができる
+			見学/研修	設計経験者	4型以上	○型以上	社外講師ができる
+	28	ワイヤー放電加工	・ワイヤー放電の特徴・テーパー/隅R制約を知っている	・割り型/入れ子をワイヤー加工前提で設計できる	・加工精度・テーパー限界を踏まえ最適な分割を判断できる	・指導ができる	社外講師ができる
+			見学/研修	設計経験者	4型以上	○型以上	社外講師ができる
+	29	型彫り放電加工	・型彫り放電の特徴・放電ギャップ/面粗さの概念を知っている	・深リブ/シャープエッジを放電前提（電極含む）で設計できる	・放電ギャップ・減寸・揺動と面粗さを踏まえ電極/型を最適設計できる	・指導ができる	社外講師ができる
+			見学/研修	電極設計/放電加工の設計経験	難形状を複数、指導経験	○型以上	社外講師ができる
+	30	加工方法・段取り・加工性	・各加工機の特徴と使い分けを概ね知っている	・加工方法/段取りを想定した設計ができる	・加工不可形状（加工不可R 等）を判断・指摘し加工しやすい設計へ導ける	・加工性設計の指導・標準化ができる	社外講師ができる
+			見学/研修	設計経験者	4型以上／現場連携	○型以上	社外講師ができる
+	31	設計レビュー・照査／検認（DR・図面チェック）	・図面チェック/照査の観点を知り実施できる	・DR/照査を独力で行い明らかな欠陥を指摘できる	・DRで設計欠陥/加工・組立リスクを指摘し改善提案できる	・DR/照査の指導・標準化ができる	社外講師ができる
+			照査/検認を経験	型設計を ○型以上	DR主査経験	○型以上	社外講師ができる
+	32	手配業務（材料・購入品・モールドベース手配）	・材料/購入品/ベースの手配手順を知り実施できる	・納期/仕様を確認し独力で手配できる	・コスト/納期を考慮し最適な手配・調整ができる	・手配業務の指導・効率化ができる	社外講師ができる
+			手順で実施	型設計で手配を複数回	調達最適化経験	指導	社外講師ができる
+	33	品質管理・統計	・ばらつきを考慮できる	・ばらつきを考慮して閾値を設けられる	・統計的手法で品質を評価・改善できる	・指導ができる	社外講師ができる
+			QC3級相当	QC2級相当	QC2級相当＋改善実績	QC1級相当	社外講師ができる
+	34	コスト・工数感覚	・型費/工数の構成を知っている	・設計内容から概略コスト/工数を見積もれる	・コスト/工数を踏まえ過不足のない設計判断ができる（設備費削減）	・コスト設計の指導ができる	社外講師ができる
+			資料で学習	見積を複数回	コスト低減を主導	指導	社外講師ができる
+	35	トラブル対応・原因分析	・トラブル事例を知っている	・応急対応と簡単な原因分析ができる	・応急（止血）と根本原因・再発防止を分けて立案し基準へ反映できる	・トラブル対応の指導・ナレッジ整備ができる	社外講師ができる
+			事例を学習	対応を複数回	根本対策・基準反映を主導	ナレッジ整備	社外講師ができる
+	36	プログラミング（VBA／Python）	・時間をかければプログラムが読める	・時間をかければ業務ツールを作成できる	・適正な時間でツール作成/トラブルシュートができる	・指導ができる	社外講師ができる
+			研修/外部資料で学習	他のプログラム解読経験	業務ツールを複数作成	指導	社外講師ができる
+	37	既存型の構造把握・図面読解	・既存型の組図/部品図を読み構成を把握できる	・既存型の構造・設計意図を独力で読み解き流用/変更範囲を把握できる	・複雑な既存型でも短時間で構造・意図・過去経緯を把握し後進に説明できる	・型構造の読み解き手法を指導・標準化できる	社外講師ができる
+			組図/部品図を読んだ	既存型の改作/修正を複数経験	多数の既存型を読み解いた／指導経験	○型以上	社外講師ができる
+	38	変更影響範囲の特定（改作）	・変更が及ぶ範囲があることを理解している	・製品形状変更に対し変更部位と流用/作り直し範囲を切り分けられる	・変更の波及（隣接駒・冷却・PL・強度・成形性）を的確に特定し手戻りなく改作範囲を確定できる	・影響範囲特定の手法を指導・標準化できる	社外講師ができる
+			改作を経験	改作を複数経験	大規模改作を主担当で複数	○型以上	社外講師ができる
+	39	成形不良の原因診断（バリ・ショート・ヒケ）	・主な成形不良（バリ・ショート・ヒケ・ウェルド等）の現象を知っている	・不良現象から成形条件由来か型由来かを一次切り分けできる	・不良の発生機構を特定し型/条件/製品のどこに手を打つかを判断できる	・原因診断の指導・ナレッジ整備ができる	社外講師ができる
+			事例を学習	不良対応を複数経験	根本原因特定を主担当で複数	ナレッジ整備	社外講師ができる
+	40	寸法NGの原因特定と修正方法選定（削り・肉盛り・入れ子交換・設計変更）	・寸法NGの修正手段（削り/肉盛り/入れ子交換/設計変更）を知っている	・寸法NGの原因を特定し、修正か組確かを判断できる	・原因/コスト/リードタイム/リスクから最適な修正方法を選定し判断根拠を示せる	・修正方法選定の基準を整備し後進を指導できる（寸法NG検討の標準化）	社外講師ができる
+			修正手段を学習	寸法NG修正を複数経験	修正方法選定を主担当で複数、基準化に関与	基準整備・指導	社外講師ができる
+	41	型トライ・成形立会での評価	・型トライの流れ・確認項目を知っている	・成形立会で成形品/型の状態を確認し評価をまとめられる	・立会で不良/寸法/型挙動を評価し次の一手（修正/条件出し）を判断できる	・型トライ評価の指導・標準化ができる	社外講師ができる
+			型トライを見学/経験	立会評価を複数経験	主担当で立会評価を複数	○型以上	社外講師ができる
+							
+		※ スキルレベルはアウトプット（成果物）から判断する（設計リーダーと協議のうえ決定）。					
+		※ E→D→C→B→A の順に難易度が上がる。上段＝できること／下段（緑）＝判定に必要な経験。					
